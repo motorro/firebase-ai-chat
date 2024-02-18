@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+        return null != request.auth && null != request.auth.uid;
+    }
+
+    function isOwner() {
+      return request.auth.uid == resource.data.userId;
+    }
+
+	match /chats/{chatId} {
+      allow read: if isAuthenticated() && isOwner();
+      allow write: if false;
+    }
+
+  }
+}

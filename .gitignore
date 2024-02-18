@@ -1,0 +1,21 @@
+# Compiled JavaScript files
+lib/**/*.json
+lib/**/*.js
+lib/**/*.js.map
+
+# TypeScript v1 declaration files
+typings/
+
+# Node.js dependency directory
+node_modules
+
+# Secrets
+.secret.local
+
+# Project files
+.firebaserc
+/keys
+
+# Logs
+*.log
+

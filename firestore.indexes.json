@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+           "fieldPath": "runId",
+           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "inBatchSortIndex",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ]
+}
+
