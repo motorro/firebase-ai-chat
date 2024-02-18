@@ -14,15 +14,10 @@ process.env.FIREBASE_FIRESTORE_EMULATOR_ADDRESS = "localhost:8080";
 
 setLogger(ConsoleLogger);
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 export const test = require("firebase-functions-test")(
     {
         projectId: config.projects["test"]
-    },
-    "../keys/test.json"
-);
-require("firebase-functions-test")(
-    {
-        projectId: {projectId: config.projects["test"]}
     },
     "./keys/test.json"
 );

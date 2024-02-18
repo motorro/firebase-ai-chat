@@ -36,8 +36,8 @@ export const ConsoleLogger: Logger = {
     },
     e(...args: unknown[]): void {
         console.error(...args);
-    },
-}
+    }
+};
 
 export let logger: Logger = ConsoleLogger;
 

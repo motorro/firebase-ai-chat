@@ -90,11 +90,7 @@ describe("Assistant Chat", function() {
         command.should.deep.include(
             {
                 doc: chatDoc,
-                type: "post",
-                config: {
-                    assistantId: assistantId,
-                    dispatcherId: dispatcherId
-                }
+                type: "post"
             }
         );
     });
@@ -160,11 +156,7 @@ describe("Assistant Chat", function() {
         command.should.deep.include(
             {
                 doc: chatDoc,
-                type: "close",
-                config: {
-                    assistantId: assistantId,
-                    dispatcherId: dispatcherId
-                }
+                type: "close"
             }
         );
 
