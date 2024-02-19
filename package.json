@@ -12,7 +12,7 @@
     "pretest": "npm run build",
     "test:run": "mocha './test/**/*.spec.{ts,tsx}' --reporter spec",
     "test:watch": "mocha --watch --watch-files './test/**/*.spec.{ts,tsx}' --reporter spec",
-    "test": "npm run test:run"
+    "test": "FIRESTORE_EMULATOR_HOST='localhost:8080' FIREBASE_FIRESTORE_EMULATOR_ADDRESS='localhost:8080' firebase emulators:exec --only firestore 'npm run test:run'"
   },
   "author": "motorro",
   "license": "ISC",
@@ -41,6 +41,7 @@
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.25.4",
     "firebase-functions-test": "^3.1.0",
+    "firebase-tools": "^13.3.0",
     "mocha": "^10.2.0",
     "sinon": "^17.0.1",
     "typescript": "^4.9.0"

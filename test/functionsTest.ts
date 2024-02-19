@@ -9,9 +9,6 @@ type RC = {
 }
 const config: RC = JSON.parse(fs.readFileSync("./.firebaserc", "utf8"));
 
-process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
-process.env.FIREBASE_FIRESTORE_EMULATOR_ADDRESS = "localhost:8080";
-
 setLogger(ConsoleLogger);
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
