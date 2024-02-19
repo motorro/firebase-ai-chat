@@ -13,11 +13,11 @@ export {ChatData, ChatState} from "./aichat/data/ChatState";
 export {ChatMessage} from "./aichat/data/ChatMessage";
 export {ChatCommand} from "./aichat/data/ChatCommand";
 export {Logger, setLogger} from "./logging";
+export {AiWrapper};
 export {OpenAiWrapper} from "./aichat/OpenAiWrapper";
 export {ChatWorker};
 export {ToolsDispatcher};
 export {AssistantChat};
-export {AiWrapper};
 export {TaskScheduler} from "./aichat/TaskScheduler";
 export {Collections} from "./aichat/data/Collections";
 

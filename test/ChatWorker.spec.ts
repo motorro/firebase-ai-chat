@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import {db, test} from "./functionsTest";
 
 import {firestore} from "firebase-admin";
-import {anything, deepEqual, strictEqual, instance, mock, reset, verify, when, anyFunction} from "ts-mockito";
+import {anything, deepEqual, strictEqual, instance, imock, reset, verify, when, anyFunction} from "@johanblumenberg/ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
 import {assistantId, Data, threadId, chatState, data, MESSAGES, Data2} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
@@ -46,10 +46,10 @@ describe("Assistant Chat", function() {
     let worker: ChatWorker;
 
     before(async function() {
-        wrapper = mock<AiWrapper>();
+        wrapper = imock<AiWrapper>();
 
-        dispatcher = mock<ToolsDispatcher<Data>>();
-        dispatcher2 = mock<ToolsDispatcher<Data2>>();
+        dispatcher = imock<ToolsDispatcher<Data>>();
+        dispatcher2 = imock<ToolsDispatcher<Data2>>();
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         const dispatchers: Record<string, ToolsDispatcher<any>> = {
             "dispatcherId": dispatcher,

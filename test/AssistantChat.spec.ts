@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import {db, test} from "./functionsTest";
 
-import {anything, capture, instance, mock, reset, when} from "ts-mockito";
+import {anything, capture, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
 import {assistantId, data, Data, dispatcherId, userId, chatState, MESSAGES, CHATS, NAME} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
@@ -18,7 +18,7 @@ describe("Assistant Chat", function() {
     let chat: AssistantChat<Data>;
 
     before(async function() {
-        scheduler = mock<TaskScheduler>();
+        scheduler = imock();
         chat = new AssistantChat<Data>(db, NAME, instance(scheduler));
     });
 

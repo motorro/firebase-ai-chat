@@ -2,12 +2,13 @@ import {AiWrapper, Messages} from "./AiWrapper";
 import {ToolsDispatcher} from "./ToolsDispatcher";
 import OpenAI from "openai";
 import {ThreadCreateParams} from "openai/src/resources/beta/threads/threads";
-import {Threads} from "openai/resources/beta";
-import ThreadMessagesPage = Threads.ThreadMessagesPage;
 import {sleep} from "openai/core";
-import {RequiredActionFunctionToolCall, RunSubmitToolOutputsParams} from "openai/resources/beta/threads";
+import {
+    RequiredActionFunctionToolCall,
+    RunSubmitToolOutputsParams,
+    ThreadMessagesPage
+} from "openai/resources/beta/threads";
 import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
-import {ClientOptions} from "openai/src";
 import {logger} from "../logging";
 import {HttpsError} from "firebase-functions/v2/https";
 import {ChatData} from "./data/ChatState";
@@ -19,8 +20,8 @@ import {ChatData} from "./data/ChatState";
 export class OpenAiWrapper implements AiWrapper {
     private readonly openAi: OpenAI;
 
-    constructor(openAiOptions: ClientOptions) {
-        this.openAi = new OpenAI(openAiOptions);
+    constructor(openAi: OpenAI) {
+        this.openAi = openAi;
     }
 
     async createThread(meta: Readonly<Record<string, string>>): Promise<string> {
@@ -33,7 +34,7 @@ export class OpenAiWrapper implements AiWrapper {
     }
 
     async postMessages(threadId: string, messages: readonly string[]): Promise<string | undefined> {
-        logger.d("Posing messages...", messages.length);
+        logger.d("Posting messages...", messages.length);
         return this.runAi(async (ai) => {
             let latestMessageId: string | undefined = undefined;
             for (const message of messages) {
