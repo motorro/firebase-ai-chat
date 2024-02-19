@@ -7,6 +7,10 @@ import {ChatMessage} from "./data/ChatMessage";
 import {logger} from "../logging";
 import FieldValue = firestore.FieldValue;
 import CollectionReference = firestore.CollectionReference;
+import {ChatData, ChatState} from "./data/ChatState";
+import {HttpsError} from "firebase-functions/v2/https";
+import Transaction = firestore.Transaction;
+import {ChatStatus} from "./data/ChatStatus";
 
 /**
  * Chat worker that dispatches chat commands and runs AI
@@ -15,9 +19,9 @@ export class ChatWorker {
     private readonly db: FirebaseFirestore.Firestore;
 
     private readonly wrapper: AiWrapper;
-    private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<object>>>;
+    private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>; // eslint-disable-line  @typescript-eslint/no-explicit-any
 
-    private readonly defaultDispatcher: ToolsDispatcher<object> = (data) => Promise.resolve(data);
+    private readonly defaultDispatcher: ToolsDispatcher<ChatData> = (data) => Promise.resolve(data);
 
     /**
      * Constructor
@@ -28,7 +32,7 @@ export class ChatWorker {
     constructor(
         firestore: FirebaseFirestore.Firestore,
         wrapper: AiWrapper,
-        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>
+        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>> // eslint-disable-line  @typescript-eslint/no-explicit-any
     ) {
         this.db = firestore;
         this.wrapper = wrapper;
@@ -40,51 +44,39 @@ export class ChatWorker {
      * @param command Command data
      */
     async runCommand(command: ChatCommand): Promise<void> {
-        logger.d(`Processing command: ${command.type}, runId ${command.runId}, doc: ${command.doc}`);
-
-        try {
-            switch (command.type) {
-                case "post":
-                    await this.runPostChat(command);
-                    break;
-                case "close":
-                    await this.closeThread(command);
-                    break;
-                default:
-                    logger.e("Unknown command: ", command);
-            }
-        } catch (e) {
-            logger.e("Processing error", e);
-            await command.doc.set(
-                {status: "failed", updatedAt: FieldValue.serverTimestamp()},
-                {merge: true}
-            );
+        switch (command.type) {
+            case "post":
+                await this.processWithCheck(
+                    "dispatching",
+                    command,
+                    async (state) => await this.runPostChat(state, command)
+                );
+                break;
+            case "close":
+                await this.processWithCheck(
+                    "dispatching",
+                    command,
+                    async (state) => await this.closeThread(state, command)
+                );
+                break;
+            default:
+                logger.e("Unknown command: ", command);
         }
     }
 
     /**
      * Posts messages and runs assistant
+     * @param state Chat state
      * @param command Command data
      * @private
      */
-    private async runPostChat(command: ChatCommand): Promise<void> {
-        logger.d(`Inserting messages. runId ${command.runId}, doc: ${command.doc}`);
-
-        // Check we have a document and it has a correct status
-        const state = (await command.doc.get()).data();
-        if (undefined === state) {
-            logger.e("Document not found");
-            return Promise.resolve();
-        }
-        if ("processing" !== state.status) {
-            logger.d("Chat is not in processing state anymore", state.status);
-            return Promise.resolve();
-        }
+    private async runPostChat(state: ChatState<ChatData>, command: ChatCommand): Promise<void> {
+        logger.d(`Inserting messages. runId ${command.dispatchId}, doc: ${command.doc}`);
 
         const messageCollectionRef = command.doc.collection(Collections.messages) as CollectionReference<ChatMessage>;
 
         const messages = await messageCollectionRef
-            .where("runId", "==", command.runId)
+            .where("dispatchId", "==", command.dispatchId)
             .orderBy("inBatchSortIndex")
             .get();
 
@@ -100,13 +92,23 @@ export class ChatWorker {
         ++latestInBatchId;
 
         if (0 === toPost.length) {
-            await command.doc.set(
-                {
-                    status: "userInput",
-                    updatedAt: FieldValue.serverTimestamp()
-                },
-                {merge: true}
-            );
+            await this.updateIfChecked("processing", command, (tx, state) => {
+                const newState: ChatState<ChatData> = {
+                    ...state,
+                    status: "userInput"
+                };
+
+                tx.set(
+                    command.doc,
+                    {
+                        ...newState,
+                        updatedAt: FieldValue.serverTimestamp()
+                    },
+                    {merge: true}
+                );
+
+                return newState;
+            });
             return;
         }
 
@@ -114,7 +116,7 @@ export class ChatWorker {
 
         // 1. Post messages
         if (undefined === threadId) {
-            logger.d(`Creating thread. runId ${command.runId}, doc: ${command.doc}`);
+            logger.d(`Creating thread. runId ${command.dispatchId}, doc: ${command.doc}`);
             threadId = await this.wrapper.createThread({
                 chat: command.doc.path
             });
@@ -126,7 +128,7 @@ export class ChatWorker {
         const newData = await this.wrapper.run(threadId, state.config.assistantId, state.data, dispatcher);
 
         // 3. Get new messages
-        logger.d(`Getting messages, runId ${command.runId}, doc: ${command.doc}`);
+        logger.d(`Getting messages, runId ${command.dispatchId}, doc: ${command.doc}`);
         const newMessages = await this.wrapper.getMessages(threadId, latestMessage);
         latestMessage = newMessages.latestMessageId;
         const batch = this.db.batch();
@@ -134,7 +136,7 @@ export class ChatWorker {
             batch.set(
                 messageCollectionRef.doc(),
                 {
-                    runId: command.runId,
+                    dispatchId: command.dispatchId,
                     author: "ai",
                     text: message,
                     inBatchSortIndex: latestInBatchId + index,
@@ -146,33 +148,32 @@ export class ChatWorker {
 
         // Recheck current status in case the chat was altered concurrently
         // as AI takes a long time to process
-        if ("processing" !== (await command.doc.get()).data()?.status) {
-            logger.d("Chat is not in processing state", state.status);
-            return Promise.resolve();
-        }
-
-        await command.doc.set(
-            {
+        await this.updateIfChecked("processing", command, (tx, state) => {
+            const newState: ChatState<ChatData> = {
+                ...state,
                 status: "userInput",
                 data: newData,
                 config: {
                     ...state.config,
                     threadId: threadId
                 },
-                lastMessageId: latestMessage,
-                updatedAt: FieldValue.serverTimestamp()
-            },
-            {merge: true}
-        );
+                lastMessageId: latestMessage
+            };
+
+            tx.set(
+                command.doc,
+                {
+                    ...newState,
+                    updatedAt: FieldValue.serverTimestamp()
+                },
+                {merge: true}
+            );
+
+            return newState;
+        });
     }
 
-    private async closeThread(command: ChatCommand): Promise<void> {
-        const state = (await command.doc.get()).data();
-        if (undefined === state) {
-            logger.e("Document not found");
-            return Promise.resolve();
-        }
-
+    private async closeThread(state: ChatState<ChatData>, command: ChatCommand): Promise<void> {
         const threadId = state.config.threadId;
         if (undefined === threadId) {
             logger.d("No thread. Returning...");
@@ -183,6 +184,105 @@ export class ChatWorker {
             await this.wrapper.deleteThread(threadId);
         } catch (e) {
             logger.w("Error deleting thread", e);
+        }
+
+        // Recheck current status in case the chat was altered concurrently
+        // as AI takes a long time to process
+        await this.updateIfChecked("processing", command, (tx, state) => {
+            const newState: ChatState<ChatData> = {
+                ...state,
+                status: "complete"
+            };
+
+            tx.set(
+                command.doc,
+                {
+                    ...newState,
+                    updatedAt: FieldValue.serverTimestamp()
+                },
+                {merge: true}
+            );
+
+            return newState;
+        });
+    }
+
+    private async updateWithCheck(
+        status: ChatStatus,
+        command: ChatCommand,
+        block: (tx: Transaction, state: ChatState<ChatData>) => ChatState<ChatData>
+    ): Promise<ChatState<ChatData>> {
+        return await this.db.runTransaction(async (tx) => {
+            const doc = await tx.get(command.doc);
+            const state = doc.data();
+            if (false === doc.exists || undefined === state) {
+                return Promise.reject(
+                    new HttpsError("not-found", "Chat not found")
+                );
+            }
+            if (status !== state.status || command.dispatchId !== state.dispatchId) {
+                return Promise.reject(
+                    new HttpsError("failed-precondition", "Chat status conflict")
+                );
+            }
+
+            return block(tx, state);
+        });
+    }
+
+    private async updateIfChecked(
+        status: ChatStatus,
+        command: ChatCommand,
+        block: (tx: Transaction, state: ChatState<ChatData>) => ChatState<ChatData>
+    ): Promise<ChatState<ChatData> | undefined> {
+        let newState: ChatState<ChatData> | undefined = undefined;
+        try {
+            newState = await this.updateWithCheck(status, command, block);
+        } catch (e) {
+            logger.w("Error updating chat due to invalid state (possible concurrent update)", e);
+        }
+        return newState;
+    }
+
+    private async processWithCheck(
+        status: ChatStatus,
+        command: ChatCommand,
+        block: (chatState: ChatState<ChatData>) => Promise<void>
+    ): Promise<void> {
+        logger.d(`Processing command: ${command.type}, runId ${command.dispatchId}, doc: ${command.doc}`);
+        const run = this.updateWithCheck(status, command, (tx, state) => {
+            const newState: ChatState<ChatData> = {
+                ...state,
+                status: "processing"
+            };
+
+            tx.set(
+                command.doc,
+                {
+                    ...newState,
+                    updatedAt: FieldValue.serverTimestamp()
+                }
+            );
+
+            return newState;
+        });
+
+        let state: ChatState<ChatData>;
+        try {
+            state = await run;
+        } catch (e) {
+            logger.w("Precondition error", e);
+            return;
+        }
+
+        try {
+            await block(state);
+        } catch (e) {
+            logger.e("Processing error", e);
+            await command.doc.set(
+                {status: "failed", updatedAt: FieldValue.serverTimestamp()},
+                {merge: true}
+            );
         }
     }
 }

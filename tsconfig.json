@@ -9,7 +9,7 @@
     "target": "es2017",
     "strictNullChecks": true,
     "skipLibCheck": true,
-    "declaration":true
+    "declaration": true
   },
   "compileOnSave": true,
   "include": [

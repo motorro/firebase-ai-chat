@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import Timestamp = admin.firestore.Timestamp;
 
 export interface ChatMessage {
-    readonly runId: string
+    readonly dispatchId: string
     readonly author: "user" | "ai"
     readonly text: string
     readonly inBatchSortIndex: number,

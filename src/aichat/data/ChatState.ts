@@ -3,10 +3,13 @@ import {ChatStatus} from "./ChatStatus";
 import * as admin from "firebase-admin";
 import Timestamp = admin.firestore.Timestamp;
 
-export interface ChatState<DATA extends object> {
+export type ChatData = Record<string, unknown>;
+
+export interface ChatState<out DATA extends ChatData> {
     readonly userId: string,
     readonly config: ChatConfig
     readonly status: ChatStatus
+    readonly dispatchId?: string
     readonly data: DATA,
     readonly lastMessageId?: string
     readonly createdAt: Timestamp,

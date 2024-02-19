@@ -1,5 +1,5 @@
 import {firestore} from "firebase-admin";
-import {ChatState, ChatStateUpdate} from "./data/ChatState";
+import {ChatData, ChatState, ChatStateUpdate} from "./data/ChatState";
 import {logger} from "../logging";
 import {ChatStatus} from "./data/ChatStatus";
 import {Collections} from "./data/Collections";
@@ -25,7 +25,7 @@ import Firestore = firestore.Firestore;
  * - Close - closes chat
  * Functions post commands to processing table and complete ASAP
  */
-export class AssistantChat<DATA extends object> {
+export class AssistantChat<DATA extends ChatData> {
     private readonly db: FirebaseFirestore.Firestore;
     private readonly runIdGenerator = new ShortUniqueId({length: 16});
 
@@ -93,40 +93,44 @@ export class AssistantChat<DATA extends object> {
         messages: ReadonlyArray<string>
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Posting user messages to: ", document.path);
-        return this.runWithChecks(document, userId, "processing", ["created", "userInput"], async (state) => {
-            const runId = this.runIdGenerator.randomUUID();
-            const batch = this.db.batch();
-            const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
+        return this.prepareDispatchWithChecks(
+            document,
+            userId,
+            ["created", "userInput"],
+            async (state, dispatchId) => {
+                const batch = this.db.batch();
+                const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
 
-            messages.forEach((message, index) => {
-                batch.create(
-                    messageList.doc(),
-                    {
-                        runId: runId,
-                        author: "user",
-                        text: message,
-                        inBatchSortIndex: index,
-                        createdAt: FieldValue.serverTimestamp()
-                    }
+                messages.forEach((message, index) => {
+                    batch.create(
+                        messageList.doc(),
+                        {
+                            dispatchId: dispatchId,
+                            author: "user",
+                            text: message,
+                            inBatchSortIndex: index,
+                            createdAt: FieldValue.serverTimestamp()
+                        }
+                    );
+                });
+                await batch.commit();
+                const command: ChatCommand = {
+                    doc: document,
+                    dispatchId: dispatchId,
+                    type: "post"
+                };
+                await this.scheduler.schedule(
+                    this.name,
+                    command,
+                    this.scheduling
                 );
-            });
-            await batch.commit();
-            const command: ChatCommand = {
-                doc: document,
-                runId: runId,
-                type: "post"
-            };
-            await this.scheduler.schedule(
-                this.name,
-                command,
-                this.scheduling
-            );
 
-            return {
-                status: state.status,
-                data: state.data
-            };
-        });
+                return {
+                    status: state.status,
+                    data: state.data
+                };
+            }
+        );
     }
 
     /**
@@ -138,44 +142,47 @@ export class AssistantChat<DATA extends object> {
         document: DocumentReference<ChatState<DATA>>,
         userId: string
     ): Promise<ChatStateUpdate<DATA>> {
-        return this.runWithChecks(document, userId, "complete", ["created", "userInput", "processing"], async (state) => {
-            logger.w("Closing chat: ", document.path);
+        return this.prepareDispatchWithChecks(
+            document,
+            userId,
+            ["created", "userInput", "dispatching", "processing"],
+            async (state, dispatchId) => {
+                logger.d("Closing chat: ", document.path);
 
-            const runId = this.runIdGenerator.randomUUID();
-            const command: ChatCommand = {
-                doc: document,
-                runId: runId,
-                type: "close"
-            };
-            await this.scheduler.schedule(
-                this.name,
-                command,
-                this.scheduling
-            );
+                const command: ChatCommand = {
+                    doc: document,
+                    dispatchId: dispatchId,
+                    type: "close"
+                };
+                await this.scheduler.schedule(
+                    this.name,
+                    command,
+                    this.scheduling
+                );
 
-            return {
-                status: state.status,
-                data: state.data
-            };
-        });
+                return {
+                    status: state.status,
+                    data: state.data
+                };
+            }
+        );
     }
 
     /**
      * Runs block mutating chat status if current chat status is one of allowed
      * @param document Chat document
      * @param userId To check the user can perform block
-     * @param statusToSet Status to set on chat
      * @param requiredStatus Allowed statuses to run block
      * @param block Block to run
      * @private
      */
-    private async runWithChecks(
+    private async prepareDispatchWithChecks(
         document: DocumentReference<ChatState<DATA>>,
         userId: string,
-        statusToSet: ChatStatus,
         requiredStatus: ReadonlyArray<ChatStatus>,
-        block: (state: ChatState<DATA>) => Promise<ChatStateUpdate<DATA>>
+        block: (state: ChatState<DATA>, dispatchId: string) => Promise<ChatStateUpdate<DATA>>
     ): Promise<ChatStateUpdate<DATA>> {
+        const dispatchId = this.runIdGenerator.randomUUID();
         const run = this.db.runTransaction(async (tx) => {
             const doc = await tx.get(document);
             const state = doc.data();
@@ -197,21 +204,24 @@ export class AssistantChat<DATA extends object> {
                     new HttpsError("failed-precondition", "Can't perform this operation due to current chat state")
                 );
             }
+            const newState: ChatState<DATA> = {
+                ...state,
+                status: "dispatching",
+                dispatchId: dispatchId
+            };
+
             tx.set(
                 document,
                 {
-                    status: statusToSet,
+                    ...newState,
                     updatedAt: FieldValue.serverTimestamp()
-                },
-                {merge: true}
+                }
             );
-            return {
-                ...state,
-                status: statusToSet
-            };
+
+            return newState;
         });
 
-        return await block(await run);
+        return await block(await run, dispatchId);
     }
 }
 

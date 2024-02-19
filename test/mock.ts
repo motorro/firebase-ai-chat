@@ -1,12 +1,16 @@
 import {firestore} from "firebase-admin";
 import Timestamp = firestore.Timestamp;
-import {ChatMessage, ChatState} from "../lib";
+import {ChatData, ChatMessage, ChatState} from "../lib";
 
 export const NAME = "Chat";
 export const MESSAGES = "messages";
 export const CHATS = "chats";
 
-export interface Data {
+export interface Data extends ChatData {
+    readonly value: string
+}
+
+export interface Data2 extends ChatData {
     readonly value: string
 }
 
@@ -17,7 +21,7 @@ export const dispatcherId = "dispatcher123";
 export const threadId = "thread123";
 
 export const userMessage: ChatMessage = {
-    runId: runId,
+    dispatchId: runId,
     author: "user",
     text: "A message from user",
     inBatchSortIndex: 1,
@@ -25,7 +29,7 @@ export const userMessage: ChatMessage = {
 };
 
 export const aiMessage: ChatMessage = {
-    runId: runId,
+    dispatchId: runId,
     author: "ai",
     text: "A message from AI",
     inBatchSortIndex: 1,

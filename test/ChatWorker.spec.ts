@@ -4,11 +4,20 @@ import {db, test} from "./functionsTest";
 import {firestore} from "firebase-admin";
 import {anything, deepEqual, strictEqual, instance, mock, reset, verify, when, anyFunction} from "ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
-import {assistantId, Data, threadId, chatState, data, MESSAGES} from "./mock";
+import {assistantId, Data, threadId, chatState, data, MESSAGES, Data2} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
-import {AiWrapper, ChatCommand, ChatMessage, ChatState, ChatWorker, ToolsDispatcher} from "../lib";
+import {
+    AiWrapper,
+    ChatCommand,
+    ChatMessage,
+    ChatState,
+    ChatStatus,
+    ChatWorker,
+    ToolsDispatcher
+} from "../lib";
+import {HttpsError} from "firebase-functions/v2/https";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Assistant Chat", function() {
@@ -23,22 +32,30 @@ describe("Assistant Chat", function() {
     const postCommand: ChatCommand = {
         doc: chatDoc,
         type: "post",
-        runId: runId
+        dispatchId: runId
     };
     const closeCommand: ChatCommand = {
         doc: chatDoc,
         type: "close",
-        runId: runId
+        dispatchId: runId
     };
 
     let wrapper: AiWrapper;
     let dispatcher: ToolsDispatcher<Data>;
+    let dispatcher2: ToolsDispatcher<Data2>;
     let worker: ChatWorker;
 
     before(async function() {
         wrapper = mock<AiWrapper>();
+
         dispatcher = mock<ToolsDispatcher<Data>>();
-        worker = new ChatWorker(db, instance(wrapper), {"dispatcherId": dispatcher});
+        dispatcher2 = mock<ToolsDispatcher<Data2>>();
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        const dispatchers: Record<string, ToolsDispatcher<any>> = {
+            "dispatcherId": dispatcher,
+            "dispatcher2Id": dispatcher2
+        };
+        worker = new ChatWorker(db, instance(wrapper), dispatchers);
     });
 
     after(async function() {
@@ -47,30 +64,23 @@ describe("Assistant Chat", function() {
 
     afterEach(async function() {
         reset(wrapper);
-        await firestore().recursiveDelete(chats);
+        await db.recursiveDelete(chats);
     });
 
-    async function createChat(thread?: string) {
-        let data: ChatState<Data> = {
+    async function createChat(thread?: string, status?: ChatStatus, run?: string) {
+        const data: ChatState<Data> = {
             ...chatState,
-            status: "processing"
+            config: (thread ? {...chatState.config, threadId: thread} : chatState.config),
+            ...(status ? {status: status} : {status: "dispatching"}),
+            ...(run ? {dispatchId: run} : {dispatchId: runId})
         };
-        if (thread) {
-            data = {
-                ...data,
-                config: {
-                    ...data.config,
-                    threadId: thread
-                }
-            };
-        }
 
         await chatDoc.set(data);
         const toInsert: ReadonlyArray<ChatMessage> = messages.map((message, index) => ({
             author: "user",
             createdAt: Timestamp.now(),
             inBatchSortIndex: index,
-            runId: runId,
+            dispatchId: runId,
             text: message
         }));
         for (const message of toInsert) {
@@ -79,7 +89,7 @@ describe("Assistant Chat", function() {
     }
 
     it("processes post command", async function() {
-        await createChat();
+        await createChat(undefined, "dispatching", runId);
 
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
         when(wrapper.postMessages(anything(), anything())).thenReturn(Promise.resolve(lastPostMessageId));
@@ -121,8 +131,72 @@ describe("Assistant Chat", function() {
         verify(wrapper.getMessages(strictEqual(threadId), strictEqual(lastChatMessageId)));
     });
 
+    it("doesn't process chat if status is not dispatching", async function() {
+        await createChat(undefined, "complete");
+        await worker.runCommand(postCommand);
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            status: "complete"
+        });
+    });
+
+    it("doesn't process chat for another run", async function() {
+        await createChat(undefined, "dispatching", "other_run");
+        await worker.runCommand(postCommand);
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            status: "dispatching"
+        });
+    });
+
+    it("doesn't update chat if state changes while processing", async function() {
+        await createChat(undefined, "dispatching");
+
+        when(wrapper.getMessages(anything(), anything())).thenCall(async () => {
+            await chatDoc.set({status: "complete"}, {merge: true});
+            return {
+                messages: aiMessages,
+                latestMessageId: lastChatMessageId
+            };
+        });
+
+        await worker.runCommand(postCommand);
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            status: "complete"
+        });
+    });
+
+    it("sets error if ai fails", async function() {
+        await createChat(undefined, "dispatching");
+
+        when(wrapper.createThread(anything())).thenReject(new HttpsError("internal", "AI error"));
+
+        await worker.runCommand(postCommand);
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            status: "failed"
+        });
+    });
+
     it("processes close command", async function() {
-        await createChat(threadId);
+        await createChat(threadId, "dispatching", runId);
 
         when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
 

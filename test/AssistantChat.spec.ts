@@ -1,7 +1,6 @@
 import * as admin from "firebase-admin";
 import {db, test} from "./functionsTest";
 
-import {firestore} from "firebase-admin";
 import {anything, capture, instance, mock, reset, when} from "ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
 import {assistantId, data, Data, dispatcherId, userId, chatState, MESSAGES, CHATS, NAME} from "./mock";
@@ -29,7 +28,7 @@ describe("Assistant Chat", function() {
 
     afterEach(async function() {
         reset(scheduler);
-        await firestore().recursiveDelete(chats);
+        await db.recursiveDelete(chats);
     });
 
     it("creates chat thread and record", async function() {
@@ -62,7 +61,7 @@ describe("Assistant Chat", function() {
         const update = await chat.postMessage(chatDoc, userId, messages);
 
         update.should.deep.include({
-            status: "processing",
+            status: "dispatching",
             data: data
         });
         const updatedState: ChatState<Data> | undefined = (await chatDoc.get()).data();
@@ -70,7 +69,7 @@ describe("Assistant Chat", function() {
             throw new Error("Chat should exist");
         }
         updatedState.should.deep.include({
-            status: "processing"
+            status: "dispatching"
         });
 
         const insertedMessages = await chatMessages.get();
@@ -161,7 +160,7 @@ describe("Assistant Chat", function() {
         );
 
         update.should.deep.include({
-            status: "complete",
+            status: "dispatching",
             data: data
         });
         const updatedState: ChatState<Data> | undefined = (await chatDoc.get()).data();
@@ -169,7 +168,7 @@ describe("Assistant Chat", function() {
             throw new Error("Chat should exist");
         }
         updatedState.should.deep.include({
-            status: "complete"
+            status: "dispatching"
         });
     });
 

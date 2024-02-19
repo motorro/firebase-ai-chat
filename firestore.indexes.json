@@ -5,7 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-           "fieldPath": "runId",
+           "fieldPath": "dispatchId",
            "order": "ASCENDING"
         },
         {

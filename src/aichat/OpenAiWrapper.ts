@@ -10,6 +10,7 @@ import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
 import {ClientOptions} from "openai/src";
 import {logger} from "../logging";
 import {HttpsError} from "firebase-functions/v2/https";
+import {ChatData} from "./data/ChatState";
 
 
 /**
@@ -50,7 +51,12 @@ export class OpenAiWrapper implements AiWrapper {
     }
 
     // eslint-disable-next-line max-len
-    async run<DATA extends object>(threadId: string, assistantId: string, dataSoFar: DATA, dispatcher: ToolsDispatcher<DATA>): Promise<DATA> {
+    async run<DATA extends ChatData>(
+        threadId: string,
+        assistantId: string,
+        dataSoFar: DATA,
+        dispatcher: ToolsDispatcher<DATA>
+    ): Promise<DATA> {
         logger.d("Running Assistant for:", threadId);
         return this.runAi(async (ai) => {
             let run = await ai.beta.threads.runs.create(threadId, {assistant_id: assistantId});
