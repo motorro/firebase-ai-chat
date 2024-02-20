@@ -1,5 +1,5 @@
 {
-  "name": "aichat",
+  "name": "firebase-openai-chat",
   "version": "0.0.1",
   "description": "Firebase AI chat",
   "main": "lib/index.js",
