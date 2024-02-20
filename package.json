@@ -1,6 +1,6 @@
 {
   "name": "firebase-openai-chat",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Firebase AI chat",
   "main": "lib/index.js",
   "engines": {
