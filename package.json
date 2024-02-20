@@ -3,6 +3,7 @@
   "version": "0.0.2",
   "description": "Firebase AI chat",
   "main": "lib/index.js",
+  "files": ["lib/*"],
   "engines": {
     "node": "18"
   },
