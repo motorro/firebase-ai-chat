@@ -4,7 +4,7 @@ import {db, test} from "./functionsTest";
 import {firestore} from "firebase-admin";
 import {anything, deepEqual, strictEqual, instance, imock, reset, verify, when, anyFunction} from "@johanblumenberg/ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
-import {assistantId, Data, threadId, chatState, data, MESSAGES, Data2} from "./mock";
+import {assistantId, Data, threadId, chatState, data, MESSAGES, Data2, userId} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
@@ -30,11 +30,13 @@ describe("Assistant Chat", function() {
     const aiMessages = ["I'm AI", "Nice to meet you"];
 
     const postCommand: ChatCommand = {
+        ownerId: userId,
         doc: chatDoc,
         type: "post",
         dispatchId: runId
     };
     const closeCommand: ChatCommand = {
+        ownerId: userId,
         doc: chatDoc,
         type: "close",
         dispatchId: runId
@@ -77,6 +79,7 @@ describe("Assistant Chat", function() {
 
         await chatDoc.set(data);
         const toInsert: ReadonlyArray<ChatMessage> = messages.map((message, index) => ({
+            userId: userId,
             author: "user",
             createdAt: Timestamp.now(),
             inBatchSortIndex: index,
@@ -120,6 +123,7 @@ describe("Assistant Chat", function() {
             .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
         for (let i = 2; i < 4; i++) {
             insertedData[i].should.deep.include({
+                userId: userId,
                 author: "ai",
                 text: aiMessages[i - 2]
             });

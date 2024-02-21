@@ -79,6 +79,7 @@ describe("Assistant Chat", function() {
             .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
         for (let i = 0; i < messages.length; i++) {
             insertedData[i].should.deep.include({
+                userId: userId,
                 author: "user",
                 text: messages[i]
             });
@@ -88,6 +89,7 @@ describe("Assistant Chat", function() {
         name.should.be.equal("Chat");
         command.should.deep.include(
             {
+                ownerId: userId,
                 doc: chatDoc,
                 type: "post"
             }
@@ -154,6 +156,7 @@ describe("Assistant Chat", function() {
         name.should.be.equal("Chat");
         command.should.deep.include(
             {
+                ownerId: userId,
                 doc: chatDoc,
                 type: "close"
             }

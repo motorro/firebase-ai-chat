@@ -21,6 +21,7 @@ export const dispatcherId = "dispatcher123";
 export const threadId = "thread123";
 
 export const userMessage: ChatMessage = {
+    userId: userId,
     dispatchId: runId,
     author: "user",
     text: "A message from user",
@@ -29,6 +30,7 @@ export const userMessage: ChatMessage = {
 };
 
 export const aiMessage: ChatMessage = {
+    userId: userId,
     dispatchId: runId,
     author: "ai",
     text: "A message from AI",

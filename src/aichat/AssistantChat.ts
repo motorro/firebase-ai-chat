@@ -105,6 +105,7 @@ export class AssistantChat<DATA extends ChatData> {
                     batch.create(
                         messageList.doc(),
                         {
+                            userId: userId,
                             dispatchId: dispatchId,
                             author: "user",
                             text: message,
@@ -115,6 +116,7 @@ export class AssistantChat<DATA extends ChatData> {
                 });
                 await batch.commit();
                 const command: ChatCommand = {
+                    ownerId: userId,
                     doc: document,
                     dispatchId: dispatchId,
                     type: "post"
@@ -150,6 +152,7 @@ export class AssistantChat<DATA extends ChatData> {
                 logger.d("Closing chat: ", document.path);
 
                 const command: ChatCommand = {
+                    ownerId: userId,
                     doc: document,
                     dispatchId: dispatchId,
                     type: "close"

@@ -136,6 +136,7 @@ export class ChatWorker {
             batch.set(
                 messageCollectionRef.doc(),
                 {
+                    userId: command.ownerId,
                     dispatchId: command.dispatchId,
                     author: "ai",
                     text: message,
