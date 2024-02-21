@@ -31,13 +31,13 @@ describe("Assistant Chat", function() {
 
     const postCommand: ChatCommand = {
         ownerId: userId,
-        doc: chatDoc,
+        chatDocumentPath: chatDoc.path,
         type: "post",
         dispatchId: runId
     };
     const closeCommand: ChatCommand = {
         ownerId: userId,
-        doc: chatDoc,
+        chatDocumentPath: chatDoc.path,
         type: "close",
         dispatchId: runId
     };

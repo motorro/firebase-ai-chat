@@ -1,10 +1,7 @@
-import { ChatData, ChatState } from "./ChatState";
-import { firestore } from "firebase-admin";
-import DocumentReference = firestore.DocumentReference;
 export type ChatCommandType = "post" | "close";
 export interface ChatCommand {
     readonly ownerId: string;
-    readonly doc: DocumentReference<ChatState<ChatData>>;
+    readonly chatDocumentPath: string;
     readonly type: ChatCommandType;
     readonly dispatchId: string;
 }

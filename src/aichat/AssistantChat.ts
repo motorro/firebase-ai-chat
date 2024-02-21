@@ -117,7 +117,7 @@ export class AssistantChat<DATA extends ChatData> {
                 await batch.commit();
                 const command: ChatCommand = {
                     ownerId: userId,
-                    doc: document,
+                    chatDocumentPath: document.path,
                     dispatchId: dispatchId,
                     type: "post"
                 };
@@ -153,7 +153,7 @@ export class AssistantChat<DATA extends ChatData> {
 
                 const command: ChatCommand = {
                     ownerId: userId,
-                    doc: document,
+                    chatDocumentPath: document.path,
                     dispatchId: dispatchId,
                     type: "close"
                 };

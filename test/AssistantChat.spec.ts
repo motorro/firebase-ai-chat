@@ -90,7 +90,7 @@ describe("Assistant Chat", function() {
         command.should.deep.include(
             {
                 ownerId: userId,
-                doc: chatDoc,
+                chatDocumentPath: chatDoc.path,
                 type: "post"
             }
         );
@@ -157,7 +157,7 @@ describe("Assistant Chat", function() {
         command.should.deep.include(
             {
                 ownerId: userId,
-                doc: chatDoc,
+                chatDocumentPath: chatDoc.path,
                 type: "close"
             }
         );

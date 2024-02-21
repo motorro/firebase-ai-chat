@@ -11,6 +11,7 @@ import {ChatData, ChatState} from "./data/ChatState";
 import {HttpsError} from "firebase-functions/v2/https";
 import Transaction = firestore.Transaction;
 import {ChatStatus} from "./data/ChatStatus";
+import DocumentSnapshot = firestore.DocumentSnapshot;
 
 /**
  * Chat worker that dispatches chat commands and runs AI
@@ -71,9 +72,9 @@ export class ChatWorker {
      * @private
      */
     private async runPostChat(state: ChatState<ChatData>, command: ChatCommand): Promise<void> {
-        logger.d(`Inserting messages. runId ${command.dispatchId}, doc: ${command.doc}`);
+        logger.d(`Inserting messages. runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
 
-        const messageCollectionRef = command.doc.collection(Collections.messages) as CollectionReference<ChatMessage>;
+        const messageCollectionRef = this.db.doc(command.chatDocumentPath).collection(Collections.messages) as CollectionReference<ChatMessage>;
 
         const messages = await messageCollectionRef
             .where("dispatchId", "==", command.dispatchId)
@@ -99,7 +100,7 @@ export class ChatWorker {
                 };
 
                 tx.set(
-                    command.doc,
+                    this.db.doc(command.chatDocumentPath),
                     {
                         ...newState,
                         updatedAt: FieldValue.serverTimestamp()
@@ -116,9 +117,9 @@ export class ChatWorker {
 
         // 1. Post messages
         if (undefined === threadId) {
-            logger.d(`Creating thread. runId ${command.dispatchId}, doc: ${command.doc}`);
+            logger.d(`Creating thread. runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
             threadId = await this.wrapper.createThread({
-                chat: command.doc.path
+                chat: command.chatDocumentPath
             });
         }
         let latestMessage = await this.wrapper.postMessages(threadId, toPost);
@@ -128,7 +129,7 @@ export class ChatWorker {
         const newData = await this.wrapper.run(threadId, state.config.assistantId, state.data, dispatcher);
 
         // 3. Get new messages
-        logger.d(`Getting messages, runId ${command.dispatchId}, doc: ${command.doc}`);
+        logger.d(`Getting messages, runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
         const newMessages = await this.wrapper.getMessages(threadId, latestMessage);
         latestMessage = newMessages.latestMessageId;
         const batch = this.db.batch();
@@ -162,7 +163,7 @@ export class ChatWorker {
             };
 
             tx.set(
-                command.doc,
+                this.db.doc(command.chatDocumentPath),
                 {
                     ...newState,
                     updatedAt: FieldValue.serverTimestamp()
@@ -196,7 +197,7 @@ export class ChatWorker {
             };
 
             tx.set(
-                command.doc,
+                this.db.doc(command.chatDocumentPath),
                 {
                     ...newState,
                     updatedAt: FieldValue.serverTimestamp()
@@ -214,7 +215,7 @@ export class ChatWorker {
         block: (tx: Transaction, state: ChatState<ChatData>) => ChatState<ChatData>
     ): Promise<ChatState<ChatData>> {
         return await this.db.runTransaction(async (tx) => {
-            const doc = await tx.get(command.doc);
+            const doc = await tx.get(this.db.doc(command.chatDocumentPath)) as DocumentSnapshot<ChatState<ChatData>>;
             const state = doc.data();
             if (false === doc.exists || undefined === state) {
                 return Promise.reject(
@@ -250,7 +251,7 @@ export class ChatWorker {
         command: ChatCommand,
         block: (chatState: ChatState<ChatData>) => Promise<void>
     ): Promise<void> {
-        logger.d(`Processing command: ${command.type}, runId ${command.dispatchId}, doc: ${command.doc}`);
+        logger.d(`Processing command: ${command.type}, runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
         const run = this.updateWithCheck(status, command, (tx, state) => {
             const newState: ChatState<ChatData> = {
                 ...state,
@@ -258,7 +259,7 @@ export class ChatWorker {
             };
 
             tx.set(
-                command.doc,
+                this.db.doc(command.chatDocumentPath),
                 {
                     ...newState,
                     updatedAt: FieldValue.serverTimestamp()
@@ -280,7 +281,7 @@ export class ChatWorker {
             await block(state);
         } catch (e) {
             logger.e("Processing error", e);
-            await command.doc.set(
+            await this.db.doc(command.chatDocumentPath).set(
                 {status: "failed", updatedAt: FieldValue.serverTimestamp()},
                 {merge: true}
             );
