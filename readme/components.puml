@@ -1,0 +1,66 @@
+@startuml
+'https://plantuml.com/component-diagram
+sprite $mobile [16x16/16] {
+    FFFFFFFFFFFFFFFF
+    F00000000000000F
+    F00000000000000F
+    F00000000000000F
+    F00FF000000FF00F
+    F00000000000000F
+    F000000FF000000F
+    F00FF000000FF00F
+    F000FFF00FFF000F
+    F00000FFFF00000F
+    F00000000000000F
+    F00000000000000F
+    F00000000000000F
+    FFFFFFFFFFFFFFFF
+    FFFF00000000FFFF
+    FFFFFFFFFFFFFFFF
+}
+sprite $web [16x16/16] {
+    00000FFFFFF00000
+    000FF000009FF000
+    00F0000009999F00
+    0F000000999999F0
+    0F000000999999F0
+    F000000A0099999F
+    F00000AAA000999F
+    F0000AAAAAAA099F
+    F0000AAAAAAAA09F
+    F0000AAAAAAAAA0F
+    FA000AAAAAAAA00F
+    0FA00000AAAAA0F0
+    0FAA0000AAAA00F0
+    00FAA000AAA00F00
+    000FF000000FF000
+    00000FFFFFF00000
+}
+
+package Front-end {
+    [Mobile] <<$mobile>>
+    [Web] <<$web>>
+}
+
+package Firebase {
+    [Cloud functions]
+    database "Firestore" {
+      folder "Chats" {
+        folder "Messages"
+        [Chat state]
+      }
+    }
+    [Cloud functions] --> [Cloud Tasks]
+}
+
+package OpenAI {
+    [Assistant]
+}
+
+"Front-end" <-- [Chats]: snapshots
+"Front-end" --> [Cloud functions]
+[Cloud functions] -> Firestore
+[Cloud Tasks] <-> Firestore
+[Cloud Tasks] <--> OpenAI
+
+@enduml
