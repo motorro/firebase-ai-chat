@@ -1,7 +1,10 @@
 {
   "name": "firebase-openai-chat",
   "version": "0.0.4",
-  "description": "Firebase AI chat",
+  "description": "A library to run OpenAI chats on Firebase",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "lib/index.js",
   "files": [
     "lib/*"
@@ -13,18 +16,29 @@
     "lint": "eslint --ext .js,.ts .",
     "build": "tsc",
     "pretest": "npm run build",
+    "prepublishOnly": "npm run-script build",
     "test:run": "mocha './test/**/*.spec.{ts,tsx}' --reporter spec",
     "test:watch": "mocha --watch --watch-files './test/**/*.spec.{ts,tsx}' --reporter spec",
     "test": "FIRESTORE_EMULATOR_HOST='localhost:8080' FIREBASE_FIRESTORE_EMULATOR_ADDRESS='localhost:8080' firebase emulators:exec --only firestore 'npm run test:run'"
   },
-  "author": "motorro",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/motorro/firebase-openai-chat.git"
+  },
+  "keywords": [
+    "OpenAI",
+    "Firebase"
+  ],
+  "author": "Motorro <motorro@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/motorro/firebase-openai-chat/issues"
+  },
   "dependencies": {
     "@types/node": "^18.16.3",
     "google-auth-library": "^9.6.3",
     "openai": "^4.27.0",
-    "short-unique-id": "^5.0.3",
-    "ts-node": "^10.9.1"
+    "short-unique-id": "^5.0.3"
   },
   "peerDependencies": {
     "firebase-admin": "^12.0.0",
@@ -47,7 +61,7 @@
     "firebase-tools": "^13.3.0",
     "mocha": "^10.2.0",
     "sinon": "^17.0.1",
-    "typescript": "^4.9.0"
-  },
-  "repository": "https://github.com/motorro/firebase-openai-chat.git"
+    "typescript": "^4.9.0",
+    "ts-node": "^10.9.1"
+  }
 }

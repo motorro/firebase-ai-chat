@@ -43,14 +43,15 @@ package Front-end {
 }
 
 package Firebase {
-    [Cloud functions]
+    [Cloud functions\n<<AssistantChat>>] as cf
+    [Cloud Tasks\n<<ChatWorker>>] as cw
     database "Firestore" {
       folder "Chats" {
         folder "Messages"
         [Chat state]
       }
     }
-    [Cloud functions] --> [Cloud Tasks]
+    cf --> cw
 }
 
 package OpenAI {
@@ -58,9 +59,9 @@ package OpenAI {
 }
 
 "Front-end" <-- [Chats]: snapshots
-"Front-end" --> [Cloud functions]
-[Cloud functions] -> Firestore
-[Cloud Tasks] <-> Firestore
-[Cloud Tasks] <--> OpenAI
+"Front-end" --> cf
+cf -> Firestore
+cw <-> Firestore
+cw <--> OpenAI
 
 @enduml

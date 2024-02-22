@@ -5,15 +5,29 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-           "fieldPath": "dispatchId",
-           "order": "ASCENDING"
+          "fieldPath": "dispatchId",
+          "order": "ASCENDING"
         },
         {
           "fieldPath": "inBatchSortIndex",
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
     }
-  ]
+  ],
+  "fieldOverrides": []
 }
-
