@@ -35,7 +35,7 @@ jobs:
     - name: print key
       run: |
         mkdir keys
-        echo $FIREBASEKEY &gt;&gt; keys/test.json
+        echo $FIREBASEKEY >> keys/test.json
       shell: bash
       env:
         FIREBASEKEY : ${{secrets.FIREBASEKEY}}
