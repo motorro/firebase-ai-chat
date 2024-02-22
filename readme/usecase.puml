@@ -1,0 +1,12 @@
+@startuml
+'https://plantuml.com/use-case-diagram
+
+:User:
+(UI)
+User -> (UI): observes
+(UI) -> (Cloud function): calls
+(Cloud function) <--> (OpenAI): runs
+(Cloud function) -> (Firestore): stores
+(Firestore) .> (UI): updates
+
+@enduml
