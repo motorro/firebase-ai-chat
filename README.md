@@ -1,4 +1,6 @@
 # Firebase OpenAI chat
+[![Check](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml)
+
 [OpenAI assistant](https://platform.openai.com/docs/assistants/overview) chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
 
 ## A problem statement
