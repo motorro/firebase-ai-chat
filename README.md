@@ -1,5 +1,6 @@
 # Firebase OpenAI chat
 [![Check](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml)
+[![npm version](https://badge.fury.io/js/firebase-openai-chat.svg)](https://badge.fury.io/js/firebase-openai-chat)
 
 [OpenAI assistant](https://platform.openai.com/docs/assistants/overview) chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
 
@@ -63,7 +64,12 @@ The module has three classes to use in your project:
 - [ChatWorker](src/aichat/ChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
 - [AiChat](src/index.ts) - a factory to create those above
 
-### Scaffolds 
+### Scaffolds
+
+To install the module use:
+```shell
+npm i firebase-openai-chat
+```
 
 The full example `index.ts` for your Firebase Cloud Functions project is available [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts).
 It demonstrates the technology and AI function tools usage. We will create a simple calculator that can add and subtract
