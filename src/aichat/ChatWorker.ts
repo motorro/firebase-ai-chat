@@ -22,7 +22,7 @@ export class ChatWorker {
     private readonly wrapper: AiWrapper;
     private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>; // eslint-disable-line  @typescript-eslint/no-explicit-any
 
-    private readonly defaultDispatcher: ToolsDispatcher<ChatData> = (data) => Promise.resolve(data);
+    private readonly defaultDispatcher: ToolsDispatcher<ChatData> = (data) => Promise.resolve({data: data});
 
     /**
      * Constructor
@@ -74,7 +74,9 @@ export class ChatWorker {
     private async runPostChat(state: ChatState<ChatData>, command: ChatCommand): Promise<void> {
         logger.d(`Inserting messages. runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
 
-        const messageCollectionRef = this.db.doc(command.chatDocumentPath).collection(Collections.messages) as CollectionReference<ChatMessage>;
+        const messageCollectionRef = this.db
+            .doc(command.chatDocumentPath)
+            .collection(Collections.messages) as CollectionReference<ChatMessage>;
 
         const messages = await messageCollectionRef
             .where("dispatchId", "==", command.dispatchId)

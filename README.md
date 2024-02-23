@@ -4,6 +4,26 @@
 
 [OpenAI assistant](https://platform.openai.com/docs/assistants/overview) chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
 
+<!-- toc -->
+
+- [A problem statement](#a-problem-statement)
+- [Sample Firebase project](#sample-firebase-project)
+- [Components](#components)
+- [Module API](#module-api)
+  * [Scaffolds](#scaffolds)
+  * [Firestore indexes](#firestore-indexes)
+  * [OpenAPI setup](#openapi-setup)
+  * [Checking user authentication](#checking-user-authentication)
+  * [Front-facing functions](#front-facing-functions)
+  * [Creating AssistantChat](#creating-assistantchat)
+  * [Creating a new chat](#creating-a-new-chat)
+  * [Handling user messages](#handling-user-messages)
+  * [Running AI](#running-ai)
+  * [Using OpenAI function tools](#using-openai-function-tools)
+- [Client application](#client-application)
+
+<!-- tocstop -->
+
 ## A problem statement
 Since OpenAI has published its API, integrating custom ChatGPT to your client apps has become a rather easy option.
 Given that the API is HTTP-based and there are also many [wrapping libraries](https://github.com/aallam/openai-kotlin) 
@@ -397,6 +417,23 @@ The dispatcher is a [simple state reducer function](src/aichat/ToolsDispatcher.t
 ```typescript
 export interface ToolsDispatcher<DATA extends ChatData> {
   (data: DATA, name: string, args: Record<string, unknown>): DATA | Promise<DATA>
+}
+```
+
+The [OpenAiWrapper](src/aichat/OpenAiWrapper.ts) will run your dispatcher and re-run the Assistant with 
+dispatcher output.
+
+If dispatcher succeeds, the AI will get [DispatchSuccess](src/aichat/ToolsDispatcher.ts#6) value:
+```typescript
+export interface DispatchSuccess<DATA extends ChatData> {
+  data: DATA
+}
+```
+
+If dispatcher throws an error, the AI will get [DispatchError](src/aichat/ToolsDispatcher.ts#13) value:
+```typescript
+export interface DispatchError {
+    error: string // Error::message or some other text. See OpenAiWrapper implementation
 }
 ```
 

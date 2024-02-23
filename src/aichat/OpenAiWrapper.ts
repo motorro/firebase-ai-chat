@@ -1,5 +1,5 @@
 import {AiWrapper, Messages} from "./AiWrapper";
-import {ToolsDispatcher} from "./ToolsDispatcher";
+import {DispatchError, DispatchResult, ToolsDispatcher} from "./ToolsDispatcher";
 import OpenAI from "openai";
 import {ThreadCreateParams} from "openai/src/resources/beta/threads/threads";
 import {sleep} from "openai/core";
@@ -12,7 +12,6 @@ import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
 import {logger} from "../logging";
 import {HttpsError} from "firebase-functions/v2/https";
 import {ChatData} from "./data/ChatState";
-
 
 /**
  * Wraps Open AI assistant use
@@ -127,12 +126,19 @@ export class OpenAiWrapper implements AiWrapper {
                     logger.d("Data so far:", data);
                     logger.d("Arguments:", JSON.parse(toolCall.function.arguments));
 
-                    data = await dispatcher(data, toolCall.function.name, JSON.parse(toolCall.function.arguments));
+                    let result: DispatchResult<DATA>;
+                    try {
+                        data = await dispatcher(data, toolCall.function.name, JSON.parse(toolCall.function.arguments));
+                        result = {data: data};
+                    } catch (e: unknown) {
+                        logger.w("Error dispatching function:", e);
+                        result = OpenAiWrapper.getDispatchError(e);
+                    }
 
-                    logger.d("Result:", data);
+                    logger.d("Result:", result);
                     dispatches.push(
                         {
-                            output: JSON.stringify(data),
+                            output: JSON.stringify(result),
                             tool_call_id: toolCall.id
                         }
                     );
@@ -141,6 +147,32 @@ export class OpenAiWrapper implements AiWrapper {
                 run = await ai.beta.threads.runs.submitToolOutputs(threadId, run.id, {tool_outputs: dispatches});
             }
         });
+    }
+
+    private static getDispatchError(e: unknown): DispatchError {
+        if ("string" === typeof e) {
+            return {
+                error: e
+            };
+        }
+        if ("object" === typeof e && null !== e) {
+            if ("error" in e && "string" === typeof e.error) {
+                return {
+                    error: e.error
+                };
+            }
+            if ("message" in e && "string" === typeof e.message) {
+                return {
+                    error: e.message
+                };
+            }
+            return {
+                error: e.toString()
+            };
+        }
+        return {
+            error: "Unknown error"
+        };
     }
 
     async getMessages(threadId: string, from: string | undefined): Promise<Messages> {

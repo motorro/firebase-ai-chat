@@ -11,6 +11,7 @@ export declare class OpenAiWrapper implements AiWrapper {
     createThread(meta: Readonly<Record<string, string>>): Promise<string>;
     postMessages(threadId: string, messages: readonly string[]): Promise<string | undefined>;
     run<DATA extends ChatData>(threadId: string, assistantId: string, dataSoFar: DATA, dispatcher: ToolsDispatcher<DATA>): Promise<DATA>;
+    private static getDispatchError;
     getMessages(threadId: string, from: string | undefined): Promise<Messages>;
     deleteThread(threadId: string): Promise<void>;
     /**
