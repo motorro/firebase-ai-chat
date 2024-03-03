@@ -249,6 +249,63 @@ describe("OpenAI wrapper", function() {
         )).once();
     });
 
+    it("runs tools and returns dispatch error when dispatcher throws", async function() {
+        const errorMessage = "Some error";
+        const errorDispatcher: ToolsDispatcher<Data> = () => {
+            throw new Error(errorMessage);
+        };
+
+        const toolCallId = "tc1";
+
+        const run1: Run = imock();
+        when(run1.id).thenReturn("r1");
+        when(run1.status).thenReturn("queued");
+
+        const run2: Run = imock();
+        when(run2.id).thenReturn("r2");
+        when(run2.required_action).thenReturn({
+            type: "submit_tool_outputs",
+            submit_tool_outputs: {
+                tool_calls: [{
+                    id: toolCallId,
+                    type: "function",
+                    function: {
+                        arguments: JSON.stringify({a: 2, b: 2}),
+                        name: "multiply"
+                    }
+                }]
+            }
+        });
+        when(run2.status).thenReturn("requires_action");
+
+        const run3: Run = imock();
+        when(run3.id).thenReturn("r3");
+        when(run3.status).thenReturn("completed");
+        const iRun3 = instance(run3);
+
+        when(runs.create(anything(), anything())).thenResolve(instance(run1));
+        when(runs.retrieve(anything(), anything())).thenResolve(instance(run2)).thenResolve(iRun3);
+        when(runs.submitToolOutputs(anything(), anything(), anything())).thenResolve(iRun3);
+
+        const result = await wrapper.run(threadId, assistantId, data, errorDispatcher);
+        result.should.deep.equal({
+            value: "test"
+        });
+
+        verify(runs.submitToolOutputs(
+            anything(),
+            anything(),
+            deepEqual({
+                tool_outputs: [
+                    {
+                        output: JSON.stringify({error: errorMessage}),
+                        tool_call_id: toolCallId
+                    }
+                ]
+            })
+        )).once();
+    });
+
     it("fails if AI fails", async function() {
         const run1: Run = imock();
         when(run1.id).thenReturn("r1");

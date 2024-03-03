@@ -224,7 +224,7 @@ export class OpenAiWrapper implements AiWrapper {
         } catch (e) {
             logger.e("Open AI error", e);
             return Promise.reject(
-                new HttpsError("unavailable", "Error running AI")
+                new HttpsError("unavailable", "Error running AI", e)
             );
         }
     }
