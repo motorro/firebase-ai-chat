@@ -8,10 +8,10 @@ import {logger} from "../logging";
 import FieldValue = firestore.FieldValue;
 import CollectionReference = firestore.CollectionReference;
 import {ChatData, ChatState} from "./data/ChatState";
-import {HttpsError} from "firebase-functions/v2/https";
 import Transaction = firestore.Transaction;
 import {ChatStatus} from "./data/ChatStatus";
 import DocumentSnapshot = firestore.DocumentSnapshot;
+import {ChatError} from "./data/ChatError";
 
 /**
  * Chat worker that dispatches chat commands and runs AI
@@ -221,12 +221,12 @@ export class ChatWorker {
             const state = doc.data();
             if (false === doc.exists || undefined === state) {
                 return Promise.reject(
-                    new HttpsError("not-found", "Chat not found")
+                    new ChatError("not-found", true, "Chat not found")
                 );
             }
             if (status !== state.status || command.dispatchId !== state.dispatchId) {
                 return Promise.reject(
-                    new HttpsError("failed-precondition", "Chat status conflict")
+                    new ChatError("failed-precondition", true, "Chat status conflict")
                 );
             }
 

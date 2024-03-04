@@ -10,8 +10,8 @@ import {
 } from "openai/resources/beta/threads";
 import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
 import {logger} from "../logging";
-import {HttpsError} from "firebase-functions/v2/https";
 import {ChatData} from "./data/ChatState";
+import {ChatError} from "./data/ChatError";
 
 /**
  * Wraps Open AI assistant use
@@ -83,9 +83,11 @@ export class OpenAiWrapper implements AiWrapper {
                         complete = true;
                         continue;
                     case "cancelled":
+                        throw new ChatError("cancelled", true, `Thread run error. Status: cancelled, Error: ${run.last_error}`);
                     case "failed":
+                        throw new ChatError("internal", true, `Thread run error. Status: failed, Error: ${run.last_error}`);
                     case "expired":
-                        throw new Error(`Thread run error. Status: ${run.status}, Error: ${run.last_error}`);
+                        throw new ChatError("deadline-exceeded", true, `Thread run error. Status: expired, Error: ${run.last_error}`);
                     case "requires_action":
                         logger.d("Running Assistant actions for:", threadId);
                         switch (requiredActionType) {
@@ -93,11 +95,11 @@ export class OpenAiWrapper implements AiWrapper {
                                 await runTools(requiredAction?.submit_tool_outputs?.tool_calls || []);
                                 break;
                             default:
-                                throw new Error(`Unknown action: ${requiredActionType}`);
+                                throw new ChatError("internal", true, `Unknown action: ${requiredActionType}`);
                         }
                         break;
                     default:
-                        throw new Error(`Unexpected run status: ${run.status}`);
+                        throw new ChatError("unimplemented", true, `Thread run error - unknown status. Status: ${status}`);
                 }
             }
 
@@ -224,7 +226,7 @@ export class OpenAiWrapper implements AiWrapper {
         } catch (e) {
             logger.e("Open AI error", e);
             return Promise.reject(
-                new HttpsError("unavailable", "Error running AI", e)
+                new ChatError("unavailable", false, "Error running AI", e)
             );
         }
     }

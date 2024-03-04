@@ -147,7 +147,7 @@ export class AssistantChat<DATA extends ChatData> {
         return this.prepareDispatchWithChecks(
             document,
             userId,
-            ["created", "userInput", "dispatching", "processing"],
+            ["created", "userInput", "dispatching", "processing", "failed"],
             async (state, dispatchId) => {
                 logger.d("Closing chat: ", document.path);
 
