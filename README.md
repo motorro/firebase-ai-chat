@@ -114,7 +114,7 @@ const CHATS = "chats";
 
 const db = firestore();
 const chats = db.collection(CHATS) as CollectionReference<ChatState<CalculateChatData>>;
-const chatFactory: AiChat = factory(firestore(), getFunctions());
+const chatFactory: AiChat = factory(firestore(), getFunctions(), "europe-west1");
 ```
 
 You may also want to set a custom logger to the library so the log output will get to your functions log:
@@ -381,7 +381,7 @@ export const calculator = onTaskDispatched<ChatCommand>(
       const ai = new OpenAiWrapper(new OpenAI({apiKey: openAiApiKey.value()}));
       // Create and run a worker
       // See the `dispatchers` definitions below
-      await chatFactory.worker(ai, dispatchers).runCommand(req);
+      await chatFactory.worker(ai, dispatchers).dispatch(req);
     }
 );
 ```

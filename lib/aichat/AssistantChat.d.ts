@@ -38,7 +38,7 @@ export declare class AssistantChat<DATA extends ChatData> {
      * Posts messages to the thread
      * @param document Chat document
      * @param userId Chat owner
-     * @param message Messages to post
+     * @param messages Messages to post
      */
     postMessage(document: DocumentReference<ChatState<DATA>>, userId: string, messages: ReadonlyArray<string>): Promise<ChatStateUpdate<DATA>>;
     /**

@@ -52,7 +52,7 @@ export class ChatWorker {
      */
     async dispatch(req: Request<ChatCommand>): Promise<void> {
         const command = req.data;
-        logger.d("Getting maximum retries");
+        logger.d("Getting maximum retries for: ", req.queueName);
         logger.d("Retries:", await this.scheduler.getQueueMaxRetries(req.queueName));
         try {
             switch (command.type) {
