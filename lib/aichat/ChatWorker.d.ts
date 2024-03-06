@@ -1,6 +1,6 @@
 import { AiWrapper } from "./AiWrapper";
 import { ToolsDispatcher } from "./ToolsDispatcher";
-import { ChatCommand } from "./data/ChatCommand";
+import { ChatCommandQueue } from "./data/ChatCommandQueue";
 import { TaskScheduler } from "./TaskScheduler";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
 /**
@@ -24,7 +24,7 @@ export declare class ChatWorker {
      * Dispatches command
      * @param req Dispatch request
      */
-    dispatch(req: Request<ChatCommand>): Promise<void>;
+    dispatch(req: Request<ChatCommandQueue>): Promise<void>;
     /**
      * Creates thread
      * @param command Command data

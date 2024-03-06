@@ -1,4 +1,4 @@
-import {ChatCommand} from "./data/ChatCommand";
+import {ChatCommandQueue} from "./data/ChatCommandQueue";
 import {DeliverySchedule} from "firebase-admin/functions";
 
 /**
@@ -11,7 +11,7 @@ export interface TaskScheduler {
      * @param command Command to dispatch
      * @param schedule Delivery schedule
      */
-    schedule(queueName: string, command: ChatCommand, schedule?: DeliverySchedule): Promise<void>
+    schedule(queueName: string, command: ChatCommandQueue, schedule?: DeliverySchedule): Promise<void>
 
     /**
      * Retrieves queue maximum number of retries

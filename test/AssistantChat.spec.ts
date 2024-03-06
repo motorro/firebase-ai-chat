@@ -6,7 +6,7 @@ import CollectionReference = admin.firestore.CollectionReference;
 import {assistantId, data, Data, dispatcherId, userId, chatState, MESSAGES, CHATS, NAME} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
-import {AssistantChat, ChatState, TaskScheduler} from "../lib";
+import {ChatState, TaskScheduler, AssistantChat} from "../src";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 
@@ -61,7 +61,7 @@ describe("Assistant Chat", function() {
             {
                 ownerId: userId,
                 chatDocumentPath: chatDoc.path,
-                type: "create"
+                actions: ["create"]
             }
         );
     });
@@ -103,7 +103,7 @@ describe("Assistant Chat", function() {
             {
                 ownerId: userId,
                 chatDocumentPath: chatDoc.path,
-                type: "post"
+                actions: ["post", "run", "retrieve"]
             }
         );
     });
@@ -170,7 +170,7 @@ describe("Assistant Chat", function() {
             {
                 ownerId: userId,
                 chatDocumentPath: chatDoc.path,
-                type: "close"
+                actions: ["close"]
             }
         );
 

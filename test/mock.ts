@@ -1,6 +1,6 @@
 import {firestore} from "firebase-admin";
 import Timestamp = firestore.Timestamp;
-import {ChatData, ChatMessage, ChatState} from "../lib";
+import {ChatData, ChatMessage, ChatState} from "../src";
 
 export const NAME = "Chat";
 export const MESSAGES = "messages";

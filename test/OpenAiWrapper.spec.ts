@@ -1,6 +1,6 @@
 import {anything, capture, deepEqual, instance, imock, reset, strictEqual, verify, when} from "@johanblumenberg/ts-mockito";
 import OpenAI from "openai";
-import {AiWrapper, OpenAiWrapper, ToolsDispatcher} from "../lib";
+import {AiWrapper, OpenAiWrapper, ToolsDispatcher} from "../src";
 import {Threads} from "openai/resources/beta";
 import Beta = OpenAI.Beta;
 import Messages = Threads.Messages;

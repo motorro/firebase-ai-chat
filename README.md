@@ -312,7 +312,7 @@ Under the hood the processor will:
 - Create a [ChatState](src/aichat/data/ChatState.ts) document in `CHATS` collection.
 - Store a `CalculateChatData` of initial data there.
 - Create a [ChatMessage](src/aichat/data/ChatMessage.ts) in `messages` sub-collection of chat document.
-- Run a Cloud Task by queueing a [ChatCommand](src/aichat/data/ChatCommand.ts) to Cloud Tasks.
+- Run a Cloud Task by queueing a [ChatCommand](src/aichat/data/ChatCommandQueue.ts) to Cloud Tasks.
 
 ### Handling user messages
 User may respond to AI messages whenever the [ChatState](src/aichat/data/ChatState.ts) has one of the 
@@ -385,12 +385,12 @@ export const calculator = onTaskDispatched<ChatCommand>(
     }
 );
 ```
-The `ChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommand.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
+The `ChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommandQueue.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
 with the results.
 The client App will later get the results of the run by subscribing the Firebase collection snapshots flow.
 
 Worth mentioning is that if you run several chats with a different state for different purposes you may need only one 
-worker function to handle all the tasks. The [ChatCommand](src/aichat/data/ChatCommand.ts) has all the required reference
+worker function to handle all the tasks. The [ChatCommand](src/aichat/data/ChatCommandQueue.ts) has all the required reference
 data to address the correct chat document and chat data state.
 
 As the AI run may involve several OpenAI calls which may fail at any intermediate call the possible retry run strategy 

@@ -1,7 +1,7 @@
 import {GoogleAuth} from "google-auth-library";
 import {DeliverySchedule, Functions} from "firebase-admin/lib/functions";
 import {projectID} from "firebase-functions/params";
-import {ChatCommand} from "./data/ChatCommand";
+import {ChatCommandQueue} from "./data/ChatCommandQueue";
 import {logger} from "../logging";
 import {HttpsError} from "firebase-functions/v2/https";
 import {TaskScheduler} from "./TaskScheduler";
@@ -19,7 +19,7 @@ export class FirebaseQueueTaskScheduler implements TaskScheduler {
         this.location = location;
     }
 
-    async schedule(queueName: string, command: ChatCommand, schedule?: DeliverySchedule): Promise<void> {
+    async schedule(queueName: string, command: ChatCommandQueue, schedule?: DeliverySchedule): Promise<void> {
         const queue = this.functions.taskQueue(queueName);
         const uri = await this.getFunctionUrl(queueName, this.location);
         await queue.enqueue(command, {...(schedule || {}), uri: uri});

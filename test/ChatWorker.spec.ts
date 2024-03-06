@@ -21,15 +21,16 @@ import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
 import {
     AiWrapper,
-    ChatCommand,
+    ChatCommandQueue,
     ChatMessage,
     ChatState,
     ChatStatus,
     ChatWorker, TaskScheduler,
     ToolsDispatcher
-} from "../lib";
+} from "../src";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {ChatError} from "../lib/aichat/data/ChatError";
+import {ChatCommandData} from "../lib/aichat/data/ChatCommandQueue";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -43,41 +44,37 @@ describe("Chat worker", function() {
 
     const context: TaskContext = {
         executionCount: 0,
-        id: "",
-        queueName: "",
+        id: "123",
+        queueName: "Chat",
         retryCount: 0,
         scheduledTime: ""
     };
 
-    const createCommand: ChatCommand = {
+    const commandData: ChatCommandData = {
         ownerId: userId,
         chatDocumentPath: chatDoc.path,
-        type: "create",
         dispatchId: runId
+    }
+
+    const createCommand: ChatCommandQueue = {
+        ...commandData,
+        actions: ["create"]
     };
-    const postCommand: ChatCommand = {
-        ownerId: userId,
-        chatDocumentPath: chatDoc.path,
-        type: "post",
-        dispatchId: runId
+    const postCommand: ChatCommandQueue = {
+        ...commandData,
+        actions: ["post"]
     };
-    const runCommand: ChatCommand = {
-        ownerId: userId,
-        chatDocumentPath: chatDoc.path,
-        type: "run",
-        dispatchId: runId
+    const runCommand: ChatCommandQueue = {
+        ...commandData,
+        actions: ["run"]
     };
-    const retrieveCommand: ChatCommand = {
-        ownerId: userId,
-        chatDocumentPath: chatDoc.path,
-        type: "retrieve",
-        dispatchId: runId
+    const retrieveCommand: ChatCommandQueue = {
+        ...commandData,
+        actions: ["retrieve"]
     };
-    const closeCommand: ChatCommand = {
-        ownerId: userId,
-        chatDocumentPath: chatDoc.path,
-        type: "close",
-        dispatchId: runId
+    const closeCommand: ChatCommandQueue = {
+        ...commandData,
+        actions: ["close"]
     };
 
     let wrapper: AiWrapper;
@@ -137,7 +134,7 @@ describe("Chat worker", function() {
 
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: createCommand
         };
@@ -163,7 +160,7 @@ describe("Chat worker", function() {
     it("doesn't process chat creation if status is not creating", async function() {
         await createChat(undefined, "complete");
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: createCommand
         };
@@ -184,7 +181,7 @@ describe("Chat worker", function() {
     it("doesn't process chat creation for another run", async function() {
         await createChat(undefined, "creating", "other_run");
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: createCommand
         };
@@ -208,7 +205,7 @@ describe("Chat worker", function() {
         when(wrapper.postMessage(anything(), anything())).thenReturn(Promise.resolve(lastPostMessageId));
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: postCommand
         };
@@ -226,22 +223,12 @@ describe("Chat worker", function() {
 
         verify(wrapper.postMessage(strictEqual(threadId), strictEqual(messages[0]))).once();
         verify(wrapper.postMessage(strictEqual(threadId), strictEqual(messages[1]))).once();
-
-        const [name, command] = capture(scheduler.schedule).last();
-        name.should.be.equal("Chat");
-        command.should.deep.include(
-            {
-                ownerId: userId,
-                chatDocumentPath: chatDoc.path,
-                type: "run"
-            }
-        );
     });
 
     it("doesn't process posting if status is not posting", async function() {
         await createChat(threadId, "complete");
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: postCommand
         };
@@ -262,7 +249,7 @@ describe("Chat worker", function() {
     it("doesn't process chat posting for another run", async function() {
         await createChat(threadId, "posting", "other_run");
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: postCommand
         };
@@ -288,7 +275,7 @@ describe("Chat worker", function() {
         });
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: runCommand
         };
@@ -305,22 +292,12 @@ describe("Chat worker", function() {
         });
 
         verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anyFunction())).once();
-
-        const [name, command] = capture(scheduler.schedule).last();
-        name.should.be.equal("Chat");
-        command.should.deep.include(
-            {
-                ownerId: userId,
-                chatDocumentPath: chatDoc.path,
-                type: "retrieve"
-            }
-        );
     });
 
     it("doesn't process running if status is not posting", async function() {
         await createChat(threadId, "complete");
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: runCommand
         };
@@ -341,7 +318,7 @@ describe("Chat worker", function() {
     it("doesn't process chat running for another run", async function() {
         await createChat(threadId, "processing", "other_run");
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: runCommand
         };
@@ -367,7 +344,7 @@ describe("Chat worker", function() {
             latestMessageId: lastChatMessageId
         }));
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: retrieveCommand
         };
@@ -404,7 +381,7 @@ describe("Chat worker", function() {
     it("doesn't process retrieval if status is in wrong state", async function() {
         await createChat(threadId, "complete");
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: retrieveCommand
         };
@@ -424,7 +401,7 @@ describe("Chat worker", function() {
     it("doesn't process retrieval for another run", async function() {
         await createChat(threadId, "gettingMessages", "other_run");
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: retrieveCommand
         };
@@ -447,7 +424,7 @@ describe("Chat worker", function() {
 
         when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: closeCommand
         };
@@ -468,7 +445,7 @@ describe("Chat worker", function() {
             };
         });
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: retrieveCommand
         };
@@ -490,7 +467,7 @@ describe("Chat worker", function() {
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             data: createCommand
         };
@@ -507,7 +484,7 @@ describe("Chat worker", function() {
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
         when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
 
-        const request: Request<ChatCommand> = {
+        const request: Request<ChatCommandQueue> = {
             ...context,
             retryCount: 9,
             data: createCommand
@@ -524,4 +501,31 @@ describe("Chat worker", function() {
             status: "failed"
         });
     });
+
+    it("runs command batch", async function() {
+        await createChat(threadId, "creating");
+        when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
+        when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
+
+        const request: Request<ChatCommandQueue> = {
+            ...context,
+            data: {
+                ...commandData,
+                actions: ["create", "close"]
+            }
+        };
+
+        await worker.dispatch(request);
+
+        verify(wrapper.createThread(anything())).once();
+
+        const [name, command] = capture(scheduler.schedule).last();
+        name.should.be.equal("Chat");
+        command.should.deep.include(
+            {
+                ...commandData,
+                actions: ["close"]
+            }
+        );
+    })
 });

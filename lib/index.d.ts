@@ -9,7 +9,7 @@ import { ChatData } from "./aichat/data/ChatState";
 export { ChatStatus } from "./aichat/data/ChatStatus";
 export { ChatData, ChatState } from "./aichat/data/ChatState";
 export { ChatMessage } from "./aichat/data/ChatMessage";
-export { ChatCommand } from "./aichat/data/ChatCommand";
+export { ChatCommandQueue } from "./aichat/data/ChatCommandQueue";
 export { Logger, setLogger } from "./logging";
 export { AiWrapper };
 export { OpenAiWrapper } from "./aichat/OpenAiWrapper";

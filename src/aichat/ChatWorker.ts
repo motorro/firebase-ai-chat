@@ -1,7 +1,7 @@
 import {firestore} from "firebase-admin";
 import {AiWrapper} from "./AiWrapper";
 import {ToolsDispatcher} from "./ToolsDispatcher";
-import {ChatCommand} from "./data/ChatCommand";
+import {ChatCommandData, ChatCommandQueue} from "./data/ChatCommandQueue";
 import {Collections} from "./data/Collections";
 import {ChatMessage} from "./data/ChatMessage";
 import {logger} from "../logging";
@@ -50,20 +50,37 @@ export class ChatWorker {
      * Dispatches command
      * @param req Dispatch request
      */
-    async dispatch(req: Request<ChatCommand>): Promise<void> {
+    async dispatch(req: Request<ChatCommandQueue>): Promise<void> {
         const command = req.data;
+        const action = command.actions[0];
+        if (undefined === action) {
+            logger.w("Empty command queue in command", JSON.stringify(command));
+            return;
+        }
+        logger.d(`Dispatching action ${action} (0 of ${command.actions.length}`);
         try {
-            switch (command.type) {
+            switch (command.actions[0]) {
                 case "create":
-                    return await this.runCreateThread(command);
+                    await this.runCreateThread(command);
+                    break;
                 case "post":
-                    return await this.runPostMessages(command);
+                    await this.runPostMessages(command);
+                    break;
                 case "run":
-                    return await this.runRun(command);
+                    await this.runRun(command);
+                    break;
                 case "retrieve":
-                    return await this.runRetrieve(command);
+                    await this.runRetrieve(command);
+                    break;
                 case "close":
-                    return await this.runClose(command);
+                    await this.runClose(command);
+                    break;
+            }
+            if (command.actions.length > 1) {
+                logger.d("Dispatching next command...");
+                await this.scheduler.schedule(req.queueName, {...command, actions: command.actions.slice(1)});
+            } else {
+                logger.d("Command queue complete")
             }
         } catch (e: unknown) {
             logger.w("Error running command", e);
@@ -95,7 +112,7 @@ export class ChatWorker {
      * @param command Command data
      * @private
      */
-    private async runCreateThread(command: ChatCommand): Promise<void> {
+    private async runCreateThread(command: ChatCommandData): Promise<void> {
         logger.d(`Creating thread. runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
         return await this.withCheckedState(command, (status) => "creating" === status, async () => {
             const threadId = await this.wrapper.createThread({
@@ -116,7 +133,7 @@ export class ChatWorker {
      * @param command Command data
      * @private
      */
-    private async runPostMessages(command: ChatCommand): Promise<void> {
+    private async runPostMessages(command: ChatCommandData): Promise<void> {
         logger.d(`Posting message. runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
         return await this.withCheckedState(command, (status) => "posting" === status, async (state) => {
             const threadId = state.config.threadId;
@@ -143,11 +160,6 @@ export class ChatWorker {
                 status: "processing",
                 ...(undefined != latestMessageId ? {lastMessageId: latestMessageId} : {})
             }));
-            const runCommand: ChatCommand = {
-                ...command,
-                type: "run"
-            };
-            await this.scheduler.schedule(state.config.workerName, runCommand);
         });
     }
 
@@ -156,7 +168,7 @@ export class ChatWorker {
      * @param command Command data
      * @private
      */
-    private async runRun(command: ChatCommand): Promise<void> {
+    private async runRun(command: ChatCommandData): Promise<void> {
         logger.d(`Running assistant. runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
         return await this.withCheckedState(command, (status) => "processing" === status, async (state) => {
             const threadId = state.config.threadId;
@@ -171,11 +183,6 @@ export class ChatWorker {
                 status: "gettingMessages",
                 data: newData
             }));
-            const retrieveCommand: ChatCommand = {
-                ...command,
-                type: "retrieve"
-            };
-            await this.scheduler.schedule(state.config.workerName, retrieveCommand);
         });
     }
 
@@ -184,7 +191,7 @@ export class ChatWorker {
      * @param command Command data
      * @private
      */
-    private async runRetrieve(command: ChatCommand): Promise<void> {
+    private async runRetrieve(command: ChatCommandData): Promise<void> {
         logger.d(`Retrieving messages. runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
         return await this.withCheckedState(command, (status) => "gettingMessages" === status, async (state) => {
             const threadId = state.config.threadId;
@@ -229,7 +236,7 @@ export class ChatWorker {
      * @param command Command data
      * @private
      */
-    private async runClose(command: ChatCommand): Promise<void> {
+    private async runClose(command: ChatCommandData): Promise<void> {
         logger.d(`Closing chat. runId ${command.dispatchId}, doc: ${command.chatDocumentPath}`);
         return await this.withCheckedState(command, (status) => "closing" === status, async (state) => {
             const threadId = state.config.threadId;
@@ -258,7 +265,7 @@ export class ChatWorker {
 
     private async checkState(
         state: ChatState<ChatData> | undefined,
-        command: ChatCommand,
+        command: ChatCommandData,
         checkStatus: (currentStatus: ChatStatus) => boolean
     ): Promise<ChatState<ChatData>> {
         if (undefined === state) {
@@ -277,7 +284,7 @@ export class ChatWorker {
     }
 
     private async withCheckedState(
-        command: ChatCommand,
+        command: ChatCommandData,
         checkStatus: (currentStatus: ChatStatus) => boolean,
         block: (state: ChatState<ChatData>) => Promise<void>
     ): Promise<void> {
@@ -288,7 +295,7 @@ export class ChatWorker {
     }
 
     private async updateWithCheck(
-        command: ChatCommand,
+        command: ChatCommandData,
         checkStatus: (currentStatus: ChatStatus) => boolean,
         block: (state: ChatState<ChatData>) => Partial<ChatState<ChatData>>
     ): Promise<void> {

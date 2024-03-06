@@ -7,7 +7,7 @@ import ShortUniqueId from "short-unique-id";
 import {ChatMessage} from "./data/ChatMessage";
 import CollectionReference = firestore.CollectionReference;
 import {TaskScheduler} from "./TaskScheduler";
-import {ChatCommand} from "./data/ChatCommand";
+import {ChatCommandQueue} from "./data/ChatCommandQueue";
 import {HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;
@@ -78,11 +78,11 @@ export class AssistantChat<DATA extends ChatData> {
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp()
         });
-        const command: ChatCommand = {
+        const command: ChatCommandQueue = {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: dispatchId,
-            type: "create"
+            actions: ["create"]
         };
         await this.scheduler.schedule(
             this.name,
@@ -128,11 +128,11 @@ export class AssistantChat<DATA extends ChatData> {
                     );
                 });
                 await batch.commit();
-                const command: ChatCommand = {
+                const command: ChatCommandQueue = {
                     ownerId: userId,
                     chatDocumentPath: document.path,
                     dispatchId: dispatchId,
-                    type: "post"
+                    actions: ["post", "run", "retrieve"]
                 };
                 await this.scheduler.schedule(
                     this.name,
@@ -164,11 +164,11 @@ export class AssistantChat<DATA extends ChatData> {
             async (state, dispatchId) => {
                 logger.d("Closing chat: ", document.path);
 
-                const command: ChatCommand = {
+                const command: ChatCommandQueue = {
                     ownerId: userId,
                     chatDocumentPath: document.path,
                     dispatchId: dispatchId,
-                    type: "close"
+                    actions: ["close"]
                 };
                 await this.scheduler.schedule(
                     this.name,
