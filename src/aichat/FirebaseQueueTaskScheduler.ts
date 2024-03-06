@@ -1,6 +1,6 @@
 import {GoogleAuth} from "google-auth-library";
 import {DeliverySchedule, Functions} from "firebase-admin/lib/functions";
-import {projectID} from "firebase-functions/lib/params";
+import {projectID} from "firebase-functions/params";
 import {ChatCommand} from "./data/ChatCommand";
 import {logger} from "../logging";
 import {HttpsError} from "firebase-functions/v2/https";
@@ -9,7 +9,7 @@ import {CloudTasksClient} from "@google-cloud/tasks";
 
 export class FirebaseQueueTaskScheduler implements TaskScheduler {
     private readonly auth: GoogleAuth = new GoogleAuth({
-        scopes: "https://www.googleapis.com/auth/cloud-platform",
+        scopes: "https://www.googleapis.com/auth/cloud-platform"
     });
     private readonly location: string;
     private readonly functions: Functions;
