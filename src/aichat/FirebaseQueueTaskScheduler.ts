@@ -1,5 +1,6 @@
 import {GoogleAuth} from "google-auth-library";
 import {DeliverySchedule, Functions} from "firebase-admin/lib/functions";
+import {projectID} from "firebase-functions/lib/params";
 import {ChatCommand} from "./data/ChatCommand";
 import {logger} from "../logging";
 import {HttpsError} from "firebase-functions/v2/https";
@@ -26,7 +27,8 @@ export class FirebaseQueueTaskScheduler implements TaskScheduler {
 
     async getQueueMaxRetries(queueName: string): Promise<number> {
         const client = new CloudTasksClient();
-        const queue = await client.getQueue({name: await this.getFunctionUrl(queueName, this.location)});
+        const name = `projects/${projectID}/locations/${this.location}/queues/${queueName}`;
+        const queue = await client.getQueue({name: name});
         return queue[0].retryConfig?.maxAttempts || 0;
     }
 
