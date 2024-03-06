@@ -9,7 +9,7 @@ export declare class OpenAiWrapper implements AiWrapper {
     private readonly openAi;
     constructor(openAi: OpenAI);
     createThread(meta: Readonly<Record<string, string>>): Promise<string>;
-    postMessages(threadId: string, messages: readonly string[]): Promise<string | undefined>;
+    postMessage(threadId: string, message: string): Promise<string>;
     run<DATA extends ChatData>(threadId: string, assistantId: string, dataSoFar: DATA, dispatcher: ToolsDispatcher<DATA>): Promise<DATA>;
     private static getDispatchError;
     getMessages(threadId: string, from: string | undefined): Promise<Messages>;

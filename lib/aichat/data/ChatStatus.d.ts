@@ -1,4 +1,4 @@
 /**
  * Chat status
  */
-export type ChatStatus = "created" | "userInput" | "dispatching" | "processing" | "complete" | "failed";
+export type ChatStatus = "creating" | "created" | "userInput" | "posting" | "processing" | "gettingMessages" | "closing" | "complete" | "failed";

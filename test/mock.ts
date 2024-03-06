@@ -46,6 +46,7 @@ export const chatState: ChatState<Data> = {
     userId: userId,
     config: {
         assistantId: assistantId,
+        workerName: "Chat",
         dispatcherId: dispatcherId
     },
     data: data,

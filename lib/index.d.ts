@@ -25,11 +25,9 @@ export interface AiChat {
     /**
      * Chat user-facing callable functions
      * @param name Chat name for command dispatcher
-     * @param location Function location
-     * @param scheduling Worker scheduling options
      * @return Chat interface
      */
-    chat<DATA extends ChatData>(name: string, location: string, scheduling: DeliverySchedule): AssistantChat<DATA>;
+    chat<DATA extends ChatData>(name: string, scheduling: DeliverySchedule): AssistantChat<DATA>;
     /**
      * Chat worker to use in Firebase tasks
      * @param aiWrapper AI API wrapper
@@ -42,6 +40,7 @@ export interface AiChat {
  * Chat tools factory
  * @param firestore Firestore instance
  * @param functions Functions instance
+ * @param location Function location
  * @return Chat tools interface
  */
-export declare function factory(firestore: Firestore, functions: Functions): AiChat;
+export declare function factory(firestore: Firestore, functions: Functions, location: string): AiChat;

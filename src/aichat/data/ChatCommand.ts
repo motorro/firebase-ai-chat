@@ -1,16 +1,14 @@
-export type ChatCommandType = "post" | "close";
+/**
+ * Chat command type
+ */
+export type ChatCommandType = "create" | "post" | "run" | "retrieve" | "close";
 
+/**
+ * Chat dispatch command
+ */
 export interface ChatCommand {
     readonly ownerId: string
     readonly chatDocumentPath: string
     readonly type: ChatCommandType
     readonly dispatchId: string
-}
-
-export interface PostCommand extends ChatCommand {
-    readonly type: "post"
-}
-
-export interface CloseCommand extends ChatCommand {
-    readonly type: "close"
 }

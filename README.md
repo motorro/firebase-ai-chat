@@ -381,7 +381,7 @@ export const calculator = onTaskDispatched<ChatCommand>(
       const ai = new OpenAiWrapper(new OpenAI({apiKey: openAiApiKey.value()}));
       // Create and run a worker
       // See the `dispatchers` definitions below
-      await chatFactory.worker(ai, dispatchers).runCommand(req.data);
+      await chatFactory.worker(ai, dispatchers).runCommand(req);
     }
 );
 ```
@@ -392,6 +392,10 @@ The client App will later get the results of the run by subscribing the Firebase
 Worth mentioning is that if you run several chats with a different state for different purposes you may need only one 
 worker function to handle all the tasks. The [ChatCommand](src/aichat/data/ChatCommand.ts) has all the required reference
 data to address the correct chat document and chat data state.
+
+As the AI run may involve several OpenAI calls which may fail at any intermediate call the possible retry run strategy 
+seems unclear at the moment. That is why the worker will set the `failed` state to chat on any error. If you want to 
+restore the thread somehow - create the new chat and copy your messages manually.
 
 ### Using OpenAI function tools
 OpenAI Assistant and Chat completion API has a powerful feature called [Function calling](https://platform.openai.com/docs/assistants/tools/function-calling).

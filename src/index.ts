@@ -28,15 +28,9 @@ export interface AiChat {
     /**
      * Chat user-facing callable functions
      * @param name Chat name for command dispatcher
-     * @param location Function location
-     * @param scheduling Worker scheduling options
      * @return Chat interface
      */
-    chat<DATA extends ChatData>(
-        name: string,
-        location: string,
-        scheduling: DeliverySchedule
-    ): AssistantChat<DATA>
+    chat<DATA extends ChatData>(name: string, scheduling: DeliverySchedule): AssistantChat<DATA>
 
     /**
      * Chat worker to use in Firebase tasks
@@ -44,26 +38,26 @@ export interface AiChat {
      * @param dispatchers Tools dispatchers
      * @return Worker interface
      */
-    worker(
-        aiWrapper: AiWrapper,
-        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>> // eslint-disable-line  @typescript-eslint/no-explicit-any
-    ): ChatWorker
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    worker(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): ChatWorker
 }
 
 /**
  * Chat tools factory
  * @param firestore Firestore instance
  * @param functions Functions instance
+ * @param location Function location
  * @return Chat tools interface
  */
-export function factory(firestore: Firestore, functions: Functions): AiChat {
+export function factory(firestore: Firestore, functions: Functions, location: string): AiChat {
+    const scheduler = new FirebaseQueueTaskScheduler(functions, location);
     return {
-        chat: function<DATA extends ChatData>(name: string, location: string, scheduling: DeliverySchedule = {}): AssistantChat<DATA> {
-            const scheduler = new FirebaseQueueTaskScheduler(functions, location);
-            return new AssistantChat<DATA>(firestore, name, scheduler, scheduling);
+        chat: function<DATA extends ChatData>(name: string): AssistantChat<DATA> {
+            return new AssistantChat<DATA>(firestore, name, scheduler);
         },
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         worker: function(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): ChatWorker {
-            return new ChatWorker(firestore, aiWrapper, dispatchers);
+            return new ChatWorker(firestore, scheduler, aiWrapper, dispatchers);
         }
     };
 }

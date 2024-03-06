@@ -1,7 +1,6 @@
 import { firestore } from "firebase-admin";
 import { ChatData, ChatState, ChatStateUpdate } from "./data/ChatState";
 import { TaskScheduler } from "./TaskScheduler";
-import { DeliverySchedule } from "firebase-admin/lib/functions";
 import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;
 import Firestore = firestore.Firestore;
@@ -19,15 +18,13 @@ export declare class AssistantChat<DATA extends ChatData> {
     private readonly runIdGenerator;
     private readonly name;
     private readonly scheduler;
-    private readonly scheduling;
     /**
      * Constructor
      * @param db Firestore
-     * @param name Command dispatcher name
+     * @param queueName Command queue name to dispatch commands
      * @param scheduler Task scheduler
-     * @param scheduling Task scheduling
      */
-    constructor(db: Firestore, name: string, scheduler: TaskScheduler, scheduling?: DeliverySchedule);
+    constructor(db: Firestore, queueName: string, scheduler: TaskScheduler);
     /**
      * Creates new chat thread
      * @param document Document reference
@@ -41,7 +38,7 @@ export declare class AssistantChat<DATA extends ChatData> {
      * Posts messages to the thread
      * @param document Chat document
      * @param userId Chat owner
-     * @param messages Messages to post
+     * @param message Messages to post
      */
     postMessage(document: DocumentReference<ChatState<DATA>>, userId: string, messages: ReadonlyArray<string>): Promise<ChatStateUpdate<DATA>>;
     /**
@@ -54,7 +51,8 @@ export declare class AssistantChat<DATA extends ChatData> {
      * Runs block mutating chat status if current chat status is one of allowed
      * @param document Chat document
      * @param userId To check the user can perform block
-     * @param requiredStatus Allowed statuses to run block
+     * @param checkStatus Checks current status for availability
+     * @param targetStatus Target status
      * @param block Block to run
      * @private
      */

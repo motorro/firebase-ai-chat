@@ -93,15 +93,15 @@ describe("OpenAI wrapper", function() {
         });
     });
 
-    it("posts messages", async function() {
-        when(messages.create(anything(), anything())).thenResolve(message1).thenResolve(message2);
+    it("posts message", async function() {
+        when(messages.create(anything(), anything())).thenResolve(message1);
 
-        const lastId = await wrapper.postMessages(threadId, ["M1", "M2"]);
+        const lastId = await wrapper.postMessage(threadId, "M1");
         if (undefined === lastId) {
             throw new Error("Last ID should be defined");
         }
 
-        lastId.should.be.equal(message2.id);
+        lastId.should.be.equal(message1.id);
 
         verify(
             messages.create(
@@ -109,15 +109,6 @@ describe("OpenAI wrapper", function() {
                 deepEqual({
                     role: "user",
                     content: "M1"
-                })
-            )
-        ).once();
-        verify(
-            messages.create(
-                strictEqual(threadId),
-                deepEqual({
-                    role: "user",
-                    content: "M2"
                 })
             )
         ).once();
@@ -341,7 +332,7 @@ describe("OpenAI wrapper", function() {
 
         const result = await wrapper.getMessages(threadId, "m1");
         result.should.deep.equal({
-            messages: ["Message 1", "Message 2"],
+            messages: [["m1", "Message 1"], ["m2", "Message 2"]],
             latestMessageId: "m2"
         });
 

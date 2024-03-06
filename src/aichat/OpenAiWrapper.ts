@@ -32,21 +32,17 @@ export class OpenAiWrapper implements AiWrapper {
         return thread.id;
     }
 
-    async postMessages(threadId: string, messages: readonly string[]): Promise<string | undefined> {
-        logger.d("Posting messages...", messages.length);
+    async postMessage(threadId: string, message: string): Promise<string> {
+        logger.d("Posting message...");
         return this.runAi(async (ai) => {
-            let latestMessageId: string | undefined = undefined;
-            for (const message of messages) {
-                const created = await ai.beta.threads.messages.create(
-                    threadId,
-                    {
-                        role: "user",
-                        content: message
-                    }
-                );
-                latestMessageId = created.id;
-            }
-            return latestMessageId;
+            const created = await ai.beta.threads.messages.create(
+                threadId,
+                {
+                    role: "user",
+                    content: message
+                }
+            );
+            return created.id;
         });
     }
 
@@ -181,7 +177,7 @@ export class OpenAiWrapper implements AiWrapper {
         logger.d("Getting messages from: ", threadId);
         return await this.runAi(async (ai) => {
             let cursor = from;
-            const messages: Array<string> = [];
+            const messages: Array<[string, string]> = [];
 
             const list: ThreadMessagesPage = await ai.beta.threads.messages.list(
                 threadId,
@@ -194,7 +190,7 @@ export class OpenAiWrapper implements AiWrapper {
                     message.content.forEach((content) => {
                         switch (content.type) {
                             case "text":
-                                messages.push(content.text.value);
+                                messages.push([message.id, content.text.value]);
                                 break;
                             default:
                                 throw new Error(`Unsupported message type: ${content.type}`);

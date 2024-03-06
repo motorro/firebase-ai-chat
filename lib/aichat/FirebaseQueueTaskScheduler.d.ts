@@ -6,6 +6,7 @@ export declare class FirebaseQueueTaskScheduler implements TaskScheduler {
     private readonly location;
     private readonly functions;
     constructor(functions: Functions, location: string);
-    schedule(name: string, command: ChatCommand, schedule: DeliverySchedule): Promise<void>;
+    schedule(queueName: string, command: ChatCommand, schedule?: DeliverySchedule): Promise<void>;
+    getQueueMaxRetries(queueName: string): Promise<number>;
     private getFunctionUrl;
 }

@@ -33,9 +33,10 @@ describe("Assistant Chat", function() {
 
     it("creates chat thread and record", async function() {
         const update = await chat.create(chatDoc, userId, data, assistantId, dispatcherId);
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
         update.should.deep.include({
-            status: "created",
+            status: "creating",
             data: data
         });
 
@@ -47,11 +48,22 @@ describe("Assistant Chat", function() {
             userId: userId,
             config: {
                 assistantId: assistantId,
-                dispatcherId: dispatcherId
+                dispatcherId: dispatcherId,
+                workerName: "Chat"
             },
             data: data,
-            status: "created"
+            status: "creating"
         });
+
+        const [name, command] = capture(scheduler.schedule).last();
+        name.should.be.equal("Chat");
+        command.should.deep.include(
+            {
+                ownerId: userId,
+                chatDocumentPath: chatDoc.path,
+                type: "create"
+            }
+        );
     });
 
     it("posts a message to the chat", async function() {
@@ -61,7 +73,7 @@ describe("Assistant Chat", function() {
         const update = await chat.postMessage(chatDoc, userId, messages);
 
         update.should.deep.include({
-            status: "dispatching",
+            status: "posting",
             data: data
         });
         const updatedState: ChatState<Data> | undefined = (await chatDoc.get()).data();
@@ -69,7 +81,7 @@ describe("Assistant Chat", function() {
             throw new Error("Chat should exist");
         }
         updatedState.should.deep.include({
-            status: "dispatching"
+            status: "posting"
         });
 
         const insertedMessages = await chatMessages.get();
@@ -163,7 +175,7 @@ describe("Assistant Chat", function() {
         );
 
         update.should.deep.include({
-            status: "dispatching",
+            status: "closing",
             data: data
         });
         const updatedState: ChatState<Data> | undefined = (await chatDoc.get()).data();
@@ -171,7 +183,7 @@ describe("Assistant Chat", function() {
             throw new Error("Chat should exist");
         }
         updatedState.should.deep.include({
-            status: "dispatching"
+            status: "closing"
         });
     });
 

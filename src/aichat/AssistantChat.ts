@@ -8,13 +8,16 @@ import {ChatMessage} from "./data/ChatMessage";
 import CollectionReference = firestore.CollectionReference;
 import {TaskScheduler} from "./TaskScheduler";
 import {ChatCommand} from "./data/ChatCommand";
-import {DeliverySchedule} from "firebase-admin/lib/functions";
 import {HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;
 import FieldValue = firestore.FieldValue;
 import Firestore = firestore.Firestore;
 
+/**
+ * Close command delay to settle down AI runs
+ */
+const SCHEDULE_CLOSE_AFTER = 3 * 60;
 
 /**
  * Front-facing assistant chat
@@ -31,20 +34,17 @@ export class AssistantChat<DATA extends ChatData> {
 
     private readonly name: string;
     private readonly scheduler: TaskScheduler;
-    private readonly scheduling: DeliverySchedule;
 
     /**
      * Constructor
      * @param db Firestore
-     * @param name Command dispatcher name
+     * @param queueName Command queue name to dispatch commands
      * @param scheduler Task scheduler
-     * @param scheduling Task scheduling
      */
-    constructor(db: Firestore, name: string, scheduler: TaskScheduler, scheduling: DeliverySchedule = {}) {
+    constructor(db: Firestore, queueName: string, scheduler: TaskScheduler) {
         this.db = db;
-        this.name = name;
+        this.name = queueName;
         this.scheduler = scheduler;
-        this.scheduling = scheduling;
     }
 
     /**
@@ -63,20 +63,33 @@ export class AssistantChat<DATA extends ChatData> {
         dispatcherId: string
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d(`Creating new chat with assistant ${assistantId}...`);
+        const dispatchId = this.runIdGenerator.randomUUID();
+        const status: ChatStatus = "creating";
         await document.set({
             userId: userId,
             config: {
                 assistantId: assistantId,
+                workerName: this.name,
                 dispatcherId: dispatcherId
             },
-            status: "created",
+            status: status,
+            dispatchId: dispatchId,
             data: data,
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp()
         });
-
+        const command: ChatCommand = {
+            ownerId: userId,
+            chatDocumentPath: document.path,
+            dispatchId: dispatchId,
+            type: "create"
+        };
+        await this.scheduler.schedule(
+            this.name,
+            command
+        );
         return {
-            status: "created",
+            status: status,
             data: data
         };
     }
@@ -96,11 +109,11 @@ export class AssistantChat<DATA extends ChatData> {
         return this.prepareDispatchWithChecks(
             document,
             userId,
-            ["created", "userInput"],
+            (current) => ["created", "userInput"].includes(current),
+            "posting",
             async (state, dispatchId) => {
-                const batch = this.db.batch();
                 const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
-
+                const batch = this.db.batch();
                 messages.forEach((message, index) => {
                     batch.create(
                         messageList.doc(),
@@ -123,8 +136,7 @@ export class AssistantChat<DATA extends ChatData> {
                 };
                 await this.scheduler.schedule(
                     this.name,
-                    command,
-                    this.scheduling
+                    command
                 );
 
                 return {
@@ -147,7 +159,8 @@ export class AssistantChat<DATA extends ChatData> {
         return this.prepareDispatchWithChecks(
             document,
             userId,
-            ["created", "userInput", "dispatching", "processing", "failed"],
+            (current) => false === ["closing", "complete"].includes(current),
+            "closing",
             async (state, dispatchId) => {
                 logger.d("Closing chat: ", document.path);
 
@@ -160,7 +173,9 @@ export class AssistantChat<DATA extends ChatData> {
                 await this.scheduler.schedule(
                     this.name,
                     command,
-                    this.scheduling
+                    {
+                        scheduleDelaySeconds: SCHEDULE_CLOSE_AFTER
+                    }
                 );
 
                 return {
@@ -175,14 +190,16 @@ export class AssistantChat<DATA extends ChatData> {
      * Runs block mutating chat status if current chat status is one of allowed
      * @param document Chat document
      * @param userId To check the user can perform block
-     * @param requiredStatus Allowed statuses to run block
+     * @param checkStatus Checks current status for availability
+     * @param targetStatus Target status
      * @param block Block to run
      * @private
      */
     private async prepareDispatchWithChecks(
         document: DocumentReference<ChatState<DATA>>,
         userId: string,
-        requiredStatus: ReadonlyArray<ChatStatus>,
+        checkStatus: (currentStatus: ChatStatus) => boolean,
+        targetStatus: ChatStatus,
         block: (state: ChatState<DATA>, dispatchId: string) => Promise<ChatStateUpdate<DATA>>
     ): Promise<ChatStateUpdate<DATA>> {
         const dispatchId = this.runIdGenerator.randomUUID();
@@ -201,15 +218,15 @@ export class AssistantChat<DATA extends ChatData> {
                     new HttpsError("permission-denied", "Access denied")
                 );
             }
-            if (false === requiredStatus.includes(state.status)) {
-                logger.w(`Chat is in invalid state ${state.status}, required:`, requiredStatus);
+            if (false === checkStatus(state.status)) {
+                logger.w(`Chat is in invalid state ${state.status}`);
                 return Promise.reject(
                     new HttpsError("failed-precondition", "Can't perform this operation due to current chat state")
                 );
             }
             const newState: ChatState<DATA> = {
                 ...state,
-                status: "dispatching",
+                status: targetStatus,
                 dispatchId: dispatchId
             };
 
