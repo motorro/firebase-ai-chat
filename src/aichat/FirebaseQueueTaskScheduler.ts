@@ -27,7 +27,7 @@ export class FirebaseQueueTaskScheduler implements TaskScheduler {
 
     async getQueueMaxRetries(queueName: string): Promise<number> {
         const client = new CloudTasksClient();
-        const name = `projects/${projectID}/locations/${this.location}/queues/${queueName}`;
+        const name = `projects/${projectID.value()}/locations/${this.location}/queues/${queueName}`;
         const queue = await client.getQueue({name: name});
         return queue[0].retryConfig?.maxAttempts || 0;
     }
