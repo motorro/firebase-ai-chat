@@ -1,7 +1,7 @@
 /**
  * Chat command type
  */
-export type ChatCommandType = "create" | "post" | "run" | "retrieve" | "close";
+export type ChatCommandType = "create" | "post" | "run" | "switchToUserInput" | "retrieve" | "close";
 /**
  * Common command data
  */

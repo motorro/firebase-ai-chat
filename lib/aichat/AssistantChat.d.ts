@@ -15,7 +15,6 @@ import Firestore = firestore.Firestore;
  */
 export declare class AssistantChat<DATA extends ChatData> {
     private readonly db;
-    private readonly runIdGenerator;
     private readonly name;
     private readonly scheduler;
     /**

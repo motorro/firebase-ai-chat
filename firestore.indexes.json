@@ -19,6 +19,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "dispatchId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "inBatchSortIndex",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "userId",
           "order": "ASCENDING"
         },

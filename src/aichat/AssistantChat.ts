@@ -1,9 +1,7 @@
 import {firestore} from "firebase-admin";
-import {ChatData, ChatState, ChatStateUpdate} from "./data/ChatState";
+import {ChatData, ChatState, ChatStatus, ChatStateUpdate} from "./data/ChatState";
 import {logger} from "../logging";
-import {ChatStatus} from "./data/ChatStatus";
 import {Collections} from "./data/Collections";
-import ShortUniqueId from "short-unique-id";
 import {ChatMessage} from "./data/ChatMessage";
 import CollectionReference = firestore.CollectionReference;
 import {TaskScheduler} from "./TaskScheduler";
@@ -13,6 +11,7 @@ import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;
 import FieldValue = firestore.FieldValue;
 import Firestore = firestore.Firestore;
+import {Dispatch} from "./data/Dispatch";
 
 /**
  * Close command delay to settle down AI runs
@@ -30,7 +29,6 @@ const SCHEDULE_CLOSE_AFTER = 3 * 60;
  */
 export class AssistantChat<DATA extends ChatData> {
     private readonly db: FirebaseFirestore.Firestore;
-    private readonly runIdGenerator = new ShortUniqueId({length: 16});
 
     private readonly name: string;
     private readonly scheduler: TaskScheduler;
@@ -60,12 +58,14 @@ export class AssistantChat<DATA extends ChatData> {
         userId: string,
         data: DATA,
         assistantId: string,
-        dispatcherId: string
+        dispatcherId: string,
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d(`Creating new chat with assistant ${assistantId}...`);
-        const dispatchId = this.runIdGenerator.randomUUID();
-        const status: ChatStatus = "creating";
-        await document.set({
+        const batch = this.db.batch();
+        const status: ChatStatus = "processing";
+        const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
+
+        batch.set(document, {
             userId: userId,
             config: {
                 assistantId: assistantId,
@@ -73,16 +73,21 @@ export class AssistantChat<DATA extends ChatData> {
                 dispatcherId: dispatcherId
             },
             status: status,
-            dispatchId: dispatchId,
+            latestDispatchId: dispatchDoc.id,
             data: data,
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp()
         });
+        batch.set(dispatchDoc, {
+            createdAt: FieldValue.serverTimestamp()
+        });
+        await batch.commit();
+
         const command: ChatCommandQueue = {
             ownerId: userId,
             chatDocumentPath: document.path,
-            dispatchId: dispatchId,
-            actions: ["create"]
+            dispatchId: dispatchDoc.id,
+            actions: ["create", "switchToUserInput"]
         };
         await this.scheduler.schedule(
             this.name,
@@ -109,9 +114,9 @@ export class AssistantChat<DATA extends ChatData> {
         return this.prepareDispatchWithChecks(
             document,
             userId,
-            (current) => ["created", "userInput"].includes(current),
-            "posting",
-            async (state, dispatchId) => {
+            (current) => ["userInput"].includes(current),
+            "processing",
+            async (state) => {
                 const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
                 const batch = this.db.batch();
                 messages.forEach((message, index) => {
@@ -119,7 +124,7 @@ export class AssistantChat<DATA extends ChatData> {
                         messageList.doc(),
                         {
                             userId: userId,
-                            dispatchId: dispatchId,
+                            dispatchId: state.latestDispatchId,
                             author: "user",
                             text: message,
                             inBatchSortIndex: index,
@@ -131,8 +136,8 @@ export class AssistantChat<DATA extends ChatData> {
                 const command: ChatCommandQueue = {
                     ownerId: userId,
                     chatDocumentPath: document.path,
-                    dispatchId: dispatchId,
-                    actions: ["post", "run", "retrieve"]
+                    dispatchId: state.latestDispatchId,
+                    actions: ["post", "run", "retrieve", "switchToUserInput"]
                 };
                 await this.scheduler.schedule(
                     this.name,
@@ -159,15 +164,15 @@ export class AssistantChat<DATA extends ChatData> {
         return this.prepareDispatchWithChecks(
             document,
             userId,
-            (current) => false === ["closing", "complete"].includes(current),
+            (current) => false === ["closing", "complete", "failed"].includes(current),
             "closing",
-            async (state, dispatchId) => {
+            async (state) => {
                 logger.d("Closing chat: ", document.path);
 
                 const command: ChatCommandQueue = {
                     ownerId: userId,
                     chatDocumentPath: document.path,
-                    dispatchId: dispatchId,
+                    dispatchId: state.latestDispatchId,
                     actions: ["close"]
                 };
                 await this.scheduler.schedule(
@@ -200,9 +205,8 @@ export class AssistantChat<DATA extends ChatData> {
         userId: string,
         checkStatus: (currentStatus: ChatStatus) => boolean,
         targetStatus: ChatStatus,
-        block: (state: ChatState<DATA>, dispatchId: string) => Promise<ChatStateUpdate<DATA>>
+        block: (state: ChatState<DATA>) => Promise<ChatStateUpdate<DATA>>
     ): Promise<ChatStateUpdate<DATA>> {
-        const dispatchId = this.runIdGenerator.randomUUID();
         const run = this.db.runTransaction(async (tx) => {
             const doc = await tx.get(document);
             const state = doc.data();
@@ -218,6 +222,9 @@ export class AssistantChat<DATA extends ChatData> {
                     new HttpsError("permission-denied", "Access denied")
                 );
             }
+            const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
+            tx.set(dispatchDoc, {createdAt: FieldValue.serverTimestamp()});
+
             if (false === checkStatus(state.status)) {
                 logger.w(`Chat is in invalid state ${state.status}`);
                 return Promise.reject(
@@ -227,7 +234,7 @@ export class AssistantChat<DATA extends ChatData> {
             const newState: ChatState<DATA> = {
                 ...state,
                 status: targetStatus,
-                dispatchId: dispatchId
+                latestDispatchId: dispatchDoc.id
             };
 
             tx.set(
@@ -241,7 +248,9 @@ export class AssistantChat<DATA extends ChatData> {
             return newState;
         });
 
-        return await block(await run, dispatchId);
+        const state = await run;
+
+        return await block(state);
     }
 }
 

@@ -3,17 +3,18 @@ import {db, test} from "./functionsTest";
 
 import {anything, capture, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
-import {assistantId, data, Data, dispatcherId, userId, chatState, MESSAGES, CHATS, NAME} from "./mock";
+import {assistantId, data, Data, dispatcherId, userId, chatState, CHATS, NAME} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import {ChatState, TaskScheduler, AssistantChat} from "../src";
+import {Collections} from "../src";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 
 describe("Assistant Chat", function() {
     const chats = db.collection(CHATS) as CollectionReference<ChatState<Data>>;
     const chatDoc = chats.doc();
-    const chatMessages = chatDoc.collection(MESSAGES);
+    const chatMessages = chatDoc.collection(Collections.messages);
     let scheduler: TaskScheduler;
     let chat: AssistantChat<Data>;
 
@@ -31,12 +32,12 @@ describe("Assistant Chat", function() {
         await db.recursiveDelete(chats);
     });
 
-    it("creates chat thread and record", async function() {
+    it("creates chat record", async function() {
         const update = await chat.create(chatDoc, userId, data, assistantId, dispatcherId);
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
         update.should.deep.include({
-            status: "creating",
+            status: "processing",
             data: data
         });
 
@@ -52,8 +53,10 @@ describe("Assistant Chat", function() {
                 workerName: "Chat"
             },
             data: data,
-            status: "creating"
+            status: "processing"
         });
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(createdState.latestDispatchId);
+        (await dispatchDoc.get()).exists.should.be.true;
 
         const [name, command] = capture(scheduler.schedule).last();
         name.should.be.equal("Chat");
@@ -61,7 +64,8 @@ describe("Assistant Chat", function() {
             {
                 ownerId: userId,
                 chatDocumentPath: chatDoc.path,
-                actions: ["create"]
+                dispatchId: dispatchDoc.id,
+                actions: ["create", "switchToUserInput"]
             }
         );
     });
@@ -73,7 +77,7 @@ describe("Assistant Chat", function() {
         const update = await chat.postMessage(chatDoc, userId, messages);
 
         update.should.deep.include({
-            status: "posting",
+            status: "processing",
             data: data
         });
         const updatedState: ChatState<Data> | undefined = (await chatDoc.get()).data();
@@ -81,8 +85,10 @@ describe("Assistant Chat", function() {
             throw new Error("Chat should exist");
         }
         updatedState.should.deep.include({
-            status: "posting"
+            status: "processing"
         });
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(updatedState.latestDispatchId);
+        (await dispatchDoc.get()).exists.should.be.true;
 
         const insertedMessages = await chatMessages.get();
         insertedMessages.docs.should.have.lengthOf(messages.length);
@@ -93,7 +99,8 @@ describe("Assistant Chat", function() {
             insertedData[i].should.deep.include({
                 userId: userId,
                 author: "user",
-                text: messages[i]
+                text: messages[i],
+                dispatchId: dispatchDoc.id
             });
         }
 
@@ -103,7 +110,8 @@ describe("Assistant Chat", function() {
             {
                 ownerId: userId,
                 chatDocumentPath: chatDoc.path,
-                actions: ["post", "run", "retrieve"]
+                actions: ["post", "run", "retrieve", "switchToUserInput"],
+                dispatchId: dispatchDoc.id
             }
         );
     });
@@ -164,16 +172,6 @@ describe("Assistant Chat", function() {
 
         const update = await chat.closeChat(chatDoc, userId);
 
-        const [name, command] = capture(scheduler.schedule).last();
-        name.should.be.equal("Chat");
-        command.should.deep.include(
-            {
-                ownerId: userId,
-                chatDocumentPath: chatDoc.path,
-                actions: ["close"]
-            }
-        );
-
         update.should.deep.include({
             status: "closing",
             data: data
@@ -182,9 +180,22 @@ describe("Assistant Chat", function() {
         if (undefined === updatedState) {
             throw new Error("Chat should exist");
         }
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(updatedState.latestDispatchId);
+        (await dispatchDoc.get()).exists.should.be.true;
         updatedState.should.deep.include({
             status: "closing"
         });
+
+        const [name, command] = capture(scheduler.schedule).last();
+        name.should.be.equal("Chat");
+        command.should.deep.include(
+            {
+                ownerId: userId,
+                chatDocumentPath: chatDoc.path,
+                actions: ["close"],
+                dispatchId: dispatchDoc.id
+            }
+        );
     });
 
     it("does not close a chat of another user", async function() {
@@ -202,6 +213,28 @@ describe("Assistant Chat", function() {
         await chatDoc.set({
             ...chatState,
             status: "complete"
+        });
+
+        return chat.closeChat(chatDoc, userId).should
+            .eventually
+            .be.rejectedWith("Can't perform this operation due to current chat state");
+    });
+
+    it("does not close a closing chat", async function() {
+        await chatDoc.set({
+            ...chatState,
+            status: "closing"
+        });
+
+        return chat.closeChat(chatDoc, userId).should
+            .eventually
+            .be.rejectedWith("Can't perform this operation due to current chat state");
+    });
+
+    it("does not close a failed chat", async function() {
+        await chatDoc.set({
+            ...chatState,
+            status: "failed"
         });
 
         return chat.closeChat(chatDoc, userId).should

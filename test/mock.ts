@@ -3,7 +3,6 @@ import Timestamp = firestore.Timestamp;
 import {ChatData, ChatMessage, ChatState} from "../src";
 
 export const NAME = "Chat";
-export const MESSAGES = "messages";
 export const CHATS = "chats";
 
 export interface Data extends ChatData {
@@ -50,7 +49,8 @@ export const chatState: ChatState<Data> = {
         dispatcherId: dispatcherId
     },
     data: data,
-    status: "created",
+    status: "userInput",
+    latestDispatchId: "dispatch",
     createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
     updatedAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23))
 };

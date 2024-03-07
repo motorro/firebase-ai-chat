@@ -15,7 +15,7 @@ import {
     capture
 } from "@johanblumenberg/ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
-import {assistantId, Data, threadId, chatState, data, MESSAGES, Data2, userId} from "./mock";
+import {assistantId, Data, threadId, chatState, data, Data2, userId} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
@@ -26,17 +26,22 @@ import {
     ChatState,
     ChatStatus,
     ChatWorker, TaskScheduler,
-    ToolsDispatcher
+    ToolsDispatcher,
+    Collections
 } from "../src";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {ChatError} from "../lib/aichat/data/ChatError";
 import {ChatCommandData} from "../lib/aichat/data/ChatCommandQueue";
+import {Dispatch, Run} from "../src/aichat/data/Dispatch";
+import FieldValue = firestore.FieldValue;
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
     const chats = firestore().collection("chats") as CollectionReference<ChatState<Data>>;
     const chatDoc = chats.doc();
-    const chatMessages = chatDoc.collection(MESSAGES) as CollectionReference<ChatMessage>;
+    const chatMessages = chatDoc.collection(Collections.messages) as CollectionReference<ChatMessage>;
+    const chatDispatches = chatDoc.collection(Collections.dispatches) as CollectionReference<Dispatch>;
+    const dispatchId = "dispatchId";
     const runId = "runId";
     const lastPostMessageId = "message-12345";
     const lastChatMessageId = "message-67890";
@@ -44,7 +49,7 @@ describe("Chat worker", function() {
 
     const context: TaskContext = {
         executionCount: 0,
-        id: "123",
+        id: runId,
         queueName: "Chat",
         retryCount: 0,
         scheduledTime: ""
@@ -53,7 +58,7 @@ describe("Chat worker", function() {
     const commandData: ChatCommandData = {
         ownerId: userId,
         chatDocumentPath: chatDoc.path,
-        dispatchId: runId
+        dispatchId: dispatchId
     }
 
     const createCommand: ChatCommandQueue = {
@@ -71,6 +76,10 @@ describe("Chat worker", function() {
     const retrieveCommand: ChatCommandQueue = {
         ...commandData,
         actions: ["retrieve"]
+    };
+    const switchToUserCommand: ChatCommandQueue = {
+        ...commandData,
+        actions: ["switchToUserInput"]
     };
     const closeCommand: ChatCommandQueue = {
         ...commandData,
@@ -107,21 +116,24 @@ describe("Chat worker", function() {
         await db.recursiveDelete(chats);
     });
 
-    async function createChat(thread?: string, status?: ChatStatus, run?: string) {
+    async function createChat(thread?: string, status?: ChatStatus, dispatch?: string) {
+        const dispatchDoc = dispatch || dispatchId;
         const data: ChatState<Data> = {
             ...chatState,
             config: (thread ? {...chatState.config, threadId: thread} : chatState.config),
             ...(status ? {status: status} : {status: "processing"}),
-            ...(run ? {dispatchId: run} : {dispatchId: runId})
+            latestDispatchId: dispatchDoc
         };
 
         await chatDoc.set(data);
+        await chatDispatches.doc(dispatchDoc).set({createdAt: FieldValue.serverTimestamp()})
+
         const toInsert: ReadonlyArray<ChatMessage> = messages.map((message, index) => ({
             userId: userId,
             author: "user",
             createdAt: Timestamp.now(),
             inBatchSortIndex: index,
-            dispatchId: runId,
+            dispatchId: dispatchId,
             text: message
         }));
         for (const message of toInsert) {
@@ -130,7 +142,7 @@ describe("Chat worker", function() {
     }
 
     it("processes create command", async function() {
-        await createChat(undefined, "creating", runId);
+        await createChat(undefined, "processing", dispatchId);
 
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
 
@@ -147,7 +159,6 @@ describe("Chat worker", function() {
             throw new Error("Should have chat status");
         }
         updatedChatState.should.deep.include({
-            status: "created",
             config: {
                 ...chatState.config,
                 threadId: threadId,
@@ -157,50 +168,8 @@ describe("Chat worker", function() {
         verify(wrapper.createThread(anything())).once();
     });
 
-    it("doesn't process chat creation if status is not creating", async function() {
-        await createChat(undefined, "complete");
-
-        const request: Request<ChatCommandQueue> = {
-            ...context,
-            data: createCommand
-        };
-
-        await worker.dispatch(request);
-
-        const chatStateUpdate = await chatDoc.get();
-        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
-        if (undefined === updatedChatState) {
-            throw new Error("Should have chat status");
-        }
-        updatedChatState.should.deep.include({
-            status: "complete"
-        });
-        verify(wrapper.createThread(anything())).never();
-    });
-
-    it("doesn't process chat creation for another run", async function() {
-        await createChat(undefined, "creating", "other_run");
-
-        const request: Request<ChatCommandQueue> = {
-            ...context,
-            data: createCommand
-        };
-
-        await worker.dispatch(request);
-
-        const chatStateUpdate = await chatDoc.get();
-        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
-        if (undefined === updatedChatState) {
-            throw new Error("Should have chat status");
-        }
-        updatedChatState.should.deep.include({
-            status: "creating"
-        });
-        verify(wrapper.createThread(anything())).never();
-    });
-
     it("processes post command", async function() {
-        await createChat(threadId, "posting", runId);
+        await createChat(threadId, "processing", dispatchId);
 
         when(wrapper.postMessage(anything(), anything())).thenReturn(Promise.resolve(lastPostMessageId));
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
@@ -218,60 +187,24 @@ describe("Chat worker", function() {
             throw new Error("Should have chat status");
         }
         updatedChatState.should.deep.include({
-            status: "processing"
+            lastMessageId: lastPostMessageId
         });
 
         verify(wrapper.postMessage(strictEqual(threadId), strictEqual(messages[0]))).once();
         verify(wrapper.postMessage(strictEqual(threadId), strictEqual(messages[1]))).once();
     });
 
-    it("doesn't process posting if status is not posting", async function() {
-        await createChat(threadId, "complete");
-
-        const request: Request<ChatCommandQueue> = {
-            ...context,
-            data: postCommand
-        };
-
-        await worker.dispatch(request);
-
-        const chatStateUpdate = await chatDoc.get();
-        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
-        if (undefined === updatedChatState) {
-            throw new Error("Should have chat status");
-        }
-        updatedChatState.should.deep.include({
-            status: "complete"
-        });
-        verify(wrapper.postMessage(anything(), anything())).never();
-    });
-
-    it("doesn't process chat posting for another run", async function() {
-        await createChat(threadId, "posting", "other_run");
-
-        const request: Request<ChatCommandQueue> = {
-            ...context,
-            data: postCommand
-        };
-
-        await worker.dispatch(request);
-
-        const chatStateUpdate = await chatDoc.get();
-        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
-        if (undefined === updatedChatState) {
-            throw new Error("Should have chat status");
-        }
-        updatedChatState.should.deep.include({
-            status: "posting"
-        });
-        verify(wrapper.postMessage(anything(), anything())).never();
-    });
-
     it("processes run command", async function() {
-        await createChat(threadId, "processing", runId);
+        await createChat(threadId, "processing", dispatchId);
 
+        const changedState: ChatState<Data> = {
+            ...chatState,
+            data: {
+                value: "Test2"
+            }
+        }
         when(wrapper.run(anything(), anything(), anything(), anything())).thenCall((args) => {
-            return Promise.resolve(args[2]);
+            return Promise.resolve(changedState.data);
         });
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
@@ -288,56 +221,14 @@ describe("Chat worker", function() {
             throw new Error("Should have chat status");
         }
         updatedChatState.should.deep.include({
-            status: "gettingMessages"
+            data: changedState.data
         });
 
         verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anyFunction())).once();
     });
 
-    it("doesn't process running if status is not posting", async function() {
-        await createChat(threadId, "complete");
-
-        const request: Request<ChatCommandQueue> = {
-            ...context,
-            data: runCommand
-        };
-
-        await worker.dispatch(request);
-
-        const chatStateUpdate = await chatDoc.get();
-        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
-        if (undefined === updatedChatState) {
-            throw new Error("Should have chat status");
-        }
-        updatedChatState.should.deep.include({
-            status: "complete"
-        });
-        verify(wrapper.run(anything(), anything(), anything(), anything())).never();
-    });
-
-    it("doesn't process chat running for another run", async function() {
-        await createChat(threadId, "processing", "other_run");
-
-        const request: Request<ChatCommandQueue> = {
-            ...context,
-            data: runCommand
-        };
-
-        await worker.dispatch(request);
-
-        const chatStateUpdate = await chatDoc.get();
-        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
-        if (undefined === updatedChatState) {
-            throw new Error("Should have chat status");
-        }
-        updatedChatState.should.deep.include({
-            status: "processing"
-        });
-        verify(wrapper.run(anything(), anything(), anything(), anything())).never();
-    });
-
     it("processes retrieve command", async function() {
-        await createChat(threadId, "gettingMessages", runId);
+        await createChat(threadId, "processing", dispatchId);
 
         when(wrapper.getMessages(anything(), anything())).thenReturn(Promise.resolve({
             messages: aiMessages,
@@ -357,7 +248,6 @@ describe("Chat worker", function() {
             throw new Error("Should have chat status");
         }
         updatedChatState.should.deep.include({
-            status: "userInput",
             lastMessageId: lastChatMessageId
         });
 
@@ -378,12 +268,34 @@ describe("Chat worker", function() {
         verify(wrapper.getMessages(strictEqual(threadId), strictEqual(lastChatMessageId)));
     });
 
-    it("doesn't process retrieval if status is in wrong state", async function() {
-        await createChat(threadId, "complete");
+    it("processes switch to user command", async function() {
+        await createChat(threadId, "processing", dispatchId);
 
         const request: Request<ChatCommandQueue> = {
             ...context,
-            data: retrieveCommand
+            data: switchToUserCommand
+        };
+
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            status: "userInput"
+        });
+    });
+
+    it("processes close command", async function() {
+        await createChat(threadId, "closing", dispatchId);
+
+        when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
+
+        const request: Request<ChatCommandQueue> = {
+            ...context,
+            data: closeCommand
         };
 
         await worker.dispatch(request);
@@ -396,46 +308,12 @@ describe("Chat worker", function() {
         updatedChatState.should.deep.include({
             status: "complete"
         });
-    });
-
-    it("doesn't process retrieval for another run", async function() {
-        await createChat(threadId, "gettingMessages", "other_run");
-
-        const request: Request<ChatCommandQueue> = {
-            ...context,
-            data: retrieveCommand
-        };
-
-        await worker.dispatch(request);
-
-        const chatStateUpdate = await chatDoc.get();
-        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
-        if (undefined === updatedChatState) {
-            throw new Error("Should have chat status");
-        }
-        updatedChatState.should.deep.include({
-            status: "gettingMessages"
-        });
-    });
-
-
-    it("processes close command", async function() {
-        await createChat(threadId, "closing", runId);
-
-        when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
-
-        const request: Request<ChatCommandQueue> = {
-            ...context,
-            data: closeCommand
-        };
-
-        await worker.dispatch(request);
 
         verify(wrapper.deleteThread(threadId)).once();
     });
 
     it("doesn't update chat if state changes while processing", async function() {
-        await createChat(threadId, "gettingMessages");
+        await createChat(threadId, "processing");
 
         when(wrapper.getMessages(anything(), anything())).thenCall(async () => {
             await chatDoc.set({status: "complete"}, {merge: true});
@@ -463,7 +341,7 @@ describe("Chat worker", function() {
     });
 
     it("sets retry if there are retries", async function() {
-        await createChat(threadId, "creating");
+        await createChat(threadId, "processing");
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
 
@@ -479,7 +357,7 @@ describe("Chat worker", function() {
     });
 
     it("fails chat if there are no retries", async function() {
-        await createChat(threadId, "creating");
+        await createChat(threadId, "processing");
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
         when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
@@ -502,8 +380,109 @@ describe("Chat worker", function() {
         });
     });
 
+    it ("completes run on success", async function() {
+        await createChat(threadId, "processing");
+        const request: Request<ChatCommandQueue> = {
+            ...context,
+            data: switchToUserCommand
+        };
+        await worker.dispatch(request);
+
+        const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        run.exists.should.be.true;
+        const runData = run.data();
+        if (undefined === data) {
+            throw new Error("Should have run document");
+        }
+        (runData as Run).status.should.equal("complete");
+    });
+
+    it ("completes run on fail", async function() {
+        await createChat(threadId, "processing");
+
+        when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
+        when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
+
+        const request: Request<ChatCommandQueue> = {
+            ...context,
+            retryCount: 9,
+            data: createCommand
+        };
+
+        await worker.dispatch(request);
+
+        const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        run.exists.should.be.true;
+        const runData = run.data();
+        if (undefined === data) {
+            throw new Error("Should have run document");
+        }
+        (runData as Run).status.should.equal("complete");
+    });
+
+    it ("sets run to retry on retry", async function() {
+        await createChat(threadId, "processing");
+
+        when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
+
+        const request: Request<ChatCommandQueue> = {
+            ...context,
+            data: createCommand
+        };
+
+        await worker.dispatch(request).catch(() => {});
+
+        const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        run.exists.should.be.true;
+        const runData = run.data();
+        if (undefined === data) {
+            throw new Error("Should have run document");
+        }
+        (runData as Run).status.should.equal("waitingForRetry");
+    });
+
+    it("aborts if running in parallel", async function() {
+        await createChat(threadId, "processing");
+        await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).set({status: "running", createdAt: FieldValue.serverTimestamp()});
+
+        const request: Request<ChatCommandQueue> = {
+            ...context,
+            data: switchToUserCommand
+        };
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            status: "processing"
+        });
+    });
+
+    it("aborts if already run", async function() {
+        await createChat(threadId, "processing");
+        await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).set({status: "complete", createdAt: FieldValue.serverTimestamp()});
+
+        const request: Request<ChatCommandQueue> = {
+            ...context,
+            data: switchToUserCommand
+        };
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            status: "processing"
+        });
+    });
+
     it("runs command batch", async function() {
-        await createChat(threadId, "creating");
+        await createChat(threadId, "processing");
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
         when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
 

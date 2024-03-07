@@ -8,8 +8,7 @@ import Firestore = firestore.Firestore;
 import {FirebaseQueueTaskScheduler} from "./aichat/FirebaseQueueTaskScheduler";
 import {ChatData} from "./aichat/data/ChatState";
 
-export {ChatStatus} from "./aichat/data/ChatStatus";
-export {ChatData, ChatState} from "./aichat/data/ChatState";
+export {ChatData, ChatState, ChatStatus} from "./aichat/data/ChatState";
 export {ChatMessage} from "./aichat/data/ChatMessage";
 export {ChatCommandQueue} from "./aichat/data/ChatCommandQueue";
 export {Logger, setLogger} from "./logging";

@@ -27,31 +27,40 @@ export declare class ChatWorker {
     dispatch(req: Request<ChatCommandQueue>): Promise<void>;
     /**
      * Creates thread
-     * @param command Command data
+     * @param commandData Command data
+     * @param state Chat state
      * @private
      */
     private runCreateThread;
     /**
      * Posts user messages of current dispatch
-     * @param command Command data
+     * @param commandData Command data
+     * @param state Chat state
      * @private
      */
     private runPostMessages;
     /**
      * Runs assistant
-     * @param command Command data
+     * @param state Chat state
      * @private
      */
     private runRun;
     /**
      * Retrieves new messages
-     * @param command Command data
+     * @param commandData Command data
+     * @param state Chat state
      * @private
      */
     private runRetrieve;
     /**
+     * Switches to user input.
+     * Made as a separate command as we can come here in several ways
+     * @private
+     */
+    private runSwitchToUser;
+    /**
      * Closes chat
-     * @param command Command data
+     * @param state Chat state
      * @private
      */
     private runClose;
@@ -62,7 +71,12 @@ export declare class ChatWorker {
      * @private
      */
     private getMessageCollection;
-    private checkState;
-    private withCheckedState;
-    private updateWithCheck;
+    /**
+     * Runs dispatch with concurrency and duplication check
+     * https://mm.tt/app/map/3191589380?t=UdskfqiKnl
+     * @param req
+     * @param processAction
+     * @private
+     */
+    private dispatchWithCheck;
 }

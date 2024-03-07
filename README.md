@@ -316,7 +316,7 @@ Under the hood the processor will:
 
 ### Handling user messages
 User may respond to AI messages whenever the [ChatState](src/aichat/data/ChatState.ts) has one of the 
-permitted [ChatStatus](src/aichat/data/ChatStatus.ts):
+permitted [ChatStatus](src/aichat/data/ChatState.ts):
 - `created` - chat created
 - `userInput` - waiting for a user input
 

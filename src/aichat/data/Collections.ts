@@ -1,3 +1,5 @@
 export const Collections = {
-    messages: "messages"
+    messages: "messages",
+    dispatches: "dispatches",
+    runs: "runs"
 };
