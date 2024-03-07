@@ -2,7 +2,7 @@ import {AssistantChat} from "./aichat/AssistantChat";
 import {AiWrapper} from "./aichat/AiWrapper";
 import {ChatWorker} from "./aichat/ChatWorker";
 import {ToolsDispatcher} from "./aichat/ToolsDispatcher";
-import {DeliverySchedule, Functions} from "firebase-admin/lib/functions";
+import {Functions} from "firebase-admin/lib/functions";
 import {firestore} from "firebase-admin";
 import Firestore = firestore.Firestore;
 import {FirebaseQueueTaskScheduler} from "./aichat/FirebaseQueueTaskScheduler";
@@ -26,10 +26,11 @@ export {Collections} from "./aichat/data/Collections";
 export interface AiChat {
     /**
      * Chat user-facing callable functions
-     * @param name Chat name for command dispatcher
+     * @param queueName Chat dispatcher function (queue) name to dispatch work
      * @return Chat interface
+     * @see worker
      */
-    chat<DATA extends ChatData>(name: string, scheduling: DeliverySchedule): AssistantChat<DATA>
+    chat<DATA extends ChatData>(queueName: string): AssistantChat<DATA>
 
     /**
      * Chat worker to use in Firebase tasks
@@ -51,8 +52,8 @@ export interface AiChat {
 export function factory(firestore: Firestore, functions: Functions, location: string): AiChat {
     const scheduler = new FirebaseQueueTaskScheduler(functions, location);
     return {
-        chat: function<DATA extends ChatData>(name: string): AssistantChat<DATA> {
-            return new AssistantChat<DATA>(firestore, name, scheduler);
+        chat: function<DATA extends ChatData>(queueName: string): AssistantChat<DATA> {
+            return new AssistantChat<DATA>(firestore, queueName, scheduler);
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         worker: function(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): ChatWorker {

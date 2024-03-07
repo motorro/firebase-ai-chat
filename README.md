@@ -230,13 +230,11 @@ To create request processor, use the [AiChat](src/index.ts) factory we have set 
 ```typescript
 // Functions region where the worker task will run
 const region = "europe-west1";
-// Chat processor name
+// Chat worker function (queue) name to dispatch work
 const NAME = "calculator";
 
 const assistantChat = chatFactory.chat(
-    NAME,
-    region,
-    {} // Cloud tasks DeliverySchedule to schedule runs
+    NAME
 );
 ```
 
@@ -283,19 +281,13 @@ export const calculate = onCall2(options, async (request: CallableRequest<Calcul
     // Create a new chat document reference
     const chat = chats.doc() as DocumentReference<ChatState<CalculateChatData>>;
     // Create a chat document record in CHATS collection
-    await assistantChat.create(
+    const result = await assistantChat.create(
             chat, // Chat document
             uid, // Owner ID
             {sum: 0}, // Initial data state
             openAiAssistantId.value(), // OpenAI Assistand ID
-            NAME // Processor name
-    );
-    // Put the initial message user has created at the prompt screen
-    // Posting a message will also execute the OpenAI Assistant run
-    const result = await assistantChat.postMessage(
-            chat,
-            uid,
-            [data.message]
+            NAME, // Name of tools dispatcher that is used to handle AI tool calls
+            [data.messages] // Initial message to process
     );
     
     // Return the `CalculateChatResponse` to client App
@@ -317,7 +309,6 @@ Under the hood the processor will:
 ### Handling user messages
 User may respond to AI messages whenever the [ChatState](src/aichat/data/ChatState.ts) has one of the 
 permitted [ChatStatus](src/aichat/data/ChatState.ts):
-- `created` - chat created
 - `userInput` - waiting for a user input
 
 The request to handle a message may look like this:
@@ -362,9 +353,9 @@ To register the Cloud Task handler you may want to create the following function
 ```typescript
 import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import OpenAI from "openai";
-import {OpenAiWrapper, ChatCommand} from "firebase-openai-chat";
+import {OpenAiWrapper} from "firebase-openai-chat";
 
-export const calculator = onTaskDispatched<ChatCommand>(
+export const calculator = onTaskDispatched(
     {
       secrets: [openAiApiKey],
       retryConfig: {

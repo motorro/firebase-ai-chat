@@ -5,7 +5,7 @@ import {Collections} from "./data/Collections";
 import {ChatMessage} from "./data/ChatMessage";
 import CollectionReference = firestore.CollectionReference;
 import {TaskScheduler} from "./TaskScheduler";
-import {ChatCommandQueue} from "./data/ChatCommandQueue";
+import {ChatCommandQueue, ChatCommandType} from "./data/ChatCommandQueue";
 import {HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;
@@ -52,6 +52,7 @@ export class AssistantChat<DATA extends ChatData> {
      * @param data Chat data to reduce
      * @param assistantId Assistant ID
      * @param dispatcherId Dispatcher ID to use for tool calls
+     * @param messages Starting messages
      */
     async create(
         document: DocumentReference<ChatState<DATA>>,
@@ -59,6 +60,7 @@ export class AssistantChat<DATA extends ChatData> {
         data: DATA,
         assistantId: string,
         dispatcherId: string,
+        messages?: ReadonlyArray<string>
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d(`Creating new chat with assistant ${assistantId}...`);
         const batch = this.db.batch();
@@ -83,11 +85,17 @@ export class AssistantChat<DATA extends ChatData> {
         });
         await batch.commit();
 
+        let actions: ReadonlyArray<ChatCommandType> = ["create", "switchToUserInput"];
+        if (undefined !== messages && messages.length > 0) {
+            await this.insertMessages(document, userId, dispatchDoc.id, messages);
+            actions = ["create", "post", "run", "retrieve", "switchToUserInput"];
+        }
+
         const command: ChatCommandQueue = {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: dispatchDoc.id,
-            actions: ["create", "switchToUserInput"]
+            actions: actions
         };
         await this.scheduler.schedule(
             this.name,
@@ -117,22 +125,7 @@ export class AssistantChat<DATA extends ChatData> {
             (current) => ["userInput"].includes(current),
             "processing",
             async (state) => {
-                const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
-                const batch = this.db.batch();
-                messages.forEach((message, index) => {
-                    batch.create(
-                        messageList.doc(),
-                        {
-                            userId: userId,
-                            dispatchId: state.latestDispatchId,
-                            author: "user",
-                            text: message,
-                            inBatchSortIndex: index,
-                            createdAt: FieldValue.serverTimestamp()
-                        }
-                    );
-                });
-                await batch.commit();
+                await this.insertMessages(document, userId, state.latestDispatchId, messages);
                 const command: ChatCommandQueue = {
                     ownerId: userId,
                     chatDocumentPath: document.path,
@@ -150,6 +143,38 @@ export class AssistantChat<DATA extends ChatData> {
                 };
             }
         );
+    }
+
+    /**
+     * Adds user messages
+     * @param document Chat document
+     * @param userId Owner user
+     * @param dispatchId Dispatch ID
+     * @param messages Messages to insert
+     * @private
+     */
+    private async insertMessages(
+        document: DocumentReference<ChatState<DATA>>,
+        userId: string,
+        dispatchId: string,
+        messages: ReadonlyArray<string>
+    ): Promise<void> {
+        const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
+        const batch = this.db.batch();
+        messages.forEach((message, index) => {
+            batch.create(
+                messageList.doc(),
+                {
+                    userId: userId,
+                    dispatchId: dispatchId,
+                    author: "user",
+                    text: message,
+                    inBatchSortIndex: index,
+                    createdAt: FieldValue.serverTimestamp()
+                }
+            );
+        });
+        await batch.commit();
     }
 
     /**
