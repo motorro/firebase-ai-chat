@@ -2,7 +2,7 @@ import { AssistantChat } from "./aichat/AssistantChat";
 import { AiWrapper } from "./aichat/AiWrapper";
 import { ChatWorker } from "./aichat/ChatWorker";
 import { ToolsDispatcher } from "./aichat/ToolsDispatcher";
-import { DeliverySchedule, Functions } from "firebase-admin/lib/functions";
+import { Functions } from "firebase-admin/lib/functions";
 import { firestore } from "firebase-admin";
 import Firestore = firestore.Firestore;
 import { ChatData } from "./aichat/data/ChatState";
@@ -23,10 +23,11 @@ export { Collections } from "./aichat/data/Collections";
 export interface AiChat {
     /**
      * Chat user-facing callable functions
-     * @param name Chat name for command dispatcher
+     * @param queueName Chat dispatcher function (queue) name to dispatch work
      * @return Chat interface
+     * @see worker
      */
-    chat<DATA extends ChatData>(name: string, scheduling: DeliverySchedule): AssistantChat<DATA>;
+    chat<DATA extends ChatData>(queueName: string): AssistantChat<DATA>;
     /**
      * Chat worker to use in Firebase tasks
      * @param aiWrapper AI API wrapper
