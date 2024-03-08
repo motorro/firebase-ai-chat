@@ -35,6 +35,17 @@ export declare class AssistantChat<DATA extends ChatData> {
      */
     create(document: DocumentReference<ChatState<DATA>>, userId: string, data: DATA, assistantId: string, dispatcherId: string, messages?: ReadonlyArray<string>): Promise<ChatStateUpdate<DATA>>;
     /**
+     * Runs AI once and cleans up afterward
+     * For tasks like analyzing some text once and getting results with function call
+     * @param document Document reference
+     * @param userId Chat owner
+     * @param data Chat data to reduce
+     * @param assistantId Assistant ID
+     * @param dispatcherId Dispatcher ID to use for tool calls
+     * @param messages Starting messages
+     */
+    singleRun(document: DocumentReference<ChatState<DATA>>, userId: string, data: DATA, assistantId: string, dispatcherId: string, messages: ReadonlyArray<string>): Promise<ChatStateUpdate<DATA>>;
+    /**
      * Posts messages to the thread
      * @param document Chat document
      * @param userId Chat owner
@@ -43,6 +54,7 @@ export declare class AssistantChat<DATA extends ChatData> {
     postMessage(document: DocumentReference<ChatState<DATA>>, userId: string, messages: ReadonlyArray<string>): Promise<ChatStateUpdate<DATA>>;
     /**
      * Adds user messages
+     * @param batch Write batch
      * @param document Chat document
      * @param userId Owner user
      * @param dispatchId Dispatch ID

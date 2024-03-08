@@ -83,19 +83,77 @@ export class AssistantChat<DATA extends ChatData> {
         batch.set(dispatchDoc, {
             createdAt: FieldValue.serverTimestamp()
         });
-        await batch.commit();
 
         let actions: ReadonlyArray<ChatCommandType> = ["create", "switchToUserInput"];
         if (undefined !== messages && messages.length > 0) {
-            await this.insertMessages(document, userId, dispatchDoc.id, messages);
+            this.insertMessages(batch, document, userId, dispatchDoc.id, messages);
             actions = ["create", "post", "run", "retrieve", "switchToUserInput"];
         }
+        await batch.commit();
 
         const command: ChatCommandQueue = {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: dispatchDoc.id,
             actions: actions
+        };
+        await this.scheduler.schedule(
+            this.name,
+            command
+        );
+        return {
+            status: status,
+            data: data
+        };
+    }
+
+    /**
+     * Runs AI once and cleans up afterward
+     * For tasks like analyzing some text once and getting results with function call
+     * @param document Document reference
+     * @param userId Chat owner
+     * @param data Chat data to reduce
+     * @param assistantId Assistant ID
+     * @param dispatcherId Dispatcher ID to use for tool calls
+     * @param messages Starting messages
+     */
+    async singleRun(
+        document: DocumentReference<ChatState<DATA>>,
+        userId: string,
+        data: DATA,
+        assistantId: string,
+        dispatcherId: string,
+        messages: ReadonlyArray<string>
+    ): Promise<ChatStateUpdate<DATA>> {
+        logger.d(`Creating new single run with assistant ${assistantId}...`);
+        const batch = this.db.batch();
+        const status: ChatStatus = "processing";
+        const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
+
+        batch.set(document, {
+            userId: userId,
+            config: {
+                assistantId: assistantId,
+                workerName: this.name,
+                dispatcherId: dispatcherId
+            },
+            status: status,
+            latestDispatchId: dispatchDoc.id,
+            data: data,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp()
+        });
+        batch.set(dispatchDoc, {
+            createdAt: FieldValue.serverTimestamp()
+        });
+        this.insertMessages(batch, document, userId, dispatchDoc.id, messages);
+        await batch.commit();
+
+        const command: ChatCommandQueue = {
+            ownerId: userId,
+            chatDocumentPath: document.path,
+            dispatchId: dispatchDoc.id,
+            actions: ["create", "post", "run", "retrieve", "close"]
         };
         await this.scheduler.schedule(
             this.name,
@@ -125,7 +183,13 @@ export class AssistantChat<DATA extends ChatData> {
             (current) => ["userInput"].includes(current),
             "processing",
             async (state) => {
-                await this.insertMessages(document, userId, state.latestDispatchId, messages);
+                await this.insertMessages(
+                    this.db.batch(),
+                    document,
+                    userId,
+                    state.latestDispatchId,
+                    messages
+                ).commit();
                 const command: ChatCommandQueue = {
                     ownerId: userId,
                     chatDocumentPath: document.path,
@@ -147,20 +211,21 @@ export class AssistantChat<DATA extends ChatData> {
 
     /**
      * Adds user messages
+     * @param batch Write batch
      * @param document Chat document
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
      * @private
      */
-    private async insertMessages(
+    private insertMessages(
+        batch: FirebaseFirestore.WriteBatch,
         document: DocumentReference<ChatState<DATA>>,
         userId: string,
         dispatchId: string,
         messages: ReadonlyArray<string>
-    ): Promise<void> {
+    ): FirebaseFirestore.WriteBatch {
         const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
-        const batch = this.db.batch();
         messages.forEach((message, index) => {
             batch.create(
                 messageList.doc(),
@@ -174,7 +239,7 @@ export class AssistantChat<DATA extends ChatData> {
                 }
             );
         });
-        await batch.commit();
+        return batch;
     }
 
     /**

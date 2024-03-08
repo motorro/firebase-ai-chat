@@ -70,6 +70,110 @@ describe("Assistant Chat", function() {
         );
     });
 
+    it("creates chat record with messages", async function() {
+        const update = await chat.create(chatDoc, userId, data, assistantId, dispatcherId, messages);
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        update.should.deep.include({
+            status: "processing",
+            data: data
+        });
+
+        const createdState: ChatState<Data> | undefined = (await chatDoc.get()).data();
+        if (undefined === createdState) {
+            throw new Error("Chat should be created");
+        }
+        createdState.should.deep.include({
+            userId: userId,
+            config: {
+                assistantId: assistantId,
+                dispatcherId: dispatcherId,
+                workerName: "Chat"
+            },
+            data: data,
+            status: "processing"
+        });
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(createdState.latestDispatchId);
+        (await dispatchDoc.get()).exists.should.be.true;
+
+        const insertedMessages = await chatMessages.get();
+        insertedMessages.docs.should.have.lengthOf(messages.length);
+        const insertedData = insertedMessages.docs
+            .map((doc: QueryDocumentSnapshot<DocumentData>) => doc.data())
+            .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
+        for (let i = 0; i < messages.length; i++) {
+            insertedData[i].should.deep.include({
+                userId: userId,
+                author: "user",
+                text: messages[i],
+                dispatchId: dispatchDoc.id
+            });
+        }
+
+        const [name, command] = capture(scheduler.schedule).last();
+        name.should.be.equal("Chat");
+        command.should.deep.include(
+            {
+                ownerId: userId,
+                chatDocumentPath: chatDoc.path,
+                dispatchId: dispatchDoc.id,
+                actions: ["create", "post", "run", "retrieve", "switchToUserInput"]
+            }
+        );
+    });
+
+    it("creates a single run", async function() {
+        const update = await chat.singleRun(chatDoc, userId, data, assistantId, dispatcherId, messages);
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        update.should.deep.include({
+            status: "processing",
+            data: data
+        });
+
+        const createdState: ChatState<Data> | undefined = (await chatDoc.get()).data();
+        if (undefined === createdState) {
+            throw new Error("Chat should be created");
+        }
+        createdState.should.deep.include({
+            userId: userId,
+            config: {
+                assistantId: assistantId,
+                dispatcherId: dispatcherId,
+                workerName: "Chat"
+            },
+            data: data,
+            status: "processing"
+        });
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(createdState.latestDispatchId);
+        (await dispatchDoc.get()).exists.should.be.true;
+
+        const insertedMessages = await chatMessages.get();
+        insertedMessages.docs.should.have.lengthOf(messages.length);
+        const insertedData = insertedMessages.docs
+            .map((doc: QueryDocumentSnapshot<DocumentData>) => doc.data())
+            .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
+        for (let i = 0; i < messages.length; i++) {
+            insertedData[i].should.deep.include({
+                userId: userId,
+                author: "user",
+                text: messages[i],
+                dispatchId: dispatchDoc.id
+            });
+        }
+
+        const [name, command] = capture(scheduler.schedule).last();
+        name.should.be.equal("Chat");
+        command.should.deep.include(
+            {
+                ownerId: userId,
+                chatDocumentPath: chatDoc.path,
+                dispatchId: dispatchDoc.id,
+                actions: ["create", "post", "run", "retrieve", "close"]
+            }
+        );
+    });
+
     it("posts a message to the chat", async function() {
         await chatDoc.set(chatState);
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());

@@ -220,7 +220,8 @@ All chat requests from users are handled by [AssistantChat](src/aichat/Assistant
 It is a front-facing API that takes requests from your clients, maintains the chat state and schedules AI runs.
 The class has three methods:
 
-- `create` - creates a new chat
+- `create` - creates a new interactive chat with your app client. 
+- `singleRun` - creates a new chat that runs once. You may find it to schedule one-off analyses with tools output.
 - `postMessage` - posts a new client message
 - `closeChat` - finishes the chat deleting all resources (optional)
 
