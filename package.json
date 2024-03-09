@@ -34,13 +34,11 @@
   "bugs": {
     "url": "https://github.com/motorro/firebase-openai-chat/issues"
   },
-  "dependencies": {
-    "@google-cloud/tasks": "^5.1.1",
-    "google-auth-library": "^9.6.3"
-  },
   "peerDependencies": {
     "firebase-admin": "^10.0.0 || ^11.0.0 || ^12.0.0",
+    "@google-cloud/tasks": "^4.0.0 || ^5.0.0",
     "firebase-functions": ">=4.7.0",
+    "google-auth-library": ">=9.6.3",
     "openai": ">=4.27.0"
   },
   "devDependencies": {
