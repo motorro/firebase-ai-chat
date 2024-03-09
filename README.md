@@ -288,7 +288,8 @@ export const calculate = onCall2(options, async (request: CallableRequest<Calcul
             {sum: 0}, // Initial data state
             openAiAssistantId.value(), // OpenAI Assistand ID
             NAME, // Name of tools dispatcher that is used to handle AI tool calls
-            [data.messages] // Initial message to process
+            [data.messages], // Initial message to process
+            {a: 1} // Optional metadata to pass with worker task. Available in completion handler
     );
     
     // Return the `CalculateChatResponse` to client App
@@ -330,7 +331,8 @@ export const postToCalculate = onCall2(options, async (request: CallableRequest<
     const result = await assistantChat.postMessage(
             db.doc(data.chatDocument) as DocumentReference<ChatState<CalculateChatData>>,
             uid,
-            [data.message]
+            [data.message],
+            {a: 1} // Optional metadata to pass with worker task. Available in completion handler
     );
     
     // Return the `CalculateChatResponse` to client App
@@ -354,7 +356,7 @@ To register the Cloud Task handler you may want to create the following function
 ```typescript
 import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import OpenAI from "openai";
-import {OpenAiWrapper} from "firebase-openai-chat";
+import {OpenAiWrapper, Meta} from "firebase-openai-chat";
 
 export const calculator = onTaskDispatched(
     {
@@ -373,7 +375,13 @@ export const calculator = onTaskDispatched(
       const ai = new OpenAiWrapper(new OpenAI({apiKey: openAiApiKey.value()}));
       // Create and run a worker
       // See the `dispatchers` definitions below
-      await chatFactory.worker(ai, dispatchers).dispatch(req);
+      await chatFactory.worker(ai, dispatchers).dispatch(
+          req,
+          (chatDocumentPath: string, meta: Meta) => {
+             // Optional task completion handler
+             // Meta - some meta-data passed to chat operation
+          }   
+      );
     }
 );
 ```

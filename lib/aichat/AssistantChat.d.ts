@@ -4,6 +4,7 @@ import { TaskScheduler } from "./TaskScheduler";
 import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;
 import Firestore = firestore.Firestore;
+import { Meta } from "./data/Meta";
 /**
  * Front-facing assistant chat
  * Runs AI chat saving state in the database
@@ -32,8 +33,9 @@ export declare class AssistantChat<DATA extends ChatData> {
      * @param assistantId Assistant ID
      * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
+     * @param meta Metadata to pass to chat worker
      */
-    create(document: DocumentReference<ChatState<DATA>>, userId: string, data: DATA, assistantId: string, dispatcherId: string, messages?: ReadonlyArray<string>): Promise<ChatStateUpdate<DATA>>;
+    create(document: DocumentReference<ChatState<DATA>>, userId: string, data: DATA, assistantId: string, dispatcherId: string, messages?: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Runs AI once and cleans up afterward
      * For tasks like analyzing some text once and getting results with function call
@@ -43,15 +45,17 @@ export declare class AssistantChat<DATA extends ChatData> {
      * @param assistantId Assistant ID
      * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
+     * @param meta Metadata to pass to chat worker
      */
-    singleRun(document: DocumentReference<ChatState<DATA>>, userId: string, data: DATA, assistantId: string, dispatcherId: string, messages: ReadonlyArray<string>): Promise<ChatStateUpdate<DATA>>;
+    singleRun(document: DocumentReference<ChatState<DATA>>, userId: string, data: DATA, assistantId: string, dispatcherId: string, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Posts messages to the thread
      * @param document Chat document
      * @param userId Chat owner
      * @param messages Messages to post
+     * @param meta Metadata to pass to chat worker
      */
-    postMessage(document: DocumentReference<ChatState<DATA>>, userId: string, messages: ReadonlyArray<string>): Promise<ChatStateUpdate<DATA>>;
+    postMessage(document: DocumentReference<ChatState<DATA>>, userId: string, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Adds user messages
      * @param batch Write batch
@@ -59,6 +63,7 @@ export declare class AssistantChat<DATA extends ChatData> {
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
+     * @return Write batch
      * @private
      */
     private insertMessages;
@@ -66,8 +71,9 @@ export declare class AssistantChat<DATA extends ChatData> {
      * Closes chats
      * @param document Chat document reference
      * @param userId Owner user ID
+     * @param meta Metadata to pass to chat worker
      */
-    closeChat(document: DocumentReference<ChatState<DATA>>, userId: string): Promise<ChatStateUpdate<DATA>>;
+    closeChat(document: DocumentReference<ChatState<DATA>>, userId: string, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Runs block mutating chat status if current chat status is one of allowed
      * @param document Chat document

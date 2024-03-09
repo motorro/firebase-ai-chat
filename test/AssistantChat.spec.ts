@@ -6,7 +6,7 @@ import CollectionReference = admin.firestore.CollectionReference;
 import {assistantId, data, Data, dispatcherId, userId, chatState, CHATS, NAME} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
-import {ChatState, TaskScheduler, AssistantChat} from "../src";
+import {ChatState, TaskScheduler, AssistantChat, Meta} from "../src";
 import {Collections} from "../src";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
@@ -123,7 +123,8 @@ describe("Assistant Chat", function() {
     });
 
     it("creates a single run", async function() {
-        const update = await chat.singleRun(chatDoc, userId, data, assistantId, dispatcherId, messages);
+        const meta: Meta = {a: 1};
+        const update = await chat.singleRun(chatDoc, userId, data, assistantId, dispatcherId, messages, meta);
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
         update.should.deep.include({
@@ -169,6 +170,7 @@ describe("Assistant Chat", function() {
                 ownerId: userId,
                 chatDocumentPath: chatDoc.path,
                 dispatchId: dispatchDoc.id,
+                meta: meta,
                 actions: ["create", "post", "run", "retrieve", "close"]
             }
         );

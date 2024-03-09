@@ -12,6 +12,7 @@ import DocumentReference = admin.firestore.DocumentReference;
 import FieldValue = firestore.FieldValue;
 import Firestore = firestore.Firestore;
 import {Dispatch} from "./data/Dispatch";
+import {Meta} from "./data/Meta";
 
 /**
  * Close command delay to settle down AI runs
@@ -53,6 +54,7 @@ export class AssistantChat<DATA extends ChatData> {
      * @param assistantId Assistant ID
      * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
+     * @param meta Metadata to pass to chat worker
      */
     async create(
         document: DocumentReference<ChatState<DATA>>,
@@ -60,7 +62,8 @@ export class AssistantChat<DATA extends ChatData> {
         data: DATA,
         assistantId: string,
         dispatcherId: string,
-        messages?: ReadonlyArray<string>
+        messages?: ReadonlyArray<string>,
+        meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d(`Creating new chat with assistant ${assistantId}...`);
         const batch = this.db.batch();
@@ -95,6 +98,7 @@ export class AssistantChat<DATA extends ChatData> {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: dispatchDoc.id,
+            meta: meta || null,
             actions: actions
         };
         await this.scheduler.schedule(
@@ -116,6 +120,7 @@ export class AssistantChat<DATA extends ChatData> {
      * @param assistantId Assistant ID
      * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
+     * @param meta Metadata to pass to chat worker
      */
     async singleRun(
         document: DocumentReference<ChatState<DATA>>,
@@ -123,7 +128,8 @@ export class AssistantChat<DATA extends ChatData> {
         data: DATA,
         assistantId: string,
         dispatcherId: string,
-        messages: ReadonlyArray<string>
+        messages: ReadonlyArray<string>,
+        meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d(`Creating new single run with assistant ${assistantId}...`);
         const batch = this.db.batch();
@@ -153,6 +159,7 @@ export class AssistantChat<DATA extends ChatData> {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: dispatchDoc.id,
+            meta: meta || null,
             actions: ["create", "post", "run", "retrieve", "close"]
         };
         await this.scheduler.schedule(
@@ -170,11 +177,13 @@ export class AssistantChat<DATA extends ChatData> {
      * @param document Chat document
      * @param userId Chat owner
      * @param messages Messages to post
+     * @param meta Metadata to pass to chat worker
      */
     async postMessage(
         document: DocumentReference<ChatState<DATA>>,
         userId: string,
-        messages: ReadonlyArray<string>
+        messages: ReadonlyArray<string>,
+        meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Posting user messages to: ", document.path);
         return this.prepareDispatchWithChecks(
@@ -194,6 +203,7 @@ export class AssistantChat<DATA extends ChatData> {
                     ownerId: userId,
                     chatDocumentPath: document.path,
                     dispatchId: state.latestDispatchId,
+                    meta: meta || null,
                     actions: ["post", "run", "retrieve", "switchToUserInput"]
                 };
                 await this.scheduler.schedule(
@@ -216,6 +226,7 @@ export class AssistantChat<DATA extends ChatData> {
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
+     * @return Write batch
      * @private
      */
     private insertMessages(
@@ -246,10 +257,12 @@ export class AssistantChat<DATA extends ChatData> {
      * Closes chats
      * @param document Chat document reference
      * @param userId Owner user ID
+     * @param meta Metadata to pass to chat worker
      */
     async closeChat(
         document: DocumentReference<ChatState<DATA>>,
-        userId: string
+        userId: string,
+        meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         return this.prepareDispatchWithChecks(
             document,
@@ -263,6 +276,7 @@ export class AssistantChat<DATA extends ChatData> {
                     ownerId: userId,
                     chatDocumentPath: document.path,
                     dispatchId: state.latestDispatchId,
+                    meta: meta || null,
                     actions: ["close"]
                 };
                 await this.scheduler.schedule(

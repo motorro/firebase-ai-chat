@@ -21,17 +21,16 @@ import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
 import {
     AiWrapper,
-    ChatCommandQueue,
     ChatMessage,
     ChatState,
     ChatStatus,
     ChatWorker, TaskScheduler,
     ToolsDispatcher,
-    Collections
+    Collections, Meta
 } from "../src";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {ChatError} from "../lib/aichat/data/ChatError";
-import {ChatCommandData} from "../lib/aichat/data/ChatCommandQueue";
+import {ChatCommandData, ChatCommandQueue} from "../src/aichat/data/ChatCommandQueue";
 import {Dispatch, Run} from "../src/aichat/data/Dispatch";
 import FieldValue = firestore.FieldValue;
 
@@ -55,11 +54,16 @@ describe("Chat worker", function() {
         scheduledTime: ""
     };
 
+    const meta: Meta = {
+        a: 1
+    };
+
     const commandData: ChatCommandData = {
         ownerId: userId,
         chatDocumentPath: chatDoc.path,
-        dispatchId: dispatchId
-    }
+        dispatchId: dispatchId,
+        meta: meta
+    };
 
     const createCommand: ChatCommandQueue = {
         ...commandData,
@@ -126,7 +130,7 @@ describe("Chat worker", function() {
         };
 
         await chatDoc.set(data);
-        await chatDispatches.doc(dispatchDoc).set({createdAt: FieldValue.serverTimestamp()})
+        await chatDispatches.doc(dispatchDoc).set({createdAt: FieldValue.serverTimestamp()});
 
         const toInsert: ReadonlyArray<ChatMessage> = messages.map((message, index) => ({
             userId: userId,
@@ -161,7 +165,7 @@ describe("Chat worker", function() {
         updatedChatState.should.deep.include({
             config: {
                 ...chatState.config,
-                threadId: threadId,
+                threadId: threadId
             }
         });
 
@@ -202,8 +206,8 @@ describe("Chat worker", function() {
             data: {
                 value: "Test2"
             }
-        }
-        when(wrapper.run(anything(), anything(), anything(), anything())).thenCall((args) => {
+        };
+        when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(() => {
             return Promise.resolve(changedState.data);
         });
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
@@ -380,7 +384,7 @@ describe("Chat worker", function() {
         });
     });
 
-    it ("completes run on success", async function() {
+    it("completes run on success", async function() {
         await createChat(threadId, "processing");
         const request: Request<ChatCommandQueue> = {
             ...context,
@@ -397,7 +401,7 @@ describe("Chat worker", function() {
         (runData as Run).status.should.equal("complete");
     });
 
-    it ("completes run on fail", async function() {
+    it("completes run on fail", async function() {
         await createChat(threadId, "processing");
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
@@ -420,7 +424,7 @@ describe("Chat worker", function() {
         (runData as Run).status.should.equal("complete");
     });
 
-    it ("sets run to retry on retry", async function() {
+    it("sets run to retry on retry", async function() {
         await createChat(threadId, "processing");
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
@@ -430,6 +434,7 @@ describe("Chat worker", function() {
             data: createCommand
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         await worker.dispatch(request).catch(() => {});
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
@@ -443,7 +448,9 @@ describe("Chat worker", function() {
 
     it("aborts if running in parallel", async function() {
         await createChat(threadId, "processing");
-        await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).set({status: "running", createdAt: FieldValue.serverTimestamp()});
+        await chatDispatches.doc(dispatchId)
+            .collection(Collections.runs).doc(runId)
+            .set({status: "running", createdAt: FieldValue.serverTimestamp()});
 
         const request: Request<ChatCommandQueue> = {
             ...context,
@@ -463,7 +470,9 @@ describe("Chat worker", function() {
 
     it("aborts if already run", async function() {
         await createChat(threadId, "processing");
-        await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).set({status: "complete", createdAt: FieldValue.serverTimestamp()});
+        await chatDispatches.doc(dispatchId)
+            .collection(Collections.runs).doc(runId)
+            .set({status: "complete", createdAt: FieldValue.serverTimestamp()});
 
         const request: Request<ChatCommandQueue> = {
             ...context,
@@ -506,5 +515,26 @@ describe("Chat worker", function() {
                 actions: ["close"]
             }
         );
-    })
+    });
+
+    it("runs completion handler", async function() {
+        await createChat(threadId, "processing");
+        when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
+
+        const request: Request<ChatCommandQueue> = {
+            ...context,
+            data: {
+                ...commandData,
+                actions: ["create"]
+            }
+        };
+
+        let handlerCalled = false;
+        await worker.dispatch(request, () => {
+            handlerCalled = true;
+        });
+
+        verify(wrapper.createThread(anything())).once();
+        handlerCalled.should.be.true;
+    });
 });

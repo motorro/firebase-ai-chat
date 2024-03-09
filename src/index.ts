@@ -4,13 +4,13 @@ import {ChatWorker} from "./aichat/ChatWorker";
 import {ToolsDispatcher} from "./aichat/ToolsDispatcher";
 import {Functions} from "firebase-admin/lib/functions";
 import {firestore} from "firebase-admin";
-import Firestore = firestore.Firestore;
 import {FirebaseQueueTaskScheduler} from "./aichat/FirebaseQueueTaskScheduler";
 import {ChatData} from "./aichat/data/ChatState";
+import Firestore = firestore.Firestore;
 
 export {ChatData, ChatState, ChatStatus} from "./aichat/data/ChatState";
 export {ChatMessage} from "./aichat/data/ChatMessage";
-export {ChatCommandQueue} from "./aichat/data/ChatCommandQueue";
+export {Meta} from "./aichat/data/Meta";
 export {Logger, setLogger} from "./logging";
 export {AiWrapper};
 export {OpenAiWrapper} from "./aichat/OpenAiWrapper";

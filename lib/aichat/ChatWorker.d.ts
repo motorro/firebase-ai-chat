@@ -3,6 +3,7 @@ import { ToolsDispatcher } from "./ToolsDispatcher";
 import { ChatCommandQueue } from "./data/ChatCommandQueue";
 import { TaskScheduler } from "./TaskScheduler";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
+import { Meta } from "./data/Meta";
 /**
  * Chat worker that dispatches chat commands and runs AI
  */
@@ -23,8 +24,9 @@ export declare class ChatWorker {
     /**
      * Dispatches command
      * @param req Dispatch request
+     * @param onQueueComplete Called when `req` queue is dispatched
      */
-    dispatch(req: Request<ChatCommandQueue>): Promise<void>;
+    dispatch(req: Request<ChatCommandQueue>, onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>): Promise<void>;
     /**
      * Creates thread
      * @param commandData Command data
@@ -74,8 +76,9 @@ export declare class ChatWorker {
     /**
      * Runs dispatch with concurrency and duplication check
      * https://mm.tt/app/map/3191589380?t=UdskfqiKnl
-     * @param req
-     * @param processAction
+     * @param req Task request
+     * @param onQueueComplete Task queue complete handler
+     * @param processAction Dispatch function
      * @private
      */
     private dispatchWithCheck;

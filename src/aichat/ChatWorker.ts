@@ -13,6 +13,7 @@ import {TaskScheduler} from "./TaskScheduler";
 import DocumentReference = firestore.DocumentReference;
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {Run, RunStatus} from "./data/Dispatch";
+import {Meta} from "./data/Meta";
 
 /**
  * Chat worker that dispatches chat commands and runs AI
@@ -37,7 +38,8 @@ export class ChatWorker {
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
-        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>> // eslint-disable-line  @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>
     ) {
         this.db = firestore;
         this.wrapper = wrapper;
@@ -48,9 +50,13 @@ export class ChatWorker {
     /**
      * Dispatches command
      * @param req Dispatch request
+     * @param onQueueComplete Called when `req` queue is dispatched
      */
-    async dispatch(req: Request<ChatCommandQueue>): Promise<void> {
-        await this.dispatchWithCheck(req, async (command, data, state) => {
+    async dispatch(
+        req: Request<ChatCommandQueue>,
+        onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>
+    ): Promise<void> {
+        await this.dispatchWithCheck(req, onQueueComplete, async (command, data, state) => {
             switch (command) {
                 case "create":
                     return await this.runCreateThread(data, state);
@@ -191,7 +197,7 @@ export class ChatWorker {
     private async runSwitchToUser(): Promise<Partial<ChatState<ChatData>>> {
         return {
             status: "userInput"
-        }
+        };
     }
 
     /**
@@ -225,15 +231,26 @@ export class ChatWorker {
     /**
      * Runs dispatch with concurrency and duplication check
      * https://mm.tt/app/map/3191589380?t=UdskfqiKnl
-     * @param req
-     * @param processAction
+     * @param req Task request
+     * @param onQueueComplete Task queue complete handler
+     * @param processAction Dispatch function
      * @private
      */
-    private async dispatchWithCheck(req: Request<ChatCommandQueue>, processAction: (command: ChatCommandType, data: ChatCommandData, state: ChatState<ChatData>) => Promise<Partial<ChatState<ChatData>> | null>): Promise<void> {
+    private async dispatchWithCheck(
+        req: Request<ChatCommandQueue>,
+        onQueueComplete: ((chatDocumentPath: string, meta: Meta | null) => void | Promise<void>) | undefined,
+        processAction: (
+            command: ChatCommandType,
+            data: ChatCommandData,
+            state: ChatState<ChatData>
+        ) => Promise<Partial<ChatState<ChatData>> | null>
+    ): Promise<void> {
         const db = this.db;
         const command = req.data;
         const doc = this.db.doc(command.chatDocumentPath) as DocumentReference<ChatState<ChatData>>;
-        const runDoc = doc.collection(Collections.dispatches).doc(command.dispatchId).collection(Collections.runs).doc(req.id) as DocumentReference<Run>;
+        const runDoc = doc.collection(Collections.dispatches)
+            .doc(command.dispatchId).collection(Collections.runs)
+            .doc(req.id) as DocumentReference<Run>;
         const action = command.actions[0];
         if (undefined === action) {
             logger.w("Empty command queue in command", JSON.stringify(command));
@@ -299,17 +316,18 @@ export class ChatWorker {
             return Promise.reject(e);
         }
 
-        await updateWithCheck("complete", resultState)
+        await updateWithCheck("complete", resultState);
 
         if (command.actions.length > 1) {
             logger.d("Dispatching next command...");
             await this.scheduler.schedule(req.queueName, {...command, actions: command.actions.slice(1)});
         } else {
-            logger.d("Command queue complete")
+            logger.d("Command queue complete");
         }
 
         async function updateWithCheck(runStatus: RunStatus, state: Partial<ChatState<ChatData>> | null): Promise<void> {
-            return await db.runTransaction(async (tx) => {
+            logger.d("Finalizing task...");
+            await db.runTransaction(async (tx) => {
                 if (null !== state) {
                     const stateData = (await tx.get(doc)).data();
                     if (command.dispatchId === stateData?.latestDispatchId) {
@@ -318,6 +336,14 @@ export class ChatWorker {
                 }
                 tx.set(runDoc, {status: runStatus}, {merge: true});
             });
+            if (undefined !== onQueueComplete) {
+                logger.d("Running queue complete handler...");
+                try {
+                    await onQueueComplete(command.chatDocumentPath, command.meta);
+                } catch (e: unknown) {
+                    logger.w("Error running complete handler", e);
+                }
+            }
         }
     }
 }
