@@ -13,7 +13,20 @@ service cloud.firestore {
 	match /chats/{chatId} {
       allow read: if isAuthenticated() && isOwner();
       allow write: if false;
-    }
 
+      match /messages/{message} {
+        allow read: if isAuthenticated() && isOwner();
+        allow write: if false;
+      }
+      match /dispatches/{dispatchId} {
+        allow read: if false;
+        allow write: if false;
+
+        match /runs/{runId} {
+          allow read: if false;
+          allow write: if false;
+        }
+      }
+    }
   }
 }
