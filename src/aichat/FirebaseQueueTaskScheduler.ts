@@ -21,7 +21,7 @@ export class FirebaseQueueTaskScheduler implements TaskScheduler {
 
     async schedule(queueName: string, command: ChatCommandQueue, schedule?: DeliverySchedule): Promise<void> {
         logger.d(`Dispatching to ${queueName} at ${this.location}:`, JSON.stringify(command));
-        const queue = this.functions.taskQueue(queueName);
+        const queue = this.functions.taskQueue(`locations/${this.location}/functions/${queueName}`);
         const uri = await this.getFunctionUrl(queueName, this.location);
         await queue.enqueue(command, {...(schedule || {}), uri: uri});
     }
