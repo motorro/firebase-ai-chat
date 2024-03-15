@@ -295,6 +295,7 @@ export class ChatWorker {
         try {
             resultState = await processAction(action, command, stateToDispatch);
         } catch (e) {
+            logger.w("Error running dispatch", e);
             if (isPermanentError(e)) {
                 logger.w("Permanent error. Failing chat...");
                 await updateWithCheck("complete", {
@@ -304,6 +305,7 @@ export class ChatWorker {
             }
             const retryCount = req.retryCount;
             const maxRetries = await this.scheduler.getQueueMaxRetries(req.queueName);
+            logger.d(`Current retry count attempt: ${retryCount}, maximum retry count: ${maxRetries}`);
             if (maxRetries != -1 && retryCount + 1 == maxRetries) {
                 logger.w("Maximum retry count reached. Failing chat...");
                 await updateWithCheck("complete", {
