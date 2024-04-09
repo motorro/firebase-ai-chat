@@ -6,6 +6,7 @@ export { AiWrapper } from "./aichat/AiWrapper";
 export { ToolsDispatcher } from "./aichat/ToolsDispatcher";
 export { AssistantChat } from "./aichat/AssistantChat";
 export { BaseChatWorker } from "./aichat/BaseChatWorker";
+export { CommandScheduler } from "./aichat/CommandScheduler";
 export { TaskScheduler } from "./aichat/TaskScheduler";
 export { FirebaseQueueTaskScheduler } from "./aichat/FirebaseQueueTaskScheduler";
 export { Collections } from "./aichat/data/Collections";

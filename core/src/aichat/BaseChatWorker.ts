@@ -17,8 +17,8 @@ import {Meta} from "./data/Meta";
  * Chat worker that dispatches chat commands and runs AI
  */
 export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends ChatData> {
-    private readonly db: FirebaseFirestore.Firestore;
-    private readonly scheduler: TaskScheduler;
+    protected readonly db: FirebaseFirestore.Firestore;
+    protected readonly scheduler: TaskScheduler;
 
     /**
      * Constructor
