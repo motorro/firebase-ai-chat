@@ -88,7 +88,7 @@ The module has three classes to use in your project:
 
 To install the module use:
 ```shell
-npm i firebase-openai-chat
+npm i --save @motorro/firebase-ai-chat-openai
 ```
 
 The full example `index.ts` for your Firebase Cloud Functions project is available [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts).
@@ -181,7 +181,7 @@ service cloud.firestore {
 To be able to run the code Firebase needs two special indexes to sort chat documents and messages.
 You can get the latest indexes versions [here](firestore.indexes.json).
 
-### OpenAPI setup
+### OpenAI setup
 We also need to set up the OpenAI API. To do this we need to get the OpenAI API key and to define the used assistant ID:
 
 ```typescript

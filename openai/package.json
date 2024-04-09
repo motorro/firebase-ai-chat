@@ -1,7 +1,7 @@
 {
-  "name": "@motorro/firebase-ai-chat-core",
-  "version": "2.0.7",
-  "description": "A core library to run AI chats on Firebase",
+  "name": "@motorro/firebase-ai-chat-openai",
+  "version": "2.0.0",
+  "description": "A library to run OpenAI chats on Firebase",
   "publishConfig": {
     "access": "public"
   },
@@ -36,16 +36,15 @@
   },
   "peerDependencies": {
     "firebase-admin": "^10.0.0 || ^11.0.0 || ^12.0.0",
-    "@google-cloud/tasks": "^4.0.0 || ^5.2.1",
     "firebase-functions": ">=4.7.0",
-    "google-auth-library": ">=9.6.3"
+    "openai": ">=4.27.0"
   },
   "devDependencies": {
     "@johanblumenberg/ts-mockito": "^1.0.41",
-    "@types/node": "^18.16.3",
     "@types/chai": "^4.3.5",
     "@types/chai-as-promised": "^7.1.5",
     "@types/mocha": "^10.0.1",
+    "@types/node": "^18.16.3",
     "@types/sinon": "^17.0.3",
     "@typescript-eslint/eslint-plugin": "^5.12.0",
     "@typescript-eslint/parser": "^5.12.0",
@@ -58,7 +57,10 @@
     "firebase-tools": "^13.3.0",
     "mocha": "^10.2.0",
     "sinon": "^17.0.1",
-    "typescript": "^4.9.0",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.0"
+  },
+  "dependencies": {
+    "@motorro/firebase-ai-chat-core": "^2.0.6"
   }
 }

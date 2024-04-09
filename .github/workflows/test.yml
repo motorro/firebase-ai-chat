@@ -45,3 +45,9 @@ jobs:
     - name: Run core tests
       run: npm test
       working-directory: ./core
+    - name: Install openai dependencies
+      run: npm install
+      working-directory: ./openai
+    - name: Run openai tests
+      run: npm test
+      working-directory: ./openai

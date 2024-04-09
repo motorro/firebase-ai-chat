@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core)
 
 Core AI chat library. 
-See [top-level](../README.md) documentation for complete reference
+See [top-level](https://github.com/motorro/firebase-ai-chat) documentation for complete reference
 
 ## Contains
 The module has three classes to use in your project:

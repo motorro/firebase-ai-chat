@@ -1,33 +1,27 @@
 import * as admin from "firebase-admin";
-import {db, test} from "./functionsTest";
-
 import {firestore} from "firebase-admin";
+import {db, test} from "./functionsTest";
+import {anything, capture, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
+import {AiConfig, chatState, data, Data, DispatchAction, threadId, userId} from "./mock";
 import {
-    anything,
-    instance,
-    imock,
-    reset,
-    when,
-    capture
-} from "@johanblumenberg/ts-mockito";
-import CollectionReference = admin.firestore.CollectionReference;
-import {Data, threadId, chatState, data, userId, AiConfig, DispatchAction} from "./mock";
-import Timestamp = admin.firestore.Timestamp;
-import {
+    BaseChatWorker,
+    ChatCommand,
+    ChatCommandData,
+    ChatError,
     ChatMessage,
     ChatState,
     ChatStatus,
-    BaseChatWorker,
-    TaskScheduler,
-    Collections, Meta
+    Collections,
+    Dispatch,
+    Meta,
+    Run,
+    TaskScheduler
 } from "../src";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
-import {ChatError} from "../lib/aichat/data/ChatError";
-import {ChatCommandData} from "../src/aichat/data/ChatCommandData";
-import {Dispatch, Run} from "../src/aichat/data/Dispatch";
-import FieldValue = firestore.FieldValue;
-import {ChatCommand} from "../src/aichat/TaskScheduler";
 import {expect} from "chai";
+import CollectionReference = admin.firestore.CollectionReference;
+import Timestamp = admin.firestore.Timestamp;
+import FieldValue = firestore.FieldValue;
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Base chat worker", function() {
