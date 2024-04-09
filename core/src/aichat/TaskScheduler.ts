@@ -1,5 +1,5 @@
 import {DeliverySchedule} from "firebase-admin/functions";
-import {ChatCommandData} from "./data/ChatCommandQueue";
+import {ChatCommandData} from "./data/ChatCommandData";
 
 /**
  * Chat command type

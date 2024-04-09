@@ -4,7 +4,7 @@ import {logger} from "../logging";
 import {Collections} from "./data/Collections";
 import {ChatMessage} from "./data/ChatMessage";
 import CollectionReference = firestore.CollectionReference;
-import {ChatCommandData} from "./data/ChatCommandQueue";
+import {ChatCommandData} from "./data/ChatCommandData";
 import {HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;

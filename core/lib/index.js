@@ -1,7 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Collections = exports.FirebaseQueueTaskScheduler = exports.BaseChatWorker = exports.AssistantChat = exports.setLogger = void 0;
+exports.Collections = exports.FirebaseQueueTaskScheduler = exports.BaseChatWorker = exports.AssistantChat = exports.setLogger = exports.logger = exports.ChatError = void 0;
+var ChatError_1 = require("./aichat/data/ChatError");
+Object.defineProperty(exports, "ChatError", { enumerable: true, get: function () { return ChatError_1.ChatError; } });
 var logging_1 = require("./logging");
+Object.defineProperty(exports, "logger", { enumerable: true, get: function () { return logging_1.logger; } });
 Object.defineProperty(exports, "setLogger", { enumerable: true, get: function () { return logging_1.setLogger; } });
 var AssistantChat_1 = require("./aichat/AssistantChat");
 Object.defineProperty(exports, "AssistantChat", { enumerable: true, get: function () { return AssistantChat_1.AssistantChat; } });

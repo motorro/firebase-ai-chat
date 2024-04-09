@@ -1,5 +1,5 @@
 import { firestore } from "firebase-admin";
-import { ChatCommandData } from "./data/ChatCommandQueue";
+import { ChatCommandData } from "./data/ChatCommandData";
 import { ChatMessage } from "./data/ChatMessage";
 import CollectionReference = firestore.CollectionReference;
 import { AssistantConfig, ChatData, ChatState } from "./data/ChatState";

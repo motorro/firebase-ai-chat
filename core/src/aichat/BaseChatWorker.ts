@@ -1,5 +1,5 @@
 import {firestore} from "firebase-admin";
-import {ChatCommandData} from "./data/ChatCommandQueue";
+import {ChatCommandData} from "./data/ChatCommandData";
 import {Collections} from "./data/Collections";
 import {ChatMessage} from "./data/ChatMessage";
 import {logger} from "../logging";

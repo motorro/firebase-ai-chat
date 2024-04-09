@@ -1,4 +1,4 @@
-import {ChatCommandData} from "./data/ChatCommandQueue";
+import {ChatCommandData} from "./data/ChatCommandData";
 
 /**
  * Schedules common chat commands

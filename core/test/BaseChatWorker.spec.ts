@@ -23,7 +23,7 @@ import {
 } from "../src";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {ChatError} from "../lib/aichat/data/ChatError";
-import {ChatCommandData} from "../src/aichat/data/ChatCommandQueue";
+import {ChatCommandData} from "../src/aichat/data/ChatCommandData";
 import {Dispatch, Run} from "../src/aichat/data/Dispatch";
 import FieldValue = firestore.FieldValue;
 import {ChatCommand} from "../src/aichat/TaskScheduler";
