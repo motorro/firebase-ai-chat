@@ -1,6 +1,9 @@
 # Firebase OpenAI chat
 [![Check](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml)
-[![npm version](https://badge.fury.io/js/firebase-openai-chat.svg)](https://badge.fury.io/js/firebase-openai-chat)
+
+Engines:
+- OpenAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai)
+
 
 [OpenAI assistant](https://platform.openai.com/docs/assistants/overview) chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
 
