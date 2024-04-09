@@ -39,5 +39,9 @@ jobs:
       shell: bash
       env:
         FIREBASEKEY : ${{secrets.FIREBASEKEY}}
-    - run: npm install
-    - run: npm test
+    - name: Install core dependencies
+      run: npm install
+      working-directory: ./core
+    - name: Run core tests
+      run: npm test
+      working-directory: ./core
