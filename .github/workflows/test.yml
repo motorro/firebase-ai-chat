@@ -25,7 +25,6 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
     - name: print rc
       run: |
         echo $FIREBASERC >> .firebaserc
@@ -39,5 +38,15 @@ jobs:
       shell: bash
       env:
         FIREBASEKEY : ${{secrets.FIREBASEKEY}}
-    - run: npm install
-    - run: npm test
+    - name: Install core dependencies
+      run: npm install
+      working-directory: ./core
+    - name: Run core tests
+      run: npm test
+      working-directory: ./core
+    - name: Install openai dependencies
+      run: npm install
+      working-directory: ./openai
+    - name: Run openai tests
+      run: npm test
+      working-directory: ./openai
