@@ -8,8 +8,8 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenAiWrapper = void 0;
-const core_1 = require("openai/core");
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
+const core_1 = require("openai/core");
 /**
  * Wraps Open AI assistant use
  */

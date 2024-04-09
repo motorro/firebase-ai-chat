@@ -1,7 +1,5 @@
-import { AiWrapper, Messages } from "../../../core/src/aichat/AiWrapper";
-import { ToolsDispatcher } from "../../../core/src/aichat/ToolsDispatcher";
+import { AiWrapper, ChatData, Messages, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
 import OpenAI from "openai";
-import { ChatData } from "@motorro/firebase-ai-chat-core";
 /**
  * Wraps Open AI assistant use
  */

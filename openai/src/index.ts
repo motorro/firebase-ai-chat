@@ -3,7 +3,8 @@ import {
     AiWrapper,
     ToolsDispatcher,
     FirebaseQueueTaskScheduler,
-    ChatData
+    ChatData,
+    ChatState
 } from "@motorro/firebase-ai-chat-core";
 import {ChatWorker} from "./aichat/ChatWorker";
 import {Functions} from "firebase-admin/lib/functions";
@@ -30,6 +31,13 @@ export {
     AssistantChat
 };
 export {OpenAiWrapper} from "./aichat/OpenAiWrapper";
+export {OpenAiAssistantConfig} from "./aichat/data/OpenAiAssistantConfig";
+export {OpenAiChatCommand} from "./aichat/data/OpenAiChatCommand";
+
+/**
+ * Chat state for OpenAI chats
+ */
+export type OpenAiChatState<DATA extends ChatData> = ChatState<OpenAiAssistantConfig, DATA>
 
 /**
  * AI chat components to build Firestore functions

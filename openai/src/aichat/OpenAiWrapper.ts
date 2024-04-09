@@ -1,15 +1,18 @@
-import {AiWrapper, Messages} from "../../../core/src/aichat/AiWrapper";
-import {DispatchError, DispatchResult, ToolsDispatcher} from "../../../core/src/aichat/ToolsDispatcher";
+import {
+    AiWrapper,
+    ChatData,
+    ChatError,
+    DispatchError,
+    DispatchResult,
+    logger,
+    Messages,
+    ToolsDispatcher
+} from "@motorro/firebase-ai-chat-core";
 import OpenAI from "openai";
 import {ThreadCreateParams} from "openai/src/resources/beta/threads/threads";
 import {sleep} from "openai/core";
-import {
-    RequiredActionFunctionToolCall,
-    RunSubmitToolOutputsParams,
-    MessagesPage
-} from "openai/resources/beta/threads";
+import {MessagesPage, RequiredActionFunctionToolCall, RunSubmitToolOutputsParams} from "openai/resources/beta/threads";
 import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
-import {logger, ChatData, ChatError} from "@motorro/firebase-ai-chat-core";
 
 /**
  * Wraps Open AI assistant use

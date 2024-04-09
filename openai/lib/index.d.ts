@@ -1,4 +1,4 @@
-import { AssistantChat, AiWrapper, ToolsDispatcher, ChatData } from "@motorro/firebase-ai-chat-core";
+import { AssistantChat, AiWrapper, ToolsDispatcher, ChatData, ChatState } from "@motorro/firebase-ai-chat-core";
 import { ChatWorker } from "./aichat/ChatWorker";
 import { Functions } from "firebase-admin/lib/functions";
 import { firestore } from "firebase-admin";
@@ -7,6 +7,12 @@ import { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
 export { ChatData, ChatState, ChatStatus, ChatMessage, Meta, Logger, setLogger, TaskScheduler, Collections } from "@motorro/firebase-ai-chat-core";
 export { AiWrapper, ChatWorker, ToolsDispatcher, AssistantChat };
 export { OpenAiWrapper } from "./aichat/OpenAiWrapper";
+export { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
+export { OpenAiChatCommand } from "./aichat/data/OpenAiChatCommand";
+/**
+ * Chat state for OpenAI chats
+ */
+export type OpenAiChatState<DATA extends ChatData> = ChatState<OpenAiAssistantConfig, DATA>;
 /**
  * AI chat components to build Firestore functions
  */
