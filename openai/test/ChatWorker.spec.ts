@@ -1,43 +1,42 @@
 import * as admin from "firebase-admin";
-import {db, test} from "./functionsTest";
-
 import {firestore} from "firebase-admin";
+import {db, test} from "./functionsTest";
 import {
-    anything,
-    deepEqual,
-    strictEqual,
-    instance,
-    imock,
-    reset,
-    verify,
-    when,
     anyFunction,
-    capture
+    anything,
+    capture,
+    deepEqual,
+    imock,
+    instance,
+    reset,
+    strictEqual,
+    verify,
+    when
 } from "@johanblumenberg/ts-mockito";
+import {assistantId, chatState, Data, data, Data2, threadId, userId} from "./mock";
+import {
+    AiWrapper,
+    ChatCommand,
+    ChatCommandData,
+    ChatError,
+    ChatMessage,
+    ChatState,
+    ChatStatus,
+    Collections,
+    Dispatch,
+    Meta,
+    Run,
+    TaskScheduler,
+    ToolsDispatcher
+} from "@motorro/firebase-ai-chat-core";
+import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
+import {OpenAiChatAction} from "../src/aichat/data/OpenAiChatAction";
+import {ChatWorker, OpenAiAssistantConfig} from "../src";
 import CollectionReference = admin.firestore.CollectionReference;
-import {assistantId, Data, threadId, chatState, data, Data2, userId} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
-import {
-    AiWrapper,
-    ChatMessage,
-    ChatCommand,
-    ChatCommandData,
-    ChatState,
-    ChatError,
-    ChatStatus,
-    TaskScheduler,
-    ToolsDispatcher,
-    Collections,
-    Meta
-} from "@motorro/firebase-ai-chat-core";
-import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
-import {Dispatch, Run} from "@motorro/firebase-ai-chat-core";
 import FieldValue = firestore.FieldValue;
-import {OpenAiChatAction} from "../src/aichat/data/OpenAiChatAction";
-import {ChatWorker} from "../src/aichat/ChatWorker";
-import {OpenAiAssistantConfig} from "../src/aichat/data/OpenAiAssistantConfig";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {

@@ -1,8 +1,7 @@
 import * as fs from "fs";
 import * as admin from "firebase-admin";
 import {getFunctions} from "firebase-admin/functions";
-import {setLogger} from "@motorro/firebase-ai-chat-core";
-import {Logger} from "../../core/src";
+import {setLogger, Logger} from "@motorro/firebase-ai-chat-core";
 
 type RC = {
     projects: {[key: string]: string}
