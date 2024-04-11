@@ -30,13 +30,13 @@ import {
     ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
-import {OpenAiChatAction} from "../src/aichat/data/OpenAiChatAction";
 import {ChatWorker, OpenAiAssistantConfig} from "../src";
 import CollectionReference = admin.firestore.CollectionReference;
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
+import {OpenAiChatCommand} from "../lib";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -68,27 +68,33 @@ describe("Chat worker", function() {
         dispatchId: dispatchId,
         meta: meta
     };
-    const createCommand: ChatCommand<OpenAiChatAction> = {
+    const createCommand: OpenAiChatCommand = {
+        engine: "openai",
         commonData: commandData,
         actions: ["create"]
     };
-    const postCommand: ChatCommand<OpenAiChatAction> = {
+    const postCommand: OpenAiChatCommand = {
+        engine: "openai",
         commonData: commandData,
         actions: ["post"]
     };
-    const runCommand: ChatCommand<OpenAiChatAction> = {
+    const runCommand: OpenAiChatCommand = {
+        engine: "openai",
         commonData: commandData,
         actions: ["run"]
     };
-    const retrieveCommand: ChatCommand<OpenAiChatAction> = {
+    const retrieveCommand: OpenAiChatCommand = {
+        engine: "openai",
         commonData: commandData,
         actions: ["retrieve"]
     };
-    const switchToUserCommand: ChatCommand<OpenAiChatAction> = {
+    const switchToUserCommand: OpenAiChatCommand = {
+        engine: "openai",
         commonData: commandData,
         actions: ["switchToUserInput"]
     };
-    const closeCommand: ChatCommand<OpenAiChatAction> = {
+    const closeCommand: OpenAiChatCommand = {
+        engine: "openai",
         commonData: commandData,
         actions: ["close"]
     };
@@ -498,9 +504,10 @@ describe("Chat worker", function() {
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
         when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
 
-        const request: Request<ChatCommand<unknown>> = {
+        const request: Request<OpenAiChatCommand> = {
             ...context,
             data: {
+                engine: "openai",
                 commonData: commandData,
                 actions: ["create", "close"]
             }
@@ -524,9 +531,10 @@ describe("Chat worker", function() {
         await createChat(threadId, "processing");
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
 
-        const request: Request<ChatCommand<unknown>> = {
+        const request: Request<OpenAiChatCommand> = {
             ...context,
             data: {
+                engine: "openai",
                 commonData: commandData,
                 actions: ["create"]
             }
