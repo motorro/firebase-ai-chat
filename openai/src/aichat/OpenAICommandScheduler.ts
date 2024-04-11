@@ -1,5 +1,5 @@
 import {CommandScheduler, logger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
-import { ChatCommandData } from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatCommandQueue";
+import {ChatCommandData} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatCommandQueue";
 import {OpenAiChatAction} from "./data/OpenAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
 import {OpenAiChatCommand} from "./data/OpenAiChatCommand";
@@ -47,11 +47,11 @@ export class OpenAICommandScheduler implements CommandScheduler {
             engine: "openai",
             commonData: common,
             actions: actions
-        }
+        };
         await this.scheduler.schedule(
             this.queueName,
             command,
             schedule
-        )
+        );
     }
 }

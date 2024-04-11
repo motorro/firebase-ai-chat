@@ -78,7 +78,10 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
      * @param state Chat state
      * @private
      */
-    private async runCreateThread(commandData: ChatCommandData, state: ChatState<OpenAiAssistantConfig, ChatData>): Promise<Partial<ChatState<OpenAiAssistantConfig, ChatData>>> {
+    private async runCreateThread(
+        commandData: ChatCommandData,
+        state: ChatState<OpenAiAssistantConfig, ChatData>
+    ): Promise<Partial<ChatState<OpenAiAssistantConfig, ChatData>>> {
         logger.d("Creating thread...");
         const threadId = await this.wrapper.createThread({
             chat: commandData.chatDocumentPath
@@ -97,7 +100,10 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
      * @param state Chat state
      * @private
      */
-    private async runPostMessages(commandData: ChatCommandData, state: ChatState<OpenAiAssistantConfig, ChatData>): Promise<Partial<ChatState<OpenAiAssistantConfig, ChatData>>> {
+    private async runPostMessages(
+        commandData: ChatCommandData,
+        state: ChatState<OpenAiAssistantConfig, ChatData>
+    ): Promise<Partial<ChatState<OpenAiAssistantConfig, ChatData>>> {
         logger.d("Posting messages...");
         const threadId = state.config.threadId;
         if (undefined === threadId) {
@@ -150,7 +156,10 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
      * @param state Chat state
      * @private
      */
-    private async runRetrieve(commandData: ChatCommandData, state: ChatState<OpenAiAssistantConfig, ChatData>): Promise<Partial<ChatState<OpenAiAssistantConfig, ChatData>>> {
+    private async runRetrieve(
+        commandData: ChatCommandData,
+        state: ChatState<OpenAiAssistantConfig, ChatData>
+    ): Promise<Partial<ChatState<OpenAiAssistantConfig, ChatData>>> {
         logger.d("Retrieving messages...");
         const threadId = state.config.threadId;
         if (undefined === threadId) {
@@ -203,7 +212,9 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
      * @param state Chat state
      * @private
      */
-    private async runClose(state: ChatState<OpenAiAssistantConfig, ChatData>): Promise<Partial<ChatState<OpenAiAssistantConfig, ChatData>>> {
+    private async runClose(
+        state: ChatState<OpenAiAssistantConfig, ChatData>
+    ): Promise<Partial<ChatState<OpenAiAssistantConfig, ChatData>>> {
         logger.d("Closing chat...");
         const threadId = state.config.threadId;
         if (undefined !== threadId) {
