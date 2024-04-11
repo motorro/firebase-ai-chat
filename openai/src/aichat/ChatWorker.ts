@@ -48,7 +48,8 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
     }
 
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<OpenAiChatAction>> {
-        return req.data.actions.every((action) => "string" === typeof action && ChatWorker.SUPPORTED_ACTIONS.includes(action));
+        return "engine" in req.data && "openai" === req.data.engine
+            && req.data.actions.every((action) => "string" === typeof action && ChatWorker.SUPPORTED_ACTIONS.includes(action));
     }
 
     protected async doDispatch(

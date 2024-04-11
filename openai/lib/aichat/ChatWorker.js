@@ -24,7 +24,8 @@ class ChatWorker extends firebase_ai_chat_core_1.BaseChatWorker {
         this.dispatchers = dispatchers;
     }
     isSupportedCommand(req) {
-        return req.data.actions.every((action) => "string" === typeof action && ChatWorker.SUPPORTED_ACTIONS.includes(action));
+        return "engine" in req.data && "openai" === req.data.engine
+            && req.data.actions.every((action) => "string" === typeof action && ChatWorker.SUPPORTED_ACTIONS.includes(action));
     }
     async doDispatch(action, data, state) {
         switch (action) {
