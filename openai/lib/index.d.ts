@@ -23,7 +23,7 @@ export interface AiChat {
      * @return Chat interface
      * @see worker
      */
-    chat<DATA extends ChatData>(queueName: string): AssistantChat<OpenAiAssistantConfig, DATA>;
+    chat<DATA extends ChatData>(queueName: string): AssistantChat<DATA>;
     /**
      * Chat worker to use in Firebase tasks
      * @param aiWrapper AI API wrapper

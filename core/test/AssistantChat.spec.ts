@@ -6,8 +6,7 @@ import CollectionReference = admin.firestore.CollectionReference;
 import {assistantId, data, Data, dispatcherId, userId, chatState, CHATS, AiConfig} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
-import {ChatState, AssistantChat, Meta, Collections} from "../src";
-import {CommandScheduler} from "../src/aichat/CommandScheduler";
+import {ChatState, AssistantChat, Meta, Collections, CommandScheduler} from "../src";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 
@@ -16,11 +15,11 @@ describe("Assistant Chat", function() {
     const chatDoc = chats.doc();
     const chatMessages = chatDoc.collection(Collections.messages);
     let scheduler: CommandScheduler;
-    let chat: AssistantChat<AiConfig, Data>;
+    let chat: AssistantChat<Data>;
 
     before(async function() {
         scheduler = imock();
-        chat = new AssistantChat<AiConfig, Data>(db, instance(scheduler));
+        chat = new AssistantChat<Data>(db, instance(scheduler));
     });
 
     after(async function() {

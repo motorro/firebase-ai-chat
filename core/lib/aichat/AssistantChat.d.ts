@@ -14,7 +14,7 @@ import { CommandScheduler } from "./CommandScheduler";
  * - Close - closes chat
  * Functions post commands to processing table and complete ASAP
  */
-export declare class AssistantChat<AC extends AssistantConfig, DATA extends ChatData> {
+export declare class AssistantChat<DATA extends ChatData> {
     private readonly db;
     private readonly scheduler;
     /**
@@ -33,7 +33,7 @@ export declare class AssistantChat<AC extends AssistantConfig, DATA extends Chat
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
      */
-    create(document: DocumentReference<ChatState<AC, DATA>>, userId: string, data: DATA, assistantConfig: AC, dispatcherId: string, messages?: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    create(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, dispatcherId: string, messages?: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Runs AI once and cleans up afterward
      * For tasks like analyzing some text once and getting results with function call
@@ -45,7 +45,7 @@ export declare class AssistantChat<AC extends AssistantConfig, DATA extends Chat
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
      */
-    singleRun(document: DocumentReference<ChatState<AC, DATA>>, userId: string, data: DATA, assistantConfig: AC, dispatcherId: string, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    singleRun(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, dispatcherId: string, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Posts messages to the thread
      * @param document Chat document
@@ -53,7 +53,7 @@ export declare class AssistantChat<AC extends AssistantConfig, DATA extends Chat
      * @param messages Messages to post
      * @param meta Metadata to pass to chat worker
      */
-    postMessage(document: DocumentReference<ChatState<AC, DATA>>, userId: string, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    postMessage(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Adds user messages
      * @param batch Write batch
@@ -71,7 +71,7 @@ export declare class AssistantChat<AC extends AssistantConfig, DATA extends Chat
      * @param userId Owner user ID
      * @param meta Metadata to pass to chat worker
      */
-    closeChat(document: DocumentReference<ChatState<AC, DATA>>, userId: string, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    closeChat(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Runs block mutating chat status if current chat status is one of allowed
      * @param document Chat document

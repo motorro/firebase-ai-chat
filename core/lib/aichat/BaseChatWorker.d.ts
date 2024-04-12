@@ -26,16 +26,18 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      */
     dispatch(req: Request<ChatCommand<unknown>>, onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>): Promise<boolean>;
     /**
-     * Checks if command is supported
-     * @param req Request to check
+     * Checks if command passed in `req` is supported by this dispatcher
+     * @param req Dispatch request
+     * @returns true if request is supported
      * @protected
      */
     protected abstract isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<A>>;
     /**
-     * Dispatches action
-     * @param action
-     * @param data
-     * @param state
+     * Dispatch template
+     * @param action Action to perform
+     * @param data Command data
+     * @param state Current chat state
+     * @return Partial chat state to set after dispatched
      * @protected
      */
     protected abstract doDispatch(action: A, data: ChatCommandData, state: ChatState<AC, DATA>): Promise<Partial<ChatState<AC, DATA>> | null>;

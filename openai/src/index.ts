@@ -49,7 +49,7 @@ export interface AiChat {
      * @return Chat interface
      * @see worker
      */
-    chat<DATA extends ChatData>(queueName: string): AssistantChat<OpenAiAssistantConfig, DATA>
+    chat<DATA extends ChatData>(queueName: string): AssistantChat<DATA>
 
     /**
      * Chat worker to use in Firebase tasks
@@ -71,8 +71,8 @@ export interface AiChat {
 export function factory(firestore: Firestore, functions: Functions, location: string): AiChat {
     const scheduler = new FirebaseQueueTaskScheduler(functions, location);
     return {
-        chat: function<DATA extends ChatData>(queueName: string): AssistantChat<OpenAiAssistantConfig, DATA> {
-            return new AssistantChat<OpenAiAssistantConfig, DATA>(firestore, new OpenAICommandScheduler(queueName, scheduler));
+        chat: function<DATA extends ChatData>(queueName: string): AssistantChat<DATA> {
+            return new AssistantChat<DATA>(firestore, new OpenAICommandScheduler(queueName, scheduler));
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         worker: function(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): ChatWorker {

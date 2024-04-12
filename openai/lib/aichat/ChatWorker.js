@@ -23,10 +23,24 @@ class ChatWorker extends firebase_ai_chat_core_1.BaseChatWorker {
         this.wrapper = wrapper;
         this.dispatchers = dispatchers;
     }
+    /**
+     * Checks if command passed in `req` is supported by this dispatcher
+     * @param req Dispatch request
+     * @returns true if request is supported
+     * @protected
+     */
     isSupportedCommand(req) {
         return "engine" in req.data && "openai" === req.data.engine
             && req.data.actions.every((action) => "string" === typeof action && ChatWorker.SUPPORTED_ACTIONS.includes(action));
     }
+    /**
+     * Dispatch template
+     * @param action Action to perform
+     * @param data Command data
+     * @param state Current chat state
+     * @return Partial chat state to set after dispatched
+     * @protected
+     */
     async doDispatch(action, data, state) {
         switch (action) {
             case "create":
@@ -76,7 +90,7 @@ class ChatWorker extends firebase_ai_chat_core_1.BaseChatWorker {
         for (const message of messages) {
             latestMessageId = await this.wrapper.postMessage(threadId, message.text);
         }
-        return Object.assign({}, (undefined !== latestMessageId ? { lastMessageId: latestMessageId } : {}));
+        return Object.assign({}, (undefined != latestMessageId ? { lastMessageId: latestMessageId } : {}));
     }
     /**
      * Runs assistant

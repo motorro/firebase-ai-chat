@@ -23,7 +23,7 @@ import {CommandScheduler} from "./CommandScheduler";
  * - Close - closes chat
  * Functions post commands to processing table and complete ASAP
  */
-export class AssistantChat<AC extends AssistantConfig, DATA extends ChatData> {
+export class AssistantChat<DATA extends ChatData> {
     private readonly db: FirebaseFirestore.Firestore;
     private readonly scheduler: CommandScheduler;
 
@@ -48,10 +48,10 @@ export class AssistantChat<AC extends AssistantConfig, DATA extends ChatData> {
      * @param meta Metadata to pass to chat worker
      */
     async create(
-        document: DocumentReference<ChatState<AC, DATA>>,
+        document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         data: DATA,
-        assistantConfig: AC,
+        assistantConfig: AssistantConfig,
         dispatcherId: string,
         messages?: ReadonlyArray<string>,
         meta?: Meta
@@ -113,10 +113,10 @@ export class AssistantChat<AC extends AssistantConfig, DATA extends ChatData> {
      * @param meta Metadata to pass to chat worker
      */
     async singleRun(
-        document: DocumentReference<ChatState<AC, DATA>>,
+        document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         data: DATA,
-        assistantConfig: AC,
+        assistantConfig: AssistantConfig,
         dispatcherId: string,
         messages: ReadonlyArray<string>,
         meta?: Meta
@@ -165,7 +165,7 @@ export class AssistantChat<AC extends AssistantConfig, DATA extends ChatData> {
      * @param meta Metadata to pass to chat worker
      */
     async postMessage(
-        document: DocumentReference<ChatState<AC, DATA>>,
+        document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         messages: ReadonlyArray<string>,
         meta?: Meta
@@ -212,7 +212,7 @@ export class AssistantChat<AC extends AssistantConfig, DATA extends ChatData> {
      */
     private insertMessages(
         batch: FirebaseFirestore.WriteBatch,
-        document: DocumentReference<ChatState<AC, DATA>>,
+        document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         dispatchId: string,
         messages: ReadonlyArray<string>
@@ -241,7 +241,7 @@ export class AssistantChat<AC extends AssistantConfig, DATA extends ChatData> {
      * @param meta Metadata to pass to chat worker
      */
     async closeChat(
-        document: DocumentReference<ChatState<AC, DATA>>,
+        document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
@@ -279,11 +279,11 @@ export class AssistantChat<AC extends AssistantConfig, DATA extends ChatData> {
      * @private
      */
     private async prepareDispatchWithChecks(
-        document: DocumentReference<ChatState<AC, DATA>>,
+        document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         checkStatus: (currentStatus: ChatStatus) => boolean,
         targetStatus: ChatStatus,
-        block: (state: ChatState<AC, DATA>) => Promise<ChatStateUpdate<DATA>>
+        block: (state: ChatState<AssistantConfig, DATA>) => Promise<ChatStateUpdate<DATA>>
     ): Promise<ChatStateUpdate<DATA>> {
         const run = this.db.runTransaction(async (tx) => {
             const doc = await tx.get(document);
@@ -309,7 +309,7 @@ export class AssistantChat<AC extends AssistantConfig, DATA extends ChatData> {
                     new HttpsError("failed-precondition", "Can't perform this operation due to current chat state")
                 );
             }
-            const newState: ChatState<AC, DATA> = {
+            const newState: ChatState<AssistantConfig, DATA> = {
                 ...state,
                 status: targetStatus,
                 latestDispatchId: dispatchDoc.id

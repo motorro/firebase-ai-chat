@@ -23,7 +23,21 @@ export declare class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiA
      * @param dispatchers Tools dispatcher map
      */
     constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>);
+    /**
+     * Checks if command passed in `req` is supported by this dispatcher
+     * @param req Dispatch request
+     * @returns true if request is supported
+     * @protected
+     */
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<OpenAiChatAction>>;
+    /**
+     * Dispatch template
+     * @param action Action to perform
+     * @param data Command data
+     * @param state Current chat state
+     * @return Partial chat state to set after dispatched
+     * @protected
+     */
     protected doDispatch(action: OpenAiChatAction, data: ChatCommandData, state: ChatState<OpenAiAssistantConfig, ChatData>): Promise<Partial<ChatState<OpenAiAssistantConfig, ChatData>> | null>;
     /**
      * Creates thread
