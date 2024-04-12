@@ -41,12 +41,52 @@ class BaseChatWorker {
      * Creates message collection reference
      * @param chatDocumentPath Chat document path
      * @return Messages collection reference
-     * @private
+     * @protected
      */
     getMessageCollection(chatDocumentPath) {
         return this.db
             .doc(chatDocumentPath)
             .collection(Collections_1.Collections.messages);
+    }
+    /**
+     * Creates chat message query
+     * @param chatDocumentPath Chat document path
+     * @param dispatchId Chat dispatch ID if retrieving messages inserted in current dispatch
+     * @return Collection query to get chat messages
+     * @protected
+     */
+    getThreadMessageQuery(chatDocumentPath, dispatchId) {
+        let query = this.getMessageCollection(chatDocumentPath);
+        if (undefined !== dispatchId) {
+            query = query.where("dispatchId", "==", dispatchId);
+        }
+        query = query.orderBy("inBatchSortIndex");
+        return query;
+    }
+    /**
+     * Retrieves chat messages
+     * @param chatDocumentPath Chat document path
+     * @param dispatchId Chat dispatch ID if retrieving messages inserted in current dispatch
+     * @return Chat messages if any
+     * @protected
+     */
+    async getMessages(chatDocumentPath, dispatchId) {
+        const messages = await this.getThreadMessageQuery(chatDocumentPath, dispatchId).get();
+        const result = [];
+        messages.docs.forEach((doc) => {
+            const data = doc.data();
+            if (undefined !== data) {
+                result.push(data);
+            }
+        });
+        return result;
+    }
+    async getNextBatchSortIndex(chatDocumentPath, dispatchId) {
+        var _a;
+        const messagesSoFar = await this.getThreadMessageQuery(chatDocumentPath, dispatchId)
+            .limit(1)
+            .get();
+        return ((messagesSoFar.size > 0 && ((_a = messagesSoFar.docs[0].data()) === null || _a === void 0 ? void 0 : _a.inBatchSortIndex)) || -1) + 1;
     }
     /**
      * Runs dispatch with concurrency and duplication check

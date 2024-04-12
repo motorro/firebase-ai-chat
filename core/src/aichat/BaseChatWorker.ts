@@ -12,6 +12,7 @@ import DocumentReference = firestore.DocumentReference;
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {Run, RunStatus} from "./data/Dispatch";
 import {Meta} from "./data/Meta";
+import Query = firestore.Query;
 
 /**
  * Chat worker that dispatches chat commands and runs AI
@@ -75,12 +76,54 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
      * Creates message collection reference
      * @param chatDocumentPath Chat document path
      * @return Messages collection reference
-     * @private
+     * @protected
      */
     protected getMessageCollection(chatDocumentPath: string): CollectionReference<ChatMessage> {
         return this.db
             .doc(chatDocumentPath)
             .collection(Collections.messages) as CollectionReference<ChatMessage>;
+    }
+
+    /**
+     * Creates chat message query
+     * @param chatDocumentPath Chat document path
+     * @param dispatchId Chat dispatch ID if retrieving messages inserted in current dispatch
+     * @return Collection query to get chat messages
+     * @protected
+     */
+    protected getThreadMessageQuery(chatDocumentPath: string, dispatchId?: string): Query<ChatMessage> {
+        let query: Query<ChatMessage> = this.getMessageCollection(chatDocumentPath);
+        if (undefined !== dispatchId) {
+            query = query.where("dispatchId", "==", dispatchId);
+        }
+        query = query.orderBy("inBatchSortIndex");
+        return query;
+    }
+
+    /**
+     * Retrieves chat messages
+     * @param chatDocumentPath Chat document path
+     * @param dispatchId Chat dispatch ID if retrieving messages inserted in current dispatch
+     * @return Chat messages if any
+     * @protected
+     */
+    protected async getMessages(chatDocumentPath: string, dispatchId?: string): Promise<ReadonlyArray<ChatMessage>> {
+        const messages = await this.getThreadMessageQuery(chatDocumentPath, dispatchId).get();
+        const result: Array<ChatMessage> = [];
+        messages.docs.forEach((doc) => {
+            const data = doc.data();
+            if (undefined !== data) {
+                result.push(data);
+            }
+        });
+        return result;
+    }
+
+    protected async getNextBatchSortIndex(chatDocumentPath: string, dispatchId?: string): Promise<number> {
+        const messagesSoFar = await this.getThreadMessageQuery(chatDocumentPath, dispatchId)
+            .limit(1)
+            .get();
+        return ((messagesSoFar.size > 0 && messagesSoFar.docs[0].data()?.inBatchSortIndex) || -1) + 1;
     }
 
     /**

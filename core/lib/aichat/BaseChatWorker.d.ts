@@ -6,6 +6,7 @@ import { AssistantConfig, ChatData, ChatState } from "./data/ChatState";
 import { ChatCommand, TaskScheduler } from "./TaskScheduler";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { Meta } from "./data/Meta";
+import Query = firestore.Query;
 /**
  * Chat worker that dispatches chat commands and runs AI
  */
@@ -42,9 +43,26 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * Creates message collection reference
      * @param chatDocumentPath Chat document path
      * @return Messages collection reference
-     * @private
+     * @protected
      */
     protected getMessageCollection(chatDocumentPath: string): CollectionReference<ChatMessage>;
+    /**
+     * Creates chat message query
+     * @param chatDocumentPath Chat document path
+     * @param dispatchId Chat dispatch ID if retrieving messages inserted in current dispatch
+     * @return Collection query to get chat messages
+     * @protected
+     */
+    protected getThreadMessageQuery(chatDocumentPath: string, dispatchId?: string): Query<ChatMessage>;
+    /**
+     * Retrieves chat messages
+     * @param chatDocumentPath Chat document path
+     * @param dispatchId Chat dispatch ID if retrieving messages inserted in current dispatch
+     * @return Chat messages if any
+     * @protected
+     */
+    protected getMessages(chatDocumentPath: string, dispatchId?: string): Promise<ReadonlyArray<ChatMessage>>;
+    protected getNextBatchSortIndex(chatDocumentPath: string, dispatchId?: string): Promise<number>;
     /**
      * Runs dispatch with concurrency and duplication check
      * https://mm.tt/app/map/3191589380?t=UdskfqiKnl

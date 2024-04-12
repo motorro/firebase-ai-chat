@@ -71,19 +71,12 @@ class ChatWorker extends firebase_ai_chat_core_1.BaseChatWorker {
             firebase_ai_chat_core_1.logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
-        const messageCollectionRef = this.getMessageCollection(commandData.chatDocumentPath);
-        const messages = await messageCollectionRef
-            .where("dispatchId", "==", commandData.dispatchId)
-            .orderBy("inBatchSortIndex")
-            .get();
+        const messages = await this.getMessages(commandData.chatDocumentPath, commandData.dispatchId);
         let latestMessageId = undefined;
-        for (const message of messages.docs) {
-            const data = message.data();
-            if (undefined !== data) {
-                latestMessageId = await this.wrapper.postMessage(threadId, data.text);
-            }
+        for (const message of messages) {
+            latestMessageId = await this.wrapper.postMessage(threadId, message.text);
         }
-        return Object.assign({}, (undefined != latestMessageId ? { lastMessageId: latestMessageId } : {}));
+        return Object.assign({}, (undefined !== latestMessageId ? { lastMessageId: latestMessageId } : {}));
     }
     /**
      * Runs assistant
@@ -110,7 +103,6 @@ class ChatWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      * @private
      */
     async runRetrieve(commandData, state) {
-        var _a;
         firebase_ai_chat_core_1.logger.d("Retrieving messages...");
         const threadId = state.config.threadId;
         if (undefined === threadId) {
@@ -118,12 +110,7 @@ class ChatWorker extends firebase_ai_chat_core_1.BaseChatWorker {
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
         const messageCollectionRef = this.getMessageCollection(commandData.chatDocumentPath);
-        const messagesSoFar = await messageCollectionRef
-            .where("dispatchId", "==", commandData.dispatchId)
-            .orderBy("inBatchSortIndex", "desc")
-            .limit(1)
-            .get();
-        const latestInBatchId = ((messagesSoFar.size > 0 && ((_a = messagesSoFar.docs[0].data()) === null || _a === void 0 ? void 0 : _a.inBatchSortIndex)) || -1) + 1;
+        const latestInBatchId = await this.getNextBatchSortIndex(commandData.chatDocumentPath, commandData.dispatchId) + 1;
         const newMessages = await this.wrapper.getMessages(threadId, state.lastMessageId);
         const batch = this.db.batch();
         newMessages.messages.forEach(([id, message], index) => {

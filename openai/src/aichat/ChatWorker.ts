@@ -47,11 +47,25 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
         this.dispatchers = dispatchers;
     }
 
+    /**
+     * Checks if command passed in `req` is supported by this dispatcher
+     * @param req Dispatch request
+     * @returns true if request is supported
+     * @protected
+     */
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<OpenAiChatAction>> {
         return "engine" in req.data && "openai" === req.data.engine
             && req.data.actions.every((action) => "string" === typeof action && ChatWorker.SUPPORTED_ACTIONS.includes(action));
     }
 
+    /**
+     * Dispatch template
+     * @param action Action to perform
+     * @param data Command data
+     * @param state Current chat state
+     * @return Partial chat state to set after dispatched
+     * @protected
+     */
     protected async doDispatch(
         action: OpenAiChatAction,
         data: ChatCommandData,
@@ -112,18 +126,10 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
 
-        const messageCollectionRef = this.getMessageCollection(commandData.chatDocumentPath);
-        const messages = await messageCollectionRef
-            .where("dispatchId", "==", commandData.dispatchId)
-            .orderBy("inBatchSortIndex")
-            .get();
-
+        const messages = await this.getMessages(commandData.chatDocumentPath, commandData.dispatchId);
         let latestMessageId: string | undefined = undefined;
-        for (const message of messages.docs) {
-            const data = message.data();
-            if (undefined !== data) {
-                latestMessageId = await this.wrapper.postMessage(threadId, data.text);
-            }
+        for (const message of messages) {
+            latestMessageId = await this.wrapper.postMessage(threadId, message.text);
         }
 
         return {
@@ -169,12 +175,7 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
         }
 
         const messageCollectionRef = this.getMessageCollection(commandData.chatDocumentPath);
-        const messagesSoFar = await messageCollectionRef
-            .where("dispatchId", "==", commandData.dispatchId)
-            .orderBy("inBatchSortIndex", "desc")
-            .limit(1)
-            .get();
-        const latestInBatchId = ((messagesSoFar.size > 0 && messagesSoFar.docs[0].data()?.inBatchSortIndex) || -1) + 1;
+        const latestInBatchId = await this.getNextBatchSortIndex(commandData.chatDocumentPath, commandData.dispatchId) + 1;
 
         const newMessages = await this.wrapper.getMessages(threadId, state.lastMessageId);
         const batch = this.db.batch();
