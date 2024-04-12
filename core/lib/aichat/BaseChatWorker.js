@@ -179,7 +179,7 @@ class BaseChatWorker {
                 if (null !== state) {
                     const stateData = (await tx.get(doc)).data();
                     if (command.commonData.dispatchId === (stateData === null || stateData === void 0 ? void 0 : stateData.latestDispatchId)) {
-                        tx.set(doc, state, { merge: true });
+                        tx.set(doc, Object.assign(Object.assign({}, state), { updatedAt: FieldValue.serverTimestamp() }), { merge: true });
                     }
                 }
                 tx.set(runDoc, { status: runStatus }, { merge: true });

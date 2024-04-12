@@ -231,7 +231,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
                 if (null !== state) {
                     const stateData = (await tx.get(doc)).data();
                     if (command.commonData.dispatchId === stateData?.latestDispatchId) {
-                        tx.set(doc, state, {merge: true});
+                        tx.set(doc, {...state, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
                     }
                 }
                 tx.set(runDoc, {status: runStatus}, {merge: true});
