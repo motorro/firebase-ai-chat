@@ -35,8 +35,7 @@ export const data: Data = {
 export const chatState: ChatState<AiConfig, Data> = {
     userId: userId,
     config: {
-        assistantConfig: config,
-        dispatcherId: dispatcherId
+        assistantConfig: config
     },
     data: data,
     status: "userInput",

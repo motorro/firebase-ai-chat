@@ -31,11 +31,10 @@ class AssistantChat {
      * @param userId Chat owner
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
-     * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
      */
-    async create(document, userId, data, assistantConfig, dispatcherId, messages, meta) {
+    async create(document, userId, data, assistantConfig, messages, meta) {
         logging_1.logger.d("Creating new chat with assistant:", JSON.stringify(assistantConfig));
         const batch = this.db.batch();
         const status = "processing";
@@ -43,8 +42,7 @@ class AssistantChat {
         batch.set(document, {
             userId: userId,
             config: {
-                assistantConfig: assistantConfig,
-                dispatcherId: dispatcherId
+                assistantConfig: assistantConfig
             },
             status: status,
             latestDispatchId: dispatchDoc.id,
@@ -84,11 +82,10 @@ class AssistantChat {
      * @param userId Chat owner
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
-     * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
      */
-    async singleRun(document, userId, data, assistantConfig, dispatcherId, messages, meta) {
+    async singleRun(document, userId, data, assistantConfig, messages, meta) {
         logging_1.logger.d("Creating new single run with assistant:", JSON.stringify(assistantConfig));
         const batch = this.db.batch();
         const status = "processing";
@@ -96,8 +93,7 @@ class AssistantChat {
         batch.set(document, {
             userId: userId,
             config: {
-                assistantConfig: assistantConfig,
-                dispatcherId: dispatcherId
+                assistantConfig: assistantConfig
             },
             status: status,
             latestDispatchId: dispatchDoc.id,

@@ -3,7 +3,7 @@ import {db, test} from "./functionsTest";
 
 import {anything, capture, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
-import {assistantId, data, Data, dispatcherId, userId, chatState, CHATS, AiConfig} from "./mock";
+import {assistantId, data, Data, userId, chatState, CHATS, AiConfig} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import {ChatState, AssistantChat, Meta, Collections, CommandScheduler} from "../src";
@@ -32,7 +32,7 @@ describe("Assistant Chat", function() {
     });
 
     it("creates chat record", async function() {
-        const update = await chat.create(chatDoc, userId, data, {assistantId}, dispatcherId);
+        const update = await chat.create(chatDoc, userId, data, {assistantId});
         when(scheduler.create(anything())).thenReturn(Promise.resolve());
 
         update.should.deep.include({
@@ -47,8 +47,7 @@ describe("Assistant Chat", function() {
         createdState.should.deep.include({
             userId: userId,
             config: {
-                assistantConfig: {assistantId},
-                dispatcherId: dispatcherId
+                assistantConfig: {assistantId}
             },
             data: data,
             status: "processing"
@@ -67,7 +66,7 @@ describe("Assistant Chat", function() {
     });
 
     it("creates chat record with messages", async function() {
-        const update = await chat.create(chatDoc, userId, data, {assistantId}, dispatcherId, messages);
+        const update = await chat.create(chatDoc, userId, data, {assistantId}, messages);
         when(scheduler.createAndRun(anything())).thenReturn(Promise.resolve());
 
         update.should.deep.include({
@@ -82,8 +81,7 @@ describe("Assistant Chat", function() {
         createdState.should.deep.include({
             userId: userId,
             config: {
-                assistantConfig: {assistantId},
-                dispatcherId: dispatcherId
+                assistantConfig: {assistantId}
             },
             data: data,
             status: "processing"
@@ -117,7 +115,7 @@ describe("Assistant Chat", function() {
 
     it("creates a single run", async function() {
         const meta: Meta = {a: 1};
-        const update = await chat.singleRun(chatDoc, userId, data, {assistantId}, dispatcherId, messages, meta);
+        const update = await chat.singleRun(chatDoc, userId, data, {assistantId}, messages, meta);
         when(scheduler.singleRun(anything())).thenReturn(Promise.resolve());
 
         update.should.deep.include({
@@ -132,8 +130,7 @@ describe("Assistant Chat", function() {
         createdState.should.deep.include({
             userId: userId,
             config: {
-                assistantConfig: {assistantId},
-                dispatcherId: dispatcherId
+                assistantConfig: {assistantId}
             },
             data: data,
             status: "processing"

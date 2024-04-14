@@ -43,7 +43,6 @@ export class AssistantChat<DATA extends ChatData> {
      * @param userId Chat owner
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
-     * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
      */
@@ -52,7 +51,6 @@ export class AssistantChat<DATA extends ChatData> {
         userId: string,
         data: DATA,
         assistantConfig: AssistantConfig,
-        dispatcherId: string,
         messages?: ReadonlyArray<string>,
         meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
@@ -64,8 +62,7 @@ export class AssistantChat<DATA extends ChatData> {
         batch.set(document, {
             userId: userId,
             config: {
-                assistantConfig: assistantConfig,
-                dispatcherId: dispatcherId
+                assistantConfig: assistantConfig
             },
             status: status,
             latestDispatchId: dispatchDoc.id,
@@ -108,7 +105,6 @@ export class AssistantChat<DATA extends ChatData> {
      * @param userId Chat owner
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
-     * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
      */
@@ -117,7 +113,6 @@ export class AssistantChat<DATA extends ChatData> {
         userId: string,
         data: DATA,
         assistantConfig: AssistantConfig,
-        dispatcherId: string,
         messages: ReadonlyArray<string>,
         meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
@@ -129,8 +124,7 @@ export class AssistantChat<DATA extends ChatData> {
         batch.set(document, {
             userId: userId,
             config: {
-                assistantConfig: assistantConfig,
-                dispatcherId: dispatcherId
+                assistantConfig: assistantConfig
             },
             status: status,
             latestDispatchId: dispatchDoc.id,

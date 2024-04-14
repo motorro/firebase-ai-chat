@@ -29,11 +29,10 @@ export declare class AssistantChat<DATA extends ChatData> {
      * @param userId Chat owner
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
-     * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
      */
-    create(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, dispatcherId: string, messages?: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    create(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, messages?: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Runs AI once and cleans up afterward
      * For tasks like analyzing some text once and getting results with function call
@@ -41,11 +40,10 @@ export declare class AssistantChat<DATA extends ChatData> {
      * @param userId Chat owner
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
-     * @param dispatcherId Dispatcher ID to use for tool calls
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
      */
-    singleRun(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, dispatcherId: string, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    singleRun(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Posts messages to the thread
      * @param document Chat document

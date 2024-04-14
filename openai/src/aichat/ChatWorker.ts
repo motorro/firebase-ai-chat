@@ -149,7 +149,7 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
             logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
-        const dispatcher = this.dispatchers[state.config.dispatcherId] || this.defaultDispatcher;
+        const dispatcher = this.dispatchers[state.config.assistantConfig.dispatcherId] || this.defaultDispatcher;
         const newData = await this.wrapper.run(threadId, state.config.assistantConfig.assistantId, state.data, dispatcher);
 
         return {

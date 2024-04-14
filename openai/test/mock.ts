@@ -47,9 +47,9 @@ export const chatState: ChatState<OpenAiAssistantConfig, Data> = {
     config: {
         assistantConfig: {
             engine: "openai",
-            assistantId
-        },
-        dispatcherId: dispatcherId
+            assistantId,
+            dispatcherId: dispatcherId
+        }
     },
     data: data,
     status: "userInput",

@@ -104,7 +104,7 @@ class ChatWorker extends firebase_ai_chat_core_1.BaseChatWorker {
             firebase_ai_chat_core_1.logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
-        const dispatcher = this.dispatchers[state.config.dispatcherId] || this.defaultDispatcher;
+        const dispatcher = this.dispatchers[state.config.assistantConfig.dispatcherId] || this.defaultDispatcher;
         const newData = await this.wrapper.run(threadId, state.config.assistantConfig.assistantId, state.data, dispatcher);
         return {
             data: newData
