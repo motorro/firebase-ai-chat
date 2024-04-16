@@ -175,7 +175,7 @@ export class ChatWorker extends BaseChatWorker<OpenAiChatAction, OpenAiAssistant
         }
 
         const messageCollectionRef = this.getMessageCollection(commandData.chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(commandData.chatDocumentPath, commandData.dispatchId) + 1;
+        const latestInBatchId = await this.getNextBatchSortIndex(commandData.chatDocumentPath, commandData.dispatchId);
 
         const newMessages = await this.wrapper.getMessages(threadId, state.lastMessageId);
         const batch = this.db.batch();

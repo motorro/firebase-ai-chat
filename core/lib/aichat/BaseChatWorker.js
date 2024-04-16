@@ -60,7 +60,6 @@ class BaseChatWorker {
         if (undefined !== dispatchId) {
             query = query.where("dispatchId", "==", dispatchId);
         }
-        query = query.orderBy("inBatchSortIndex");
         return query;
     }
     /**
@@ -71,7 +70,9 @@ class BaseChatWorker {
      * @protected
      */
     async getMessages(chatDocumentPath, dispatchId) {
-        const messages = await this.getThreadMessageQuery(chatDocumentPath, dispatchId).get();
+        const messages = await this.getThreadMessageQuery(chatDocumentPath, dispatchId)
+            .orderBy("inBatchSortIndex")
+            .get();
         const result = [];
         messages.docs.forEach((doc) => {
             const data = doc.data();
@@ -84,6 +85,7 @@ class BaseChatWorker {
     async getNextBatchSortIndex(chatDocumentPath, dispatchId) {
         var _a;
         const messagesSoFar = await this.getThreadMessageQuery(chatDocumentPath, dispatchId)
+            .orderBy("inBatchSortIndex", "desc")
             .limit(1)
             .get();
         return ((messagesSoFar.size > 0 && ((_a = messagesSoFar.docs[0].data()) === null || _a === void 0 ? void 0 : _a.inBatchSortIndex)) || -1) + 1;

@@ -124,7 +124,7 @@ class ChatWorker extends firebase_ai_chat_core_1.BaseChatWorker {
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
         const messageCollectionRef = this.getMessageCollection(commandData.chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(commandData.chatDocumentPath, commandData.dispatchId) + 1;
+        const latestInBatchId = await this.getNextBatchSortIndex(commandData.chatDocumentPath, commandData.dispatchId);
         const newMessages = await this.wrapper.getMessages(threadId, state.lastMessageId);
         const batch = this.db.batch();
         newMessages.messages.forEach(([id, message], index) => {

@@ -6,7 +6,6 @@ import { AssistantConfig, ChatData, ChatState } from "./data/ChatState";
 import { ChatCommand, TaskScheduler } from "./TaskScheduler";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { Meta } from "./data/Meta";
-import Query = firestore.Query;
 /**
  * Chat worker that dispatches chat commands and runs AI
  */
@@ -55,7 +54,7 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * @return Collection query to get chat messages
      * @protected
      */
-    protected getThreadMessageQuery(chatDocumentPath: string, dispatchId?: string): Query<ChatMessage>;
+    private getThreadMessageQuery;
     /**
      * Retrieves chat messages
      * @param chatDocumentPath Chat document path

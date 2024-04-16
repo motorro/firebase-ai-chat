@@ -94,12 +94,11 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
      * @return Collection query to get chat messages
      * @protected
      */
-    protected getThreadMessageQuery(chatDocumentPath: string, dispatchId?: string): Query<ChatMessage> {
+    private getThreadMessageQuery(chatDocumentPath: string, dispatchId?: string): Query<ChatMessage> {
         let query: Query<ChatMessage> = this.getMessageCollection(chatDocumentPath);
         if (undefined !== dispatchId) {
             query = query.where("dispatchId", "==", dispatchId);
         }
-        query = query.orderBy("inBatchSortIndex");
         return query;
     }
 
@@ -111,7 +110,9 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
      * @protected
      */
     protected async getMessages(chatDocumentPath: string, dispatchId?: string): Promise<ReadonlyArray<ChatMessage>> {
-        const messages = await this.getThreadMessageQuery(chatDocumentPath, dispatchId).get();
+        const messages = await this.getThreadMessageQuery(chatDocumentPath, dispatchId)
+            .orderBy("inBatchSortIndex")
+            .get();
         const result: Array<ChatMessage> = [];
         messages.docs.forEach((doc) => {
             const data = doc.data();
@@ -124,6 +125,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
 
     protected async getNextBatchSortIndex(chatDocumentPath: string, dispatchId?: string): Promise<number> {
         const messagesSoFar = await this.getThreadMessageQuery(chatDocumentPath, dispatchId)
+            .orderBy("inBatchSortIndex", "desc")
             .limit(1)
             .get();
         return ((messagesSoFar.size > 0 && messagesSoFar.docs[0].data()?.inBatchSortIndex) || -1) + 1;
