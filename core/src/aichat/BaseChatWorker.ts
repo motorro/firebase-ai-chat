@@ -7,12 +7,13 @@ import FieldValue = firestore.FieldValue;
 import CollectionReference = firestore.CollectionReference;
 import {AssistantConfig, ChatData, ChatState} from "./data/ChatState";
 import {isPermanentError} from "./data/ChatError";
-import {ChatCommand, TaskScheduler} from "./TaskScheduler";
+import {TaskScheduler} from "./TaskScheduler";
 import DocumentReference = firestore.DocumentReference;
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {Run, RunStatus} from "./data/Dispatch";
 import {Meta} from "./data/Meta";
 import Query = firestore.Query;
+import {ChatCommand} from "./data/ChatCommand";
 
 /**
  * Chat worker that dispatches chat commands and runs AI

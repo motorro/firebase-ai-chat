@@ -3,9 +3,10 @@ import { ChatCommandData } from "./data/ChatCommandData";
 import { ChatMessage } from "./data/ChatMessage";
 import CollectionReference = firestore.CollectionReference;
 import { AssistantConfig, ChatData, ChatState } from "./data/ChatState";
-import { ChatCommand, TaskScheduler } from "./TaskScheduler";
+import { TaskScheduler } from "./TaskScheduler";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { Meta } from "./data/Meta";
+import { ChatCommand } from "./data/ChatCommand";
 /**
  * Chat worker that dispatches chat commands and runs AI
  */

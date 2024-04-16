@@ -3,10 +3,10 @@ import {DeliverySchedule, Functions} from "firebase-admin/lib/functions";
 import {projectID} from "firebase-functions/params";
 import {logger} from "../logging";
 import {HttpsError} from "firebase-functions/v2/https";
-import {ChatCommand, TaskScheduler} from "./TaskScheduler";
+import {TaskScheduler} from "./TaskScheduler";
 import {CloudTasksClient} from "@google-cloud/tasks";
 
-export class FirebaseQueueTaskScheduler implements TaskScheduler {
+export class FirebaseQueueTaskScheduler<Args extends Record<string, unknown> = Record<string, unknown>> implements TaskScheduler<Args> {
     private readonly auth: GoogleAuth = new GoogleAuth({
         scopes: "https://www.googleapis.com/auth/cloud-platform"
     });
@@ -18,11 +18,13 @@ export class FirebaseQueueTaskScheduler implements TaskScheduler {
         this.location = location;
     }
 
-    async schedule(queueName: string, command: ChatCommand<unknown>, schedule?: DeliverySchedule): Promise<void> {
+    async schedule(queueName: string, command: Args | ReadonlyArray<Args>, schedule?: DeliverySchedule): Promise<void> {
         logger.d(`Dispatching to ${queueName} at ${this.location}:`, JSON.stringify(command));
         const queue = this.functions.taskQueue(`locations/${this.location}/functions/${queueName}`);
         const uri = await this.getFunctionUrl(queueName, this.location);
-        await queue.enqueue(command, {...(schedule || {}), uri: uri});
+        const toEnqueue = Array.isArray(command) ? command : [command];
+        const options = {...(schedule || {}), uri: uri};
+        await Promise.all(toEnqueue.map((it) => queue.enqueue(it, options)));
     }
 
     async getQueueMaxRetries(queueName: string): Promise<number> {

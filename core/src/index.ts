@@ -10,6 +10,7 @@ export {DispatchSuccess, DispatchError, DispatchResult, ToolsDispatcher} from ".
 export {AssistantChat} from "./aichat/AssistantChat";
 export {BaseChatWorker} from "./aichat/BaseChatWorker";
 export {CommandScheduler} from "./aichat/CommandScheduler";
-export {ChatCommand, TaskScheduler} from "./aichat/TaskScheduler";
+export {TaskScheduler} from "./aichat/TaskScheduler";
+export {ChatCommand} from "./aichat/data/ChatCommand";
 export {FirebaseQueueTaskScheduler} from "./aichat/FirebaseQueueTaskScheduler";
 export {Collections} from "./aichat/data/Collections";

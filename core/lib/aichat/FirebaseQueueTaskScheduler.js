@@ -18,7 +18,9 @@ class FirebaseQueueTaskScheduler {
         logging_1.logger.d(`Dispatching to ${queueName} at ${this.location}:`, JSON.stringify(command));
         const queue = this.functions.taskQueue(`locations/${this.location}/functions/${queueName}`);
         const uri = await this.getFunctionUrl(queueName, this.location);
-        await queue.enqueue(command, Object.assign(Object.assign({}, (schedule || {})), { uri: uri }));
+        const toEnqueue = Array.isArray(command) ? command : [command];
+        const options = Object.assign(Object.assign({}, (schedule || {})), { uri: uri });
+        await Promise.all(toEnqueue.map((it) => queue.enqueue(it, options)));
     }
     async getQueueMaxRetries(queueName) {
         var _a;
