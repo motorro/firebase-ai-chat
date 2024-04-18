@@ -160,7 +160,8 @@ class BaseChatWorker {
             if (maxRetries != -1 && retryCount + 1 == maxRetries) {
                 logging_1.logger.w("Maximum retry count reached. Failing chat...");
                 await updateWithCheck("complete", {
-                    status: "failed"
+                    status: "failed",
+                    lastError: String(e)
                 });
                 return;
             }
