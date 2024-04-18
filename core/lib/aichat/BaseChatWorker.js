@@ -149,7 +149,8 @@ class BaseChatWorker {
             if ((0, ChatError_1.isPermanentError)(e)) {
                 logging_1.logger.w("Permanent error. Failing chat...");
                 await updateWithCheck("complete", {
-                    status: "failed"
+                    status: "failed",
+                    lastError: String(e)
                 });
                 return;
             }

@@ -203,7 +203,8 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
             if (isPermanentError(e)) {
                 logger.w("Permanent error. Failing chat...");
                 await updateWithCheck("complete", {
-                    status: "failed"
+                    status: "failed",
+                    lastError: String(e)
                 });
                 return;
             }

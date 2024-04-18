@@ -24,7 +24,8 @@ export interface ChatState<out C extends AssistantConfig, out DATA extends ChatD
     readonly data: DATA,
     readonly lastMessageId?: string
     readonly createdAt: Timestamp,
-    readonly updatedAt: Timestamp
+    readonly updatedAt: Timestamp,
+    readonly lastError?: string
 }
 
 export interface ChatStateUpdate<DATA> {
