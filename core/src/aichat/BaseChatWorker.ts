@@ -48,7 +48,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
             });
             return true;
         } else {
-            logger.w("Unsupported command. Aborting...");
+            logger.d("Command not supported by this worker. Aborting...");
             return false;
         }
     }

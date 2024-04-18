@@ -33,7 +33,7 @@ class BaseChatWorker {
             return true;
         }
         else {
-            logging_1.logger.w("Unsupported command. Aborting...");
+            logging_1.logger.d("Command not supported by this worker. Aborting...");
             return false;
         }
     }
