@@ -7,7 +7,7 @@ class CreateWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
     isSupportedAction(action) {
         return "create" === action;
     }
-    async doDispatch(action, data, state, control) {
+    async doDispatch(actions, data, state, control) {
         firebase_ai_chat_core_1.logger.d("Creating thread...");
         const threadId = await this.wrapper.createThread({
             chat: data.chatDocumentPath
@@ -15,7 +15,7 @@ class CreateWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
         await control.updateChatState({
             config: Object.assign(Object.assign({}, state.config), { threadId: threadId })
         });
-        await this.continueQueue(control, action.slice(1, action.length));
+        await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }
 exports.CreateWorker = CreateWorker;

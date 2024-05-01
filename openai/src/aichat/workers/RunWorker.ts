@@ -9,7 +9,7 @@ export class RunWorker extends BaseOpenAiWorker {
     }
 
     async doDispatch(
-        action: OpenAiChatActions,
+        actions: OpenAiChatActions,
         _data: ChatCommandData,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
@@ -20,13 +20,18 @@ export class RunWorker extends BaseOpenAiWorker {
             logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
-        const dispatcher = this.dispatchers[state.config.assistantConfig.dispatcherId] || this.defaultDispatcher;
+        logger.d("Selecting dispatcher:", state.config.assistantConfig.dispatcherId);
+        let dispatcher = this.dispatchers[state.config.assistantConfig.dispatcherId];
+        if (undefined === dispatcher) {
+            logger.w("Dispatcher not found:", state.config.assistantConfig.dispatcherId);
+            dispatcher = this.defaultDispatcher;
+        }
         const newData = await this.wrapper.run(threadId, state.config.assistantConfig.assistantId, state.data, dispatcher);
 
         await control.updateChatState({
             data: newData
         });
 
-        await this.continueQueue(control, action.slice(1, action.length));
+        await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }

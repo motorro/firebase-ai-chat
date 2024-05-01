@@ -4,5 +4,5 @@ import { OpenAiChatActions } from "../data/OpenAiChatAction";
 import { BaseOpenAiWorker } from "./BaseOpenAiWorker";
 export declare class CloseWorker extends BaseOpenAiWorker {
     protected isSupportedAction(action: string): boolean;
-    doDispatch(action: OpenAiChatActions, data: ChatCommandData, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
+    doDispatch(actions: OpenAiChatActions, data: ChatCommandData, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
 }

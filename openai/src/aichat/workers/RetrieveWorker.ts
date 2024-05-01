@@ -11,7 +11,7 @@ export class RetrieveWorker extends BaseOpenAiWorker {
     }
 
     async doDispatch(
-        action: OpenAiChatActions,
+        actions: OpenAiChatActions,
         data: ChatCommandData,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
@@ -46,6 +46,6 @@ export class RetrieveWorker extends BaseOpenAiWorker {
             lastMessageId: newMessages.latestMessageId
         });
 
-        await this.continueQueue(control, action.slice(1, action.length));
+        await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }

@@ -9,7 +9,7 @@ export class PostWorker extends BaseOpenAiWorker {
     }
 
     async doDispatch(
-        action: OpenAiChatActions,
+        actions: OpenAiChatActions,
         data: ChatCommandData,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
@@ -31,6 +31,6 @@ export class PostWorker extends BaseOpenAiWorker {
             ...(undefined != latestMessageId ? {lastMessageId: latestMessageId} : {})
         });
 
-        await this.continueQueue(control, action.slice(1, action.length));
+        await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }

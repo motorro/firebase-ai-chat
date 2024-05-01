@@ -7,7 +7,7 @@ class CloseWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
     isSupportedAction(action) {
         return "close" === action;
     }
-    async doDispatch(action, data, state, control) {
+    async doDispatch(actions, data, state, control) {
         firebase_ai_chat_core_1.logger.d("Closing chat...");
         const threadId = state.config.threadId;
         if (undefined !== threadId) {
@@ -16,7 +16,7 @@ class CloseWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
         await control.updateChatState({
             status: "complete"
         });
-        await this.continueQueue(control, action.slice(1, action.length));
+        await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }
 exports.CloseWorker = CloseWorker;

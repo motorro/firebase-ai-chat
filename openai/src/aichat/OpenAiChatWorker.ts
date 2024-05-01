@@ -4,7 +4,7 @@ import {
     ChatCommand,
     ChatData,
     ChatWorker,
-    DispatchControl,
+    DispatchControl, logger,
     Meta,
     TaskScheduler,
     ToolsDispatcher
@@ -52,6 +52,7 @@ export class OpenAiChatWorker implements ChatWorker {
                 return true;
             }
         }
+        logger.d("Didn't find worker for command:", JSON.stringify(req.data));
         return false;
     }
 }

@@ -6,8 +6,8 @@ class SwitchToUserWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
     isSupportedAction(action) {
         return "switchToUserInput" === action;
     }
-    async doDispatch(action, _data, _state, control) {
-        await this.continueQueue(control, action);
+    async doDispatch(actions, _data, _state, control) {
+        await this.continueQueue(control, actions);
     }
 }
 exports.SwitchToUserWorker = SwitchToUserWorker;

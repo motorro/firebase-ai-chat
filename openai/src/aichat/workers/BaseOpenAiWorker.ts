@@ -15,7 +15,7 @@ export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions,
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     protected readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
 
-    protected readonly defaultDispatcher: ToolsDispatcher<ChatData> = (data) => Promise.resolve({data: data});
+    protected readonly defaultDispatcher: ToolsDispatcher<ChatData> = (data) => Promise.resolve(data);
 
     /**
      * Constructor
@@ -44,7 +44,9 @@ export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions,
      */
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<OpenAiChatActions>> {
         return "engine" in req.data && "openai" === req.data.engine
-            && Array.isArray(req.data.actionData) && this.isSupportedAction(req.data.actionData[0]);
+            && Array.isArray(req.data.actionData)
+            && undefined !== req.data.actionData[0]
+            && this.isSupportedAction(req.data.actionData[0]);
     }
 
     /**
@@ -70,6 +72,7 @@ export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions,
         if ("switchToUserInput" === actions[0]) {
             await this.runSwitchToUser(control);
             await this.continueQueue(control, actions.slice(1, actions.length));
+            return;
         }
         logger.d("Scheduling next in queue:", JSON.stringify(actions));
         await control.continueQueue(actions);

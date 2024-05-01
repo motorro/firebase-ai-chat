@@ -25,17 +25,14 @@ class BaseChatWorker {
      * @param onQueueComplete Called when `req` queue is dispatched
      */
     async dispatch(req, onQueueComplete) {
-        logging_1.logger.d("Dispatching command: ", JSON.stringify(req.data));
         if (this.isSupportedCommand(req)) {
+            logging_1.logger.d("Dispatching command: ", JSON.stringify(req.data));
             await this.dispatchWithCheck(req, onQueueComplete, async (action, data, state, control) => {
                 return await this.doDispatch(action, data, state, control);
             });
             return true;
         }
-        else {
-            logging_1.logger.d("Command not supported by this worker. Aborting...");
-            return false;
-        }
+        return false;
     }
     /**
      * Creates message collection reference
@@ -156,7 +153,7 @@ class BaseChatWorker {
             });
         };
         const getContinuation = (action) => {
-            return { commonData: command.commonData, actionData: action };
+            return Object.assign(Object.assign({}, command), { actionData: action });
         };
         const control = {
             updateChatState: updateChatState,

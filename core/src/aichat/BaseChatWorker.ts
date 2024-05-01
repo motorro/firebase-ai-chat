@@ -67,16 +67,14 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         req: Request<ChatCommand<unknown>>,
         onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>
     ): Promise<boolean> {
-        logger.d("Dispatching command: ", JSON.stringify(req.data));
         if (this.isSupportedCommand(req)) {
+            logger.d("Dispatching command: ", JSON.stringify(req.data));
             await this.dispatchWithCheck(req, onQueueComplete, async (action, data, state, control) => {
                 return await this.doDispatch(action, data, state, control);
             });
             return true;
-        } else {
-            logger.d("Command not supported by this worker. Aborting...");
-            return false;
         }
+        return false;
     }
 
     /**
@@ -238,7 +236,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
             });
         };
         const getContinuation = (action: A) => {
-            return {commonData: command.commonData, actionData: action};
+            return {...command, actionData: action};
         };
         const control: DispatchControl<A, AC, DATA> = {
             updateChatState: updateChatState,

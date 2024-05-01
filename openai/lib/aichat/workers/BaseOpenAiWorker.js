@@ -14,7 +14,7 @@ class BaseOpenAiWorker extends firebase_ai_chat_core_1.BaseChatWorker {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     dispatchers) {
         super(firestore, scheduler);
-        this.defaultDispatcher = (data) => Promise.resolve({ data: data });
+        this.defaultDispatcher = (data) => Promise.resolve(data);
         this.wrapper = wrapper;
         this.dispatchers = dispatchers;
     }
@@ -26,7 +26,9 @@ class BaseOpenAiWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      */
     isSupportedCommand(req) {
         return "engine" in req.data && "openai" === req.data.engine
-            && Array.isArray(req.data.actionData) && this.isSupportedAction(req.data.actionData[0]);
+            && Array.isArray(req.data.actionData)
+            && undefined !== req.data.actionData[0]
+            && this.isSupportedAction(req.data.actionData[0]);
     }
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
@@ -43,6 +45,7 @@ class BaseOpenAiWorker extends firebase_ai_chat_core_1.BaseChatWorker {
         if ("switchToUserInput" === actions[0]) {
             await this.runSwitchToUser(control);
             await this.continueQueue(control, actions.slice(1, actions.length));
+            return;
         }
         firebase_ai_chat_core_1.logger.d("Scheduling next in queue:", JSON.stringify(actions));
         await control.continueQueue(actions);

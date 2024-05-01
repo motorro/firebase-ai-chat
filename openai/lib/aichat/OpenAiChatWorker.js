@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenAiChatWorker = void 0;
+const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const CreateWorker_1 = require("./workers/CreateWorker");
 const CloseWorker_1 = require("./workers/CloseWorker");
 const PostWorker_1 = require("./workers/PostWorker");
@@ -29,6 +30,7 @@ class OpenAiChatWorker {
                 return true;
             }
         }
+        firebase_ai_chat_core_1.logger.d("Didn't find worker for command:", JSON.stringify(req.data));
         return false;
     }
 }

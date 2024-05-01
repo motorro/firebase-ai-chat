@@ -9,11 +9,11 @@ export class SwitchToUserWorker extends BaseOpenAiWorker {
     }
 
     async doDispatch(
-        action: OpenAiChatActions,
+        actions: OpenAiChatActions,
         _data: ChatCommandData,
         _state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
-        await this.continueQueue(control, action);
+        await this.continueQueue(control, actions);
     }
 }
