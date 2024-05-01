@@ -6,7 +6,7 @@ import {
     ChatData,
     ChatState
 } from "@motorro/firebase-ai-chat-core";
-import {ChatWorker} from "./aichat/ChatWorker";
+import {OpenAiChatWorker} from "./aichat/OpenAiChatWorker";
 import {Functions} from "firebase-admin/lib/functions";
 import {firestore} from "firebase-admin";
 import Firestore = firestore.Firestore;
@@ -26,7 +26,7 @@ export {
 } from "@motorro/firebase-ai-chat-core";
 export {
     AiWrapper,
-    ChatWorker,
+    OpenAiChatWorker,
     ToolsDispatcher,
     AssistantChat
 };
@@ -58,7 +58,7 @@ export interface AiChat {
      * @return Worker interface
      */
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    worker(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): ChatWorker
+    worker(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker
 }
 
 /**
@@ -75,8 +75,8 @@ export function factory(firestore: Firestore, functions: Functions, location: st
             return new AssistantChat<DATA>(firestore, new OpenAICommandScheduler(queueName, scheduler));
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        worker: function(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): ChatWorker {
-            return new ChatWorker(firestore, scheduler, aiWrapper, dispatchers);
+        worker: function(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker {
+            return new OpenAiChatWorker(firestore, scheduler, aiWrapper, dispatchers);
         }
     };
 }

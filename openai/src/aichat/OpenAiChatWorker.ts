@@ -1,0 +1,57 @@
+import {Request} from "firebase-functions/lib/common/providers/tasks";
+import {
+    AiWrapper,
+    ChatCommand,
+    ChatData,
+    ChatWorker,
+    DispatchControl,
+    Meta,
+    TaskScheduler,
+    ToolsDispatcher
+} from "@motorro/firebase-ai-chat-core";
+import {OpenAiChatActions} from "./data/OpenAiChatAction";
+import {OpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
+import {BaseOpenAiWorker} from "./workers/BaseOpenAiWorker";
+import {CreateWorker} from "./workers/CreateWorker";
+import {CloseWorker} from "./workers/CloseWorker";
+import {PostWorker} from "./workers/PostWorker";
+import {RetrieveWorker} from "./workers/RetrieveWorker";
+import {RunWorker} from "./workers/RunWorker";
+import {SwitchToUserWorker} from "./workers/SwitchToUserWorker";
+
+export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
+
+/**
+ * Chat worker that dispatches chat commands and runs AI
+ */
+export class OpenAiChatWorker implements ChatWorker {
+    private workers: ReadonlyArray<BaseOpenAiWorker>;
+
+    constructor(
+        firestore: FirebaseFirestore.Firestore,
+        scheduler: TaskScheduler,
+        wrapper: AiWrapper,
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>
+    ) {
+        this.workers = [
+            new CloseWorker(firestore, scheduler, wrapper, dispatchers),
+            new CreateWorker(firestore, scheduler, wrapper, dispatchers),
+            new PostWorker(firestore, scheduler, wrapper, dispatchers),
+            new RetrieveWorker(firestore, scheduler, wrapper, dispatchers),
+            new RunWorker(firestore, scheduler, wrapper, dispatchers),
+            new SwitchToUserWorker(firestore, scheduler, wrapper, dispatchers)
+        ];
+    }
+    async dispatch(
+        req: Request<ChatCommand<unknown>>,
+        onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>
+    ): Promise<boolean> {
+        for (let i = 0; i < this.workers.length; ++i) {
+            if (await this.workers[i].dispatch(req, onQueueComplete)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}

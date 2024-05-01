@@ -1,11 +1,11 @@
 import { AssistantChat, AiWrapper, ToolsDispatcher, ChatData, ChatState } from "@motorro/firebase-ai-chat-core";
-import { ChatWorker } from "./aichat/ChatWorker";
+import { OpenAiChatWorker } from "./aichat/OpenAiChatWorker";
 import { Functions } from "firebase-admin/lib/functions";
 import { firestore } from "firebase-admin";
 import Firestore = firestore.Firestore;
 import { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
 export { ChatData, ChatState, ChatStatus, ChatMessage, Meta, Logger, setLogger, TaskScheduler, Collections } from "@motorro/firebase-ai-chat-core";
-export { AiWrapper, ChatWorker, ToolsDispatcher, AssistantChat };
+export { AiWrapper, OpenAiChatWorker, ToolsDispatcher, AssistantChat };
 export { OpenAiWrapper } from "./aichat/OpenAiWrapper";
 export { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
 export { OpenAiChatCommand } from "./aichat/data/OpenAiChatCommand";
@@ -30,7 +30,7 @@ export interface AiChat {
      * @param dispatchers Tools dispatchers
      * @return Worker interface
      */
-    worker(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): ChatWorker;
+    worker(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker;
 }
 /**
  * Chat tools factory

@@ -30,13 +30,12 @@ import {
     ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
-import {ChatWorker, OpenAiAssistantConfig} from "../src";
+import {OpenAiChatWorker, OpenAiAssistantConfig, OpenAiChatCommand} from "../src";
 import CollectionReference = admin.firestore.CollectionReference;
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
-import {OpenAiChatCommand} from "../lib";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -71,39 +70,39 @@ describe("Chat worker", function() {
     const createCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
-        actions: ["create"]
+        actionData: ["create"]
     };
     const postCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
-        actions: ["post"]
+        actionData: ["post"]
     };
     const runCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
-        actions: ["run"]
+        actionData: ["run"]
     };
     const retrieveCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
-        actions: ["retrieve"]
+        actionData: ["retrieve"]
     };
     const switchToUserCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
-        actions: ["switchToUserInput"]
+        actionData: ["switchToUserInput"]
     };
     const closeCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
-        actions: ["close"]
+        actionData: ["close"]
     };
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
     let dispatcher: ToolsDispatcher<Data>;
     let dispatcher2: ToolsDispatcher<Data2>;
-    let worker: ChatWorker;
+    let worker: OpenAiChatWorker;
 
     before(async function() {
         wrapper = imock<AiWrapper>();
@@ -117,7 +116,7 @@ describe("Chat worker", function() {
             "dispatcherId": dispatcher,
             "dispatcher2Id": dispatcher2
         };
-        worker = new ChatWorker(db, instance(scheduler), instance(wrapper), dispatchers);
+        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper), dispatchers);
     });
 
     after(async function() {
@@ -509,7 +508,7 @@ describe("Chat worker", function() {
             data: {
                 engine: "openai",
                 commonData: commandData,
-                actions: ["create", "close"]
+                actionData: ["create", "close"]
             }
         };
 
@@ -522,7 +521,7 @@ describe("Chat worker", function() {
         command.should.deep.include(
             {
                 commonData: commandData,
-                actions: ["close"]
+                actionData: ["close"]
             }
         );
     });
@@ -536,7 +535,7 @@ describe("Chat worker", function() {
             data: {
                 engine: "openai",
                 commonData: commandData,
-                actions: ["create"]
+                actionData: ["create"]
             }
         };
 

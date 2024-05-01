@@ -4,5 +4,5 @@ import { ChatCommandData } from "./ChatCommandData";
  */
 export interface ChatCommand<A> extends Record<string, unknown> {
     readonly commonData: ChatCommandData;
-    readonly actions: ReadonlyArray<A>;
+    readonly actionData: A;
 }

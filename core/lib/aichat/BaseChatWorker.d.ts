@@ -8,9 +8,30 @@ import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { Meta } from "./data/Meta";
 import { ChatCommand } from "./data/ChatCommand";
 /**
- * Chat worker that dispatches chat commands and runs AI
+ * Dispatch control structure passed to processing function
  */
-export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends ChatData> {
+export interface DispatchControl<A, AC extends AssistantConfig, DATA extends ChatData> {
+    updateChatState: (state: Partial<ChatState<AC, DATA>>) => Promise<boolean>;
+    getContinuation: (action: A) => ChatCommand<A>;
+    continueQueue: (action: A) => Promise<void>;
+    completeQueue: () => Promise<void>;
+}
+/**
+ * Chat worker
+ * Use to dispatch queue requests
+ */
+export interface ChatWorker {
+    /**
+     * Dispatches command
+     * @param req Dispatch request
+     * @param onQueueComplete Called when `req` queue is dispatched
+     */
+    dispatch(req: Request<ChatCommand<unknown>>, onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>): Promise<boolean>;
+}
+/**
+ * Basic `OpenAiChatWorker` implementation that maintains chat state and dispatch runs
+ */
+export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends ChatData> implements ChatWorker {
     protected readonly db: FirebaseFirestore.Firestore;
     protected readonly scheduler: TaskScheduler;
     /**
@@ -37,10 +58,11 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * @param action Action to perform
      * @param data Command data
      * @param state Current chat state
+     * @param control Continuation control
      * @return Partial chat state to set after dispatched
      * @protected
      */
-    protected abstract doDispatch(action: A, data: ChatCommandData, state: ChatState<AC, DATA>): Promise<Partial<ChatState<AC, DATA>> | null>;
+    protected abstract doDispatch(action: A, data: ChatCommandData, state: ChatState<AC, DATA>, control: DispatchControl<A, AC, DATA>): Promise<void>;
     /**
      * Creates message collection reference
      * @param chatDocumentPath Chat document path
@@ -73,5 +95,5 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * @param processAction Dispatch function
      * @private
      */
-    protected dispatchWithCheck(req: Request<ChatCommand<A>>, onQueueComplete: ((chatDocumentPath: string, meta: Meta | null) => void | Promise<void>) | undefined, processAction: (action: A, data: ChatCommandData, state: ChatState<AC, DATA>) => Promise<Partial<ChatState<AC, DATA>> | null>): Promise<void>;
+    private dispatchWithCheck;
 }

@@ -26,7 +26,7 @@ information on setting environment and secret variables for your functions.
 ### Command dispatcher configuration
 The requests to front-facing functions return to user as fast as possible after changing the chat state in Firestore.
 As soon as the AI run could take a considerable time, we run theme in a Cloud Task "offline" from the client request.
-To execute the Assistant run we use the second class from the library - the [ChatWorker](src/aichat/ChatWorker.ts).
+To execute the Assistant run we use the second class from the library - the [OpenAiChatWorker](src/aichat/OpenAiChatWorker.ts).
 To create it, use the [AiChat](src/index.ts) factory we created as described in the [main documentation](https://github.com/motorro/firebase-ai-chat).
 
 To register the Cloud Task handler you may want to create the following function:
@@ -63,5 +63,5 @@ export const calculator = onTaskDispatched(
     }
 );
 ```
-The `ChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommandQueue.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
+The `OpenAiChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommandQueue.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
 with the results.
