@@ -16,9 +16,35 @@ import Query = firestore.Query;
 import {ChatCommand} from "./data/ChatCommand";
 
 /**
- * Chat worker that dispatches chat commands and runs AI
+ * Dispatch control structure passed to processing function
  */
-export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends ChatData> {
+export interface DispatchControl<A, AC extends AssistantConfig, DATA extends ChatData> {
+    updateChatState: (state: Partial<ChatState<AC, DATA>>) => Promise<boolean>
+    getContinuation: (action: A) => ChatCommand<A>,
+    continueQueue: (action: A) => Promise<void>,
+    completeQueue: () => Promise<void>
+}
+
+/**
+ * Chat worker
+ * Use to dispatch queue requests
+ */
+export interface ChatWorker {
+    /**
+     * Dispatches command
+     * @param req Dispatch request
+     * @param onQueueComplete Called when `req` queue is dispatched
+     */
+    dispatch(
+        req: Request<ChatCommand<unknown>>,
+        onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>
+    ): Promise<boolean>
+}
+
+/**
+ * Basic `OpenAiChatWorker` implementation that maintains chat state and dispatch runs
+ */
+export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends ChatData> implements ChatWorker {
     protected readonly db: FirebaseFirestore.Firestore;
     protected readonly scheduler: TaskScheduler;
 
@@ -43,8 +69,8 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
     ): Promise<boolean> {
         logger.d("Dispatching command: ", JSON.stringify(req.data));
         if (this.isSupportedCommand(req)) {
-            await this.dispatchWithCheck(req, onQueueComplete, async (action, data, state) => {
-                return await this.doDispatch(action, data, state);
+            await this.dispatchWithCheck(req, onQueueComplete, async (action, data, state, control) => {
+                return await this.doDispatch(action, data, state, control);
             });
             return true;
         } else {
@@ -61,20 +87,21 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
      */
     protected abstract isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<A>>
 
-
     /**
      * Dispatch template
      * @param action Action to perform
      * @param data Command data
      * @param state Current chat state
+     * @param control Continuation control
      * @return Partial chat state to set after dispatched
      * @protected
      */
     protected abstract doDispatch(
         action: A,
         data: ChatCommandData,
-        state: ChatState<AC, DATA>
-    ): Promise<Partial<ChatState<AC, DATA>> | null>
+        state: ChatState<AC, DATA>,
+        control: DispatchControl<A, AC, DATA>
+    ): Promise<void>
 
     /**
      * Creates message collection reference
@@ -140,28 +167,30 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
      * @param processAction Dispatch function
      * @private
      */
-    protected async dispatchWithCheck(
+    private async dispatchWithCheck(
         req: Request<ChatCommand<A>>,
         onQueueComplete: ((chatDocumentPath: string, meta: Meta | null) => void | Promise<void>) | undefined,
         processAction: (
             action: A,
             data: ChatCommandData,
-            state: ChatState<AC, DATA>
-        ) => Promise<Partial<ChatState<AC, DATA>> | null>
+            state: ChatState<AC, DATA>,
+            control: DispatchControl<A, AC, DATA>
+        ) => Promise<void>
     ): Promise<void> {
         const db = this.db;
         const command = req.data;
         const doc = this.db.doc(command.commonData.chatDocumentPath) as DocumentReference<ChatState<AC, DATA>>;
         const runDoc = doc.collection(Collections.dispatches)
-            .doc(command.commonData.dispatchId).collection(Collections.runs)
+            .doc(command.commonData.dispatchId)
+            .collection(Collections.runs)
             .doc(req.id) as DocumentReference<Run>;
-        const action = command.actions[0];
+        const action = command.actionData;
         if (undefined === action) {
             logger.w("Empty command queue in command", JSON.stringify(command));
             return;
         }
 
-        logger.d(`Dispatching action ${action} (0 of ${command.actions.length} for document: ${command.commonData.chatDocumentPath}`);
+        logger.d(`Dispatching action ${action} for document: ${command.commonData.chatDocumentPath}`);
         const stateToDispatch = await db.runTransaction(async (tx) => {
             const state = (await tx.get(doc)).data();
 
@@ -195,17 +224,53 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
             return;
         }
 
-        let resultState: Partial<ChatState<AC, DATA>> | null;
+        const updateChatState = async (state: Partial<ChatState<AC, DATA>>) => {
+            return await this.db.runTransaction(async (tx) => {
+                const stateData = (await tx.get(doc)).data();
+                if (command.commonData.dispatchId === stateData?.latestDispatchId) {
+                    logger.d(`Updating chat state of ${doc.path}:`, JSON.stringify(state));
+                    tx.set(doc, {...state, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+                    return true;
+                } else {
+                    logger.d("Chat has dispatch another command. Data update cancelled");
+                    return false;
+                }
+            });
+        };
+        const getContinuation = (action: A) => {
+            return {commonData: command.commonData, actionData: action};
+        };
+        const control: DispatchControl<A, AC, DATA> = {
+            updateChatState: updateChatState,
+            getContinuation: getContinuation,
+            continueQueue: async (action: A) => {
+                logger.d("Scheduling next step: ", JSON.stringify(action));
+                await this.scheduler.schedule(req.queueName, getContinuation(action));
+            },
+            completeQueue: async () => {
+                logger.d("Command queue complete");
+                if (undefined !== onQueueComplete) {
+                    logger.d("Running queue complete handler...");
+                    try {
+                        await onQueueComplete(command.commonData.chatDocumentPath, command.commonData.meta);
+                    } catch (e: unknown) {
+                        logger.w("Error running complete handler", e);
+                    }
+                }
+            }
+        };
+
         try {
-            resultState = await processAction(action, command.commonData, stateToDispatch);
+            await processAction(action, command.commonData, stateToDispatch, control);
         } catch (e) {
             logger.w("Error running dispatch", e);
             if (isPermanentError(e)) {
                 logger.w("Permanent error. Failing chat...");
-                await updateWithCheck("complete", {
+                await updateChatState({
                     status: "failed",
                     lastError: String(e)
                 });
+                await updateRun("complete");
                 return;
             }
             const retryCount = req.retryCount;
@@ -213,45 +278,23 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
             logger.d(`Current retry count attempt: ${retryCount}, maximum retry count: ${maxRetries}`);
             if (maxRetries != -1 && retryCount + 1 == maxRetries) {
                 logger.w("Maximum retry count reached. Failing chat...");
-                await updateWithCheck("complete", {
+                await updateChatState({
                     status: "failed",
                     lastError: String(e)
                 });
+                await updateRun("complete");
                 return;
             }
             logger.d(`Scheduling retry ${retryCount} of ${maxRetries}`);
-            await updateWithCheck("waitingForRetry", null);
+            await updateRun("waitingForRetry");
             return Promise.reject(e);
         }
 
-        await updateWithCheck("complete", resultState);
+        await updateRun("complete");
 
-        if (command.actions.length > 1) {
-            logger.d("Dispatching next command...");
-            await this.scheduler.schedule(req.queueName, {...command, actions: command.actions.slice(1)});
-        } else {
-            logger.d("Command queue complete");
-        }
-
-        async function updateWithCheck(runStatus: RunStatus, state: Partial<ChatState<AC, DATA>> | null): Promise<void> {
-            logger.d("Finalizing task...");
-            await db.runTransaction(async (tx) => {
-                if (null !== state) {
-                    const stateData = (await tx.get(doc)).data();
-                    if (command.commonData.dispatchId === stateData?.latestDispatchId) {
-                        tx.set(doc, {...state, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
-                    }
-                }
-                tx.set(runDoc, {status: runStatus}, {merge: true});
-            });
-            if (undefined !== onQueueComplete) {
-                logger.d("Running queue complete handler...");
-                try {
-                    await onQueueComplete(command.commonData.chatDocumentPath, command.commonData.meta);
-                } catch (e: unknown) {
-                    logger.w("Error running complete handler", e);
-                }
-            }
+        async function updateRun(status: RunStatus) {
+            logger.d("Updating run to:", status);
+            await runDoc.set({status: status}, {merge: true});
         }
     }
 }

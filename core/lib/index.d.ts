@@ -8,7 +8,7 @@ export { Logger, logger, setLogger } from "./logging";
 export { Messages, AiError, isPermanentError, AiWrapper } from "./aichat/AiWrapper";
 export { DispatchSuccess, DispatchError, DispatchResult, ToolsDispatcher } from "./aichat/ToolsDispatcher";
 export { AssistantChat } from "./aichat/AssistantChat";
-export { BaseChatWorker } from "./aichat/BaseChatWorker";
+export { DispatchControl, ChatWorker, BaseChatWorker } from "./aichat/BaseChatWorker";
 export { CommandScheduler } from "./aichat/CommandScheduler";
 export { TaskScheduler } from "./aichat/TaskScheduler";
 export { ChatCommand } from "./aichat/data/ChatCommand";

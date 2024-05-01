@@ -38,7 +38,7 @@ class OpenAICommandScheduler {
         const command = {
             engine: "openai",
             commonData: common,
-            actions: actions
+            actionData: actions
         };
         await this.scheduler.schedule(this.queueName, command, schedule);
     }

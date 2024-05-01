@@ -1,0 +1,59 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+control AssistantChat
+boundary Queue
+control ChatWorker
+participant Dispatch
+participant ChatCommand
+participant Run
+
+== Creating command ==
+create Dispatch
+AssistantChat -> Dispatch: create
+create ChatCommand
+AssistantChat -> ChatCommand: create
+Dispatch -> ChatCommand: set dispatch ID
+AssistantChat -> ChatCommand: set actions
+AssistantChat -> Queue: enqueue command
+
+== Dispatching command ==
+Queue -> ChatWorker: dispatch
+ChatWorker -> ChatCommand: get dispatch ID
+ChatWorker -> AssistantChat: is latest dispatch ID
+alt dispatch ID changed
+    ChatWorker -> Queue: complete
+    note right
+        Another command
+        is dispatched
+    end note
+end
+ChatWorker -> ChatCommand: get run ID
+ChatWorker -> ChatWorker: does run exist
+alt run ID exists and not in retry
+    ChatWorker -> Queue: complete
+    note right
+        Same request runs twice
+        protection
+    end note
+end
+ChatWorker -> ChatCommand: take next action
+ChatWorker -> Dispatch: create Run
+create Run
+Dispatch -> Run: create
+ChatWorker -> Run: set status "running"
+ChatWorker -> ChatWorker: doDispatch
+alt dispatch succeeds
+    ChatWorker -> Run: set status "complete"
+    ChatWorker -> Queue: complete
+    note right
+        Action complete
+    end note
+else
+    ChatWorker -> Run: set status "waitingForRetry"
+    ChatWorker -> Queue: error
+end
+
+
+@enduml

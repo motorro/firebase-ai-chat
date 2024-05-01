@@ -1,6 +1,6 @@
 import {CommandScheduler, logger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
 import {ChatCommandData} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatCommandQueue";
-import {OpenAiChatAction} from "./data/OpenAiChatAction";
+import {OpenAiChatActions} from "./data/OpenAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
 import {OpenAiChatCommand} from "./data/OpenAiChatCommand";
 
@@ -42,11 +42,11 @@ export class OpenAICommandScheduler implements CommandScheduler {
         await this.schedule(common, ["close"], {scheduleDelaySeconds: SCHEDULE_CLOSE_AFTER});
     }
 
-    private async schedule(common: ChatCommandData, actions: ReadonlyArray<OpenAiChatAction>, schedule?: DeliverySchedule): Promise<void> {
+    private async schedule(common: ChatCommandData, actions: OpenAiChatActions, schedule?: DeliverySchedule): Promise<void> {
         const command: OpenAiChatCommand = {
             engine: "openai",
             commonData: common,
-            actions: actions
+            actionData: actions
         };
         await this.scheduler.schedule(
             this.queueName,

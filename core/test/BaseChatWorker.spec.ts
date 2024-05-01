@@ -13,6 +13,7 @@ import {
     ChatStatus,
     Collections,
     Dispatch,
+    DispatchControl,
     Meta,
     Run,
     TaskScheduler
@@ -53,11 +54,11 @@ describe("Base chat worker", function() {
 
     const createCommand: ChatCommand<DispatchAction> = {
         commonData: commandData,
-        actions: ["create"]
+        actionData: "create"
     };
     const closeCommand: ChatCommand<DispatchAction> = {
         commonData: commandData,
-        actions: ["close"]
+        actionData: "close"
     };
 
     let scheduler: TaskScheduler;
@@ -118,13 +119,17 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (action: DispatchAction, data: ChatCommandData, state: ChatState<AiConfig, Data>): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
+            async (
+                action: DispatchAction,
+                data: ChatCommandData,
+                state: ChatState<AiConfig, Data>,
+                control: DispatchControl<DispatchAction, AiConfig, Data>
+            ): Promise<void> => {
                 passedAction = action;
                 passedData = data;
                 passedState = state;
-                return Promise.resolve({
-                    status: "complete"
-                });
+                await control.updateChatState({status: "complete"});
+                return Promise.resolve();
             }
         );
 
@@ -168,7 +173,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
+            (): Promise<void> => {
                 return Promise.reject(new ChatError("internal", false, "AI error"));
             }
         );
@@ -195,7 +200,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
+            (): Promise<void> => {
                 return Promise.reject(new ChatError("internal", false, "AI error"));
             }
         );
@@ -234,8 +239,8 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
-                return Promise.resolve({
+            async (_action, _data, _state, control): Promise<void> => {
+                await control.updateChatState({
                     status: "userInput"
                 });
             }
@@ -262,7 +267,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
+            (): Promise<void> => {
                 return Promise.reject(new ChatError("internal", false, "AI error"));
             }
         );
@@ -296,7 +301,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
+            (): Promise<void> => {
                 return Promise.reject(new ChatError("internal", false, "AI error"));
             }
         );
@@ -336,8 +341,8 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
-                return Promise.resolve({
+            async (_action, _data, _state, control): Promise<void> => {
+                await control.updateChatState({
                     status: "userInput"
                 });
             }
@@ -373,8 +378,8 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
-                return Promise.resolve({
+            async (_action, _data, _state, control): Promise<void> => {
+                await control.updateChatState({
                     status: "userInput"
                 });
             }
@@ -406,7 +411,7 @@ describe("Base chat worker", function() {
                 return false;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
+            (): Promise<void> => {
                 return Promise.reject(new Error("Should not be dispatched!"));
             }
         );
@@ -426,10 +431,11 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
-                return Promise.resolve({
+            async (_action, _data, _state, control): Promise<void> => {
+                await control.updateChatState({
                     status: "userInput"
                 });
+                await control.continueQueue("close");
             }
         );
 
@@ -437,7 +443,7 @@ describe("Base chat worker", function() {
             ...context,
             data: {
                 commonData: commandData,
-                actions: ["create", "close"]
+                actionData: "create"
             }
         };
 
@@ -448,7 +454,7 @@ describe("Base chat worker", function() {
         command.should.deep.include(
             {
                 commonData: commandData,
-                actions: ["close"]
+                actionData: "close"
             }
         );
     });
@@ -463,8 +469,9 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            (): Promise<Partial<ChatState<AiConfig, Data>> | null> => {
-                return Promise.resolve({
+            async (_action, _data, _state, control): Promise<void> => {
+                await control.completeQueue();
+                await control.updateChatState({
                     status: "userInput"
                 });
             }
@@ -473,7 +480,7 @@ describe("Base chat worker", function() {
             ...context,
             data: {
                 commonData: commandData,
-                actions: ["create"]
+                actionData: "create"
             }
         };
 
@@ -490,7 +497,12 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     // eslint-disable-next-line max-len
     private readonly isSupportedCommandImpl: (req: Request<ChatCommand<unknown>>) => req is Request<ChatCommand<DispatchAction>>;
     // eslint-disable-next-line max-len
-    private readonly doDispatchImpl: (action: DispatchAction, data: ChatCommandData, state: ChatState<AiConfig, Data>) => Promise<Partial<ChatState<AiConfig, Data>> | null>;
+    private readonly doDispatchImpl: (
+        action: DispatchAction,
+        data: ChatCommandData,
+        state: ChatState<AiConfig, Data>,
+        control: DispatchControl<DispatchAction, AiConfig, Data>
+    ) => Promise<void>;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -498,7 +510,12 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
         // eslint-disable-next-line max-len
         isSupportedCommand: (req: Request<ChatCommand<unknown>>) => req is Request<ChatCommand<DispatchAction>>,
         // eslint-disable-next-line max-len
-        doDispatch: (action: DispatchAction, data: ChatCommandData, state: ChatState<AiConfig, Data>) => Promise<Partial<ChatState<AiConfig, Data>> | null>
+        doDispatch: (
+            action: DispatchAction,
+            data: ChatCommandData,
+            state: ChatState<AiConfig, Data>,
+            control: DispatchControl<DispatchAction, AiConfig, Data>
+        ) => Promise<void>
     ) {
         super(firestore, scheduler);
         this.isSupportedCommandImpl = isSupportedCommand;
@@ -512,8 +529,9 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     protected doDispatch(
         action: DispatchAction,
         data: ChatCommandData,
-        state: ChatState<AiConfig, Data>
-    ): Promise<Partial<ChatState<AiConfig, Data>> | null> {
-        return this.doDispatchImpl(action, data, state);
+        state: ChatState<AiConfig, Data>,
+        control: DispatchControl<DispatchAction, AiConfig, Data>
+    ): Promise<void> {
+        return this.doDispatchImpl(action, data, state, control);
     }
 }

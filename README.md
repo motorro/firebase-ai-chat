@@ -84,7 +84,7 @@ Let's take a closer look at the implementation...
 ## Module API
 The module has three classes to use in your project:
 - [AssistantChat](src/aichat/AssistantChat.ts) - handles requests from the App user
-- [ChatWorker](src/aichat/ChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
+- [OpenAiChatWorker](src/aichat/ChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
 - [AiChat](src/index.ts) - a factory to create those above
 
 ### Scaffolds
@@ -351,7 +351,7 @@ export const postToCalculate = onCall2(options, async (request: CallableRequest<
 ### Running AI
 The requests to front-facing functions return to user as fast as possible after changing the chat state in Firestore.
 As soon as the AI run could take a considerable time, we run theme in a Cloud Task "offline" from the client request.
-To execute the Assistant run we use the second class from the library - the [ChatWorker](src/aichat/ChatWorker.ts).
+To execute the Assistant run we use the second class from the library - the [OpenAiChatWorker](src/aichat/ChatWorker.ts).
 To create it, use the [AiChat](src/index.ts) factory we created in previous steps.
 
 To register the Cloud Task handler you may want to create the following function:
@@ -388,7 +388,7 @@ export const calculator = onTaskDispatched(
     }
 );
 ```
-The `ChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommandQueue.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
+The `OpenAiChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommandQueue.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
 with the results.
 The client App will later get the results of the run by subscribing the Firebase collection snapshots flow.
 
@@ -418,7 +418,7 @@ export interface CalculateChatData extends ChatData{
 In the sample project you can find the script to create a [sample assistant](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/assistant/src/createCalculatorAssistant.ts)
 to be a calculator. Take a look at the prompt and function definitions there for an example.
 
-The library supports function tool calling by providing a map of function dispatchers to `ChatWorker`.
+The library supports function tool calling by providing a map of function dispatchers to `OpenAiChatWorker`.
 The dispatcher is a [simple state reducer function](src/aichat/ToolsDispatcher.ts):
 
 ```typescript

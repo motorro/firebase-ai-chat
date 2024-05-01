@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.factory = exports.OpenAiWrapper = exports.AssistantChat = exports.ChatWorker = exports.Collections = exports.setLogger = void 0;
+exports.factory = exports.OpenAiWrapper = exports.AssistantChat = exports.OpenAiChatWorker = exports.Collections = exports.setLogger = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 Object.defineProperty(exports, "AssistantChat", { enumerable: true, get: function () { return firebase_ai_chat_core_1.AssistantChat; } });
-const ChatWorker_1 = require("./aichat/ChatWorker");
-Object.defineProperty(exports, "ChatWorker", { enumerable: true, get: function () { return ChatWorker_1.ChatWorker; } });
+const OpenAiChatWorker_1 = require("./aichat/OpenAiChatWorker");
+Object.defineProperty(exports, "OpenAiChatWorker", { enumerable: true, get: function () { return OpenAiChatWorker_1.OpenAiChatWorker; } });
 const OpenAICommandScheduler_1 = require("./aichat/OpenAICommandScheduler");
 var firebase_ai_chat_core_2 = require("@motorro/firebase-ai-chat-core");
 Object.defineProperty(exports, "setLogger", { enumerable: true, get: function () { return firebase_ai_chat_core_2.setLogger; } });
@@ -26,7 +26,7 @@ function factory(firestore, functions, location) {
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         worker: function (aiWrapper, dispatchers) {
-            return new ChatWorker_1.ChatWorker(firestore, scheduler, aiWrapper, dispatchers);
+            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, scheduler, aiWrapper, dispatchers);
         }
     };
 }
