@@ -2,6 +2,7 @@
 [![Check](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml)
 
 Engines:
+- Core: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core)
 - OpenAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai)
 
 
