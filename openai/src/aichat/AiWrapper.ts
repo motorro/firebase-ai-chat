@@ -1,42 +1,7 @@
-import {ToolsDispatcher} from "./ToolsDispatcher";
-import {ChatData} from "./data/ChatState";
+import {ChatData, Messages, ToolsDispatcher} from "@motorro/firebase-ai-chat-core";
 
 /**
- * AI Messages response
- */
-export interface Messages {
-    /**
-     * A list of messages
-     */
-    readonly messages: ReadonlyArray<[string, string]>,
-    /**
-     * The ID of latest message to optimize retrievals
-     */
-    readonly latestMessageId?: string
-}
-
-/**
- * AI processing error
- */
-export interface AiError {
-    /**
-     * If true - there is no point in retrying the operation
-     */
-    readonly isPermanent: boolean
-}
-
-/**
- * Checks for permanent error
- * @param error Error to check
- * @return true if error is permanent and retry has no point
- */
-export function isPermanentError(error: unknown): boolean {
-    return "object" === typeof error && null !== error
-        && "isPermanent" in error && "boolean" === typeof error.isPermanent && error.isPermanent;
-}
-
-/**
- * Wraps OpenAI
+ * Wraps OpenAI Assistant
  */
 export interface AiWrapper {
     /**

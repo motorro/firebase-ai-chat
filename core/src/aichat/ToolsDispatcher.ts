@@ -29,3 +29,35 @@ export type DispatchResult<DATA extends ChatData> = DispatchSuccess<DATA> | Disp
 export interface ToolsDispatcher<DATA extends ChatData> {
     (data: DATA, name: string, args: Record<string, unknown>): DATA | Promise<DATA>
 }
+
+/**
+ * Evaluates the error message from tools dispatcher
+ * @param e {unknown} Error to analyze
+ * @returns {DispatchError} Normalized dispatch error
+ */
+export function getDispatchError(e: unknown): DispatchError {
+    if ("string" === typeof e) {
+        return {
+            error: e
+        };
+    }
+    if ("object" === typeof e && null !== e) {
+        if ("error" in e && "string" === typeof e.error) {
+            return {
+                error: e.error
+            };
+        }
+        if ("message" in e && "string" === typeof e.message) {
+            return {
+                error: e.message
+            };
+        }
+        return {
+            error: e.toString()
+        };
+    }
+    return {
+        error: "Unknown error"
+    };
+}
+

@@ -1,9 +1,8 @@
 import {
-    AiWrapper,
     ChatData,
     ChatError,
-    DispatchError,
     DispatchResult,
+    getDispatchError,
     logger,
     Messages,
     ToolsDispatcher
@@ -13,6 +12,7 @@ import {ThreadCreateParams} from "openai/src/resources/beta/threads/threads";
 import {sleep} from "openai/core";
 import {MessagesPage, RequiredActionFunctionToolCall, RunSubmitToolOutputsParams} from "openai/resources/beta/threads";
 import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
+import {AiWrapper} from "./AiWrapper";
 
 /**
  * Wraps Open AI assistant use
@@ -131,7 +131,7 @@ export class OpenAiWrapper implements AiWrapper {
                         result = {data: data};
                     } catch (e: unknown) {
                         logger.w("Error dispatching function:", e);
-                        result = OpenAiWrapper.getDispatchError(e);
+                        result = getDispatchError(e);
                     }
 
                     logger.d("Result:", result);
@@ -146,32 +146,6 @@ export class OpenAiWrapper implements AiWrapper {
                 run = await ai.beta.threads.runs.submitToolOutputs(threadId, run.id, {tool_outputs: dispatches});
             }
         });
-    }
-
-    private static getDispatchError(e: unknown): DispatchError {
-        if ("string" === typeof e) {
-            return {
-                error: e
-            };
-        }
-        if ("object" === typeof e && null !== e) {
-            if ("error" in e && "string" === typeof e.error) {
-                return {
-                    error: e.error
-                };
-            }
-            if ("message" in e && "string" === typeof e.message) {
-                return {
-                    error: e.message
-                };
-            }
-            return {
-                error: e.toString()
-            };
-        }
-        return {
-            error: "Unknown error"
-        };
     }
 
     async getMessages(threadId: string, from: string | undefined): Promise<Messages> {

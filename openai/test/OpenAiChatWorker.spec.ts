@@ -15,7 +15,6 @@ import {
 } from "@johanblumenberg/ts-mockito";
 import {assistantId, chatState, Data, data, Data2, threadId, userId} from "./mock";
 import {
-    AiWrapper,
     ChatCommand,
     ChatCommandData,
     ChatError,
@@ -30,7 +29,7 @@ import {
     ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
-import {OpenAiChatWorker, OpenAiAssistantConfig, OpenAiChatCommand} from "../src";
+import {OpenAiChatWorker, OpenAiAssistantConfig, OpenAiChatCommand, AiWrapper} from "../src";
 import CollectionReference = admin.firestore.CollectionReference;
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;

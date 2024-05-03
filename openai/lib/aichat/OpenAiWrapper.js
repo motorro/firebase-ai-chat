@@ -106,7 +106,7 @@ class OpenAiWrapper {
                     }
                     catch (e) {
                         firebase_ai_chat_core_1.logger.w("Error dispatching function:", e);
-                        result = OpenAiWrapper.getDispatchError(e);
+                        result = (0, firebase_ai_chat_core_1.getDispatchError)(e);
                     }
                     firebase_ai_chat_core_1.logger.d("Result:", result);
                     dispatches.push({
@@ -117,31 +117,6 @@ class OpenAiWrapper {
                 run = await ai.beta.threads.runs.submitToolOutputs(threadId, run.id, { tool_outputs: dispatches });
             }
         });
-    }
-    static getDispatchError(e) {
-        if ("string" === typeof e) {
-            return {
-                error: e
-            };
-        }
-        if ("object" === typeof e && null !== e) {
-            if ("error" in e && "string" === typeof e.error) {
-                return {
-                    error: e.error
-                };
-            }
-            if ("message" in e && "string" === typeof e.message) {
-                return {
-                    error: e.message
-                };
-            }
-            return {
-                error: e.toString()
-            };
-        }
-        return {
-            error: "Unknown error"
-        };
     }
     async getMessages(threadId, from) {
         firebase_ai_chat_core_1.logger.d("Getting messages from: ", threadId);

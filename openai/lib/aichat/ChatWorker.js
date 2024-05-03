@@ -176,4 +176,4 @@ exports.ChatWorker = ChatWorker;
 ChatWorker.SUPPORTED_ACTIONS = [
     "create", "post", "run", "retrieve", "switchToUserInput", "close"
 ];
-//# sourceMappingURL=OpenAiChatWorker.js.map
+//# sourceMappingURL=VertexAiChatWorker.js.map

@@ -85,7 +85,7 @@ Let's take a closer look at the implementation...
 ## Module API
 The module has three classes to use in your project:
 - [AssistantChat](src/aichat/AssistantChat.ts) - handles requests from the App user
-- [OpenAiChatWorker](src/aichat/ChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
+- [VertexAiChatWorker](src/aichat/ChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
 - [AiChat](src/index.ts) - a factory to create those above
 
 ### Scaffolds
@@ -352,7 +352,7 @@ export const postToCalculate = onCall2(options, async (request: CallableRequest<
 ### Running AI
 The requests to front-facing functions return to user as fast as possible after changing the chat state in Firestore.
 As soon as the AI run could take a considerable time, we run theme in a Cloud Task "offline" from the client request.
-To execute the Assistant run we use the second class from the library - the [OpenAiChatWorker](src/aichat/ChatWorker.ts).
+To execute the Assistant run we use the second class from the library - the [VertexAiChatWorker](src/aichat/ChatWorker.ts).
 To create it, use the [AiChat](src/index.ts) factory we created in previous steps.
 
 To register the Cloud Task handler you may want to create the following function:
@@ -360,7 +360,7 @@ To register the Cloud Task handler you may want to create the following function
 ```typescript
 import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import OpenAI from "openai";
-import {OpenAiWrapper, Meta} from "firebase-openai-chat";
+import {VertexAiWrapper, Meta} from "firebase-openai-chat";
 
 export const calculator = onTaskDispatched(
     {
@@ -376,7 +376,7 @@ export const calculator = onTaskDispatched(
     },
     async (req) => {
       // Create OpenAI API instance and OpenAI adapter
-      const ai = new OpenAiWrapper(new OpenAI({apiKey: openAiApiKey.value()}));
+      const ai = new VertexAiWrapper(new OpenAI({apiKey: openAiApiKey.value()}));
       // Create and run a worker
       // See the `dispatchers` definitions below
       await chatFactory.worker(ai, dispatchers).dispatch(
@@ -389,7 +389,7 @@ export const calculator = onTaskDispatched(
     }
 );
 ```
-The `OpenAiChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommandQueue.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
+The `VertexAiChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommandQueue.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
 with the results.
 The client App will later get the results of the run by subscribing the Firebase collection snapshots flow.
 
@@ -419,7 +419,7 @@ export interface CalculateChatData extends ChatData{
 In the sample project you can find the script to create a [sample assistant](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/assistant/src/createCalculatorAssistant.ts)
 to be a calculator. Take a look at the prompt and function definitions there for an example.
 
-The library supports function tool calling by providing a map of function dispatchers to `OpenAiChatWorker`.
+The library supports function tool calling by providing a map of function dispatchers to `VertexAiChatWorker`.
 The dispatcher is a [simple state reducer function](src/aichat/ToolsDispatcher.ts):
 
 ```typescript
@@ -428,7 +428,7 @@ export interface ToolsDispatcher<DATA extends ChatData> {
 }
 ```
 
-The [OpenAiWrapper](src/aichat/OpenAiWrapper.ts) will run your dispatcher and re-run the Assistant with 
+The [VertexAiWrapper](src/aichat/OpenAiWrapper.ts) will run your dispatcher and re-run the Assistant with 
 dispatcher output.
 
 If dispatcher succeeds, the AI will get [DispatchSuccess](src/aichat/ToolsDispatcher.ts#6) value:
@@ -441,7 +441,7 @@ export interface DispatchSuccess<DATA extends ChatData> {
 If dispatcher throws an error, the AI will get [DispatchError](src/aichat/ToolsDispatcher.ts#13) value:
 ```typescript
 export interface DispatchError {
-    error: string // Error::message or some other text. See OpenAiWrapper implementation
+    error: string // Error::message or some other text. See VertexAiWrapper implementation
 }
 ```
 
