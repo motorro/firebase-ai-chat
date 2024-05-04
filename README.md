@@ -12,6 +12,8 @@ Supported AI engines:
 - [OpenAI](https://platform.openai.com/docs/assistants/overview)
 - [VertexAI](https://cloud.google.com/nodejs/docs/reference/vertexai/latest)
 
+
+## Contents
 <!-- toc -->
 
 - [A problem statement](#a-problem-statement)
