@@ -1,7 +1,8 @@
 import { Request } from "firebase-functions/lib/common/providers/tasks";
-import { AiWrapper, ChatCommand, ChatData, ChatWorker, DispatchControl, Meta, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
+import { ChatCommand, ChatData, ChatWorker, DispatchControl, Meta, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
 import { OpenAiChatActions } from "./data/OpenAiChatAction";
 import { OpenAiAssistantConfig } from "./data/OpenAiAssistantConfig";
+import { AiWrapper } from "./AiWrapper";
 export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
 /**
  * Chat worker that dispatches chat commands and runs AI

@@ -1,6 +1,6 @@
 import {anything, capture, deepEqual, instance, imock, reset, strictEqual, verify, when} from "@johanblumenberg/ts-mockito";
 import OpenAI from "openai";
-import {AiWrapper, ToolsDispatcher} from "@motorro/firebase-ai-chat-core";
+import {ToolsDispatcher} from "@motorro/firebase-ai-chat-core";
 import {Threads} from "openai/resources/beta";
 import Beta = OpenAI.Beta;
 import Messages = Threads.Messages;
@@ -8,7 +8,7 @@ import {assistantId, Data, data, runId, threadId} from "./mock";
 import Runs = Threads.Runs;
 import Run = Threads.Run;
 import {AbstractPage} from "openai/core";
-import {OpenAiWrapper} from "../src/aichat/OpenAiWrapper";
+import {AiWrapper, OpenAiWrapper} from "../src";
 import {MessagesPage} from "openai/resources/beta/threads";
 import Message = Threads.Message;
 

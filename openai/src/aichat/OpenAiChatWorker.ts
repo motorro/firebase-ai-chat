@@ -1,6 +1,5 @@
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {
-    AiWrapper,
     ChatCommand,
     ChatData,
     ChatWorker,
@@ -18,6 +17,7 @@ import {PostWorker} from "./workers/PostWorker";
 import {RetrieveWorker} from "./workers/RetrieveWorker";
 import {RunWorker} from "./workers/RunWorker";
 import {SwitchToUserWorker} from "./workers/SwitchToUserWorker";
+import {AiWrapper} from "./AiWrapper";
 
 export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
 

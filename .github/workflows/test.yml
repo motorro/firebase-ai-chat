@@ -50,3 +50,9 @@ jobs:
     - name: Run openai tests
       run: npm test
       working-directory: ./openai
+    - name: Install vertexai dependencies
+      run: npm install
+      working-directory: ./vertexai
+    - name: Run vertexai tests
+      run: npm test
+      working-directory: ./vertexai

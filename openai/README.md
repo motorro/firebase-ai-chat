@@ -34,7 +34,7 @@ To register the Cloud Task handler you may want to create the following function
 ```typescript
 import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import OpenAI from "openai";
-import {OpenAiWrapper, Meta} from "firebase-openai-chat";
+import {OpenAiWrapper, Meta} from "@motorro/firebase-ai-chat-openai";
 
 export const calculator = onTaskDispatched(
     {
@@ -63,5 +63,8 @@ export const calculator = onTaskDispatched(
     }
 );
 ```
-The `OpenAiChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommandQueue.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
+The `OpenAiChatWorker` handles the [OpenAiChatCommand](src/aichat/data/OpenAiChatCommand.ts) and updates [OpenAiChatState](src/index.ts)
 with the results.
+
+Full example is available in the [sample Firebase project](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts).
+

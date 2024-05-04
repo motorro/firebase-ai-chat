@@ -1,8 +1,9 @@
-import { AiWrapper, BaseChatWorker, ChatCommand, ChatData, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
+import { BaseChatWorker, ChatCommand, ChatData, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { OpenAiChatActions } from "../data/OpenAiChatAction";
 import { OpenAiAssistantConfig } from "../data/OpenAiAssistantConfig";
 import { OpenAiDispatchControl } from "../OpenAiChatWorker";
+import { AiWrapper } from "../AiWrapper";
 export declare abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
     protected readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;

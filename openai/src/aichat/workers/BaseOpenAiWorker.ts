@@ -1,5 +1,4 @@
 import {
-    AiWrapper,
     BaseChatWorker, ChatCommand,
     ChatData, logger,
     TaskScheduler,
@@ -9,6 +8,7 @@ import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {OpenAiChatActions} from "../data/OpenAiChatAction";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiDispatchControl} from "../OpenAiChatWorker";
+import {AiWrapper} from "../AiWrapper";
 
 export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;

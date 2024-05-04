@@ -4,9 +4,13 @@
 Engines:
 - Core: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core)
 - OpenAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai)
+- VertexAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-vertexai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-vertexai)
 
 
-[OpenAI assistant](https://platform.openai.com/docs/assistants/overview) chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
+[AI assistant](https://platform.openai.com/docs/assistants/overview) chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
+Supported AI engines:
+- [OpenAI](https://platform.openai.com/docs/assistants/overview)
+- [VertexAI](https://cloud.google.com/nodejs/docs/reference/vertexai/latest)
 
 <!-- toc -->
 
@@ -29,19 +33,19 @@ Engines:
 <!-- tocstop -->
 
 ## A problem statement
-Since OpenAI has published its API, integrating custom ChatGPT to your client apps has become a rather easy option.
+Since companies like OpenAI has published its API, integrating custom ChatGPT to your client apps has become a rather easy option.
 Given that the API is HTTP-based and there are also many [wrapping libraries](https://github.com/aallam/openai-kotlin) 
 for any platform, the one might implement the chat directly in a mobile app or a web-site. However, it might be not 
 a good architectural decision to go this way. Among the reasons are:
 
-- OpenAI API key protection and management - if used on a front-end app the key leaks.
+- AI API key protection and management - if used on a front-end app the key leaks.
 - Tools and function call code (a part of business logic) are exposed to app client.
 - The latency in mobile application updates will limit your domain updates as function tool-calls reside on the 
   front-end.
 - Mobile app connectivity is always a problem and given that an AI run takes a considerable time to execute the user 
   experience might not be optimal.
 
-Thus, it might be a good idea to put the OpenAI interaction to the back-end and to update your client with just 
+Thus, it might be a good idea to put the AI interaction to the back-end and to update your client with just 
 the results of AI runs.
 The possible flow might be the following:
 ![Usecase diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/motorro/firebase-openai-chat/master/readme/usecase.puml)
@@ -84,15 +88,19 @@ Let's take a closer look at the implementation...
 
 ## Module API
 The module has three classes to use in your project:
-- [AssistantChat](src/aichat/AssistantChat.ts) - handles requests from the App user
-- [OpenAiChatWorker](src/aichat/ChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
-- [AiChat](src/index.ts) - a factory to create those above
+- [AssistantChat](core/src/aichat/AssistantChat.ts) - handles requests from the App user
+- [AiChatWorker](core/src/aichat/BaseChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
+- [AiChat](openai/src/index.ts) - a factory to create those above
 
 ### Scaffolds
 
-To install the module use:
+To install OpenAI module use:
 ```shell
 npm i --save @motorro/firebase-ai-chat-openai
+```
+To install VertexAI module use:
+```shell
+npm i --save @motorro/firebase-ai-chat-vertexai
 ```
 
 The full example `index.ts` for your Firebase Cloud Functions project is available [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts).
@@ -111,7 +119,7 @@ First things first we need to create:
 - An instance of chat components factory that are to be used to run chats.
 
 ```typescript
-import {AiChat, factory} from "firebase-openai-chat";
+import {AiChat, factory} from "@motorro/firebase-ai-chat-openai";
 
 // Chats collection name
 const CHATS = "chats"; 
@@ -220,7 +228,7 @@ async function ensureAuth<DATA, RES>(request: CallableRequest<DATA>, block: (uid
 }
 ```
 ### Front-facing functions
-All chat requests from users are handled by [AssistantChat](src/aichat/AssistantChat.ts).
+All chat requests from users are handled by [AssistantChat](core/src/aichat/AssistantChat.ts).
 It is a front-facing API that takes requests from your clients, maintains the chat state and schedules AI runs.
 The class has three methods:
 
@@ -230,7 +238,7 @@ The class has three methods:
 - `closeChat` - finishes the chat deleting all resources (optional)
 
 ### Creating AssistantChat
-To create request processor, use the [AiChat](src/index.ts) factory we have set up in the previous step:
+To create request processor, use the [AiChat](openai/src/index.ts) factory we have set up in the previous step:
 
 ```typescript
 // Functions region where the worker task will run
@@ -285,13 +293,18 @@ export const calculate = onCall2(options, async (request: CallableRequest<Calcul
   return ensureAuth(request, async (uid, data) => {
     // Create a new chat document reference
     const chat = chats.doc() as DocumentReference<ChatState<CalculateChatData>>;
+    // Configure AI assistant
+    const config: OpenAiAssistantConfig = {
+      engine: "openai",
+      assistantId: openAiAssistantId.value(),
+      dispatcherId: NAME
+    };
     // Create a chat document record in CHATS collection
     const result = await assistantChat.create(
             chat, // Chat document
             uid, // Owner ID
             {sum: 0}, // Initial data state
-            openAiAssistantId.value(), // OpenAI Assistand ID
-            NAME, // Name of tools dispatcher that is used to handle AI tool calls
+            config, // Configuration
             [data.messages], // Initial message to process
             {a: 1} // Optional metadata to pass with worker task. Available in completion handler
     );
@@ -307,14 +320,14 @@ export const calculate = onCall2(options, async (request: CallableRequest<Calcul
 ```
 
 Under the hood the processor will:
-- Create a [ChatState](src/aichat/data/ChatState.ts) document in `CHATS` collection.
+- Create a [ChatState](core/src/aichat/data/ChatState.ts) document in `CHATS` collection.
 - Store a `CalculateChatData` of initial data there.
-- Create a [ChatMessage](src/aichat/data/ChatMessage.ts) in `messages` sub-collection of chat document.
-- Run a Cloud Task by queueing a [ChatCommand](src/aichat/data/ChatCommandQueue.ts) to Cloud Tasks.
+- Create a [ChatMessage](core/src/aichat/data/ChatMessage.ts) in `messages` sub-collection of chat document.
+- Run a Cloud Task by queueing a [ChatCommand](core/src/aichat/data/ChatCommand.ts) to Cloud Tasks.
 
 ### Handling user messages
-User may respond to AI messages whenever the [ChatState](src/aichat/data/ChatState.ts) has one of the 
-permitted [ChatStatus](src/aichat/data/ChatState.ts):
+User may respond to AI messages whenever the [ChatState](core/src/aichat/data/ChatState.ts) has one of the 
+permitted [ChatStatus](core/src/aichat/data/ChatState.ts):
 - `userInput` - waiting for a user input
 
 The request to handle a message may look like this:
@@ -352,15 +365,15 @@ export const postToCalculate = onCall2(options, async (request: CallableRequest<
 ### Running AI
 The requests to front-facing functions return to user as fast as possible after changing the chat state in Firestore.
 As soon as the AI run could take a considerable time, we run theme in a Cloud Task "offline" from the client request.
-To execute the Assistant run we use the second class from the library - the [OpenAiChatWorker](src/aichat/ChatWorker.ts).
-To create it, use the [AiChat](src/index.ts) factory we created in previous steps.
+To execute the Assistant run we use the second class from the library - the [ChatWorker](core/src/aichat/BaseChatWorker.ts).
+To create it, use the [AiChat](openai/src/index.ts) factory we created in previous steps.
 
 To register the Cloud Task handler you may want to create the following function:
 
 ```typescript
 import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import OpenAI from "openai";
-import {OpenAiWrapper, Meta} from "firebase-openai-chat";
+import {VertexAiWrapper, Meta} from "@motorro/firebase-ai-chat-openai";
 
 export const calculator = onTaskDispatched(
     {
@@ -389,12 +402,12 @@ export const calculator = onTaskDispatched(
     }
 );
 ```
-The `OpenAiChatWorker` handles the [ChatCommand](src/aichat/data/ChatCommandQueue.ts) and updates [ChatState](src/aichat/data/ChatState.ts)
+The `VertexAiChatWorker` handles the [ChatCommand](core/src/aichat/data/ChatCommand.ts) and updates [ChatState](core/src/aichat/data/ChatState.ts)
 with the results.
 The client App will later get the results of the run by subscribing the Firebase collection snapshots flow.
 
 Worth mentioning is that if you run several chats with a different state for different purposes you may need only one 
-worker function to handle all the tasks. The [ChatCommand](src/aichat/data/ChatCommandQueue.ts) has all the required reference
+worker function to handle all the tasks. The [ChatCommand](core/src/aichat/data/ChatCommand.ts) has all the required reference
 data to address the correct chat document and chat data state.
 
 As the AI run may involve several OpenAI calls which may fail at any intermediate call the possible retry run strategy 
@@ -419,8 +432,8 @@ export interface CalculateChatData extends ChatData{
 In the sample project you can find the script to create a [sample assistant](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/assistant/src/createCalculatorAssistant.ts)
 to be a calculator. Take a look at the prompt and function definitions there for an example.
 
-The library supports function tool calling by providing a map of function dispatchers to `OpenAiChatWorker`.
-The dispatcher is a [simple state reducer function](src/aichat/ToolsDispatcher.ts):
+The library supports function tool calling by providing a map of function dispatchers to `VertexAiChatWorker`.
+The dispatcher is a [simple state reducer function](core/src/aichat/ToolsDispatcher.ts):
 
 ```typescript
 export interface ToolsDispatcher<DATA extends ChatData> {
@@ -428,20 +441,20 @@ export interface ToolsDispatcher<DATA extends ChatData> {
 }
 ```
 
-The [OpenAiWrapper](src/aichat/OpenAiWrapper.ts) will run your dispatcher and re-run the Assistant with 
+The [AiWrapper](openai/src/aichat/AiWrapper.ts) will run your dispatcher and re-run the Assistant with 
 dispatcher output.
 
-If dispatcher succeeds, the AI will get [DispatchSuccess](src/aichat/ToolsDispatcher.ts#6) value:
+If dispatcher succeeds, the AI will get [DispatchSuccess](core/src/aichat/ToolsDispatcher.ts#6) value:
 ```typescript
 export interface DispatchSuccess<DATA extends ChatData> {
   data: DATA
 }
 ```
 
-If dispatcher throws an error, the AI will get [DispatchError](src/aichat/ToolsDispatcher.ts#13) value:
+If dispatcher throws an error, the AI will get [DispatchError](core/src/aichat/ToolsDispatcher.ts#13) value:
 ```typescript
 export interface DispatchError {
-    error: string // Error::message or some other text. See OpenAiWrapper implementation
+    error: string // Error::message or some other text. See VertexAiWrapper implementation
 }
 ```
 
@@ -453,7 +466,7 @@ The function has the following parameters:
 For our simple project we define the dispatcher like this:
 
 ```typescript
-import {ToolsDispatcher} from "firebase-openai-chat";
+import {ToolsDispatcher} from "@motorro/firebase-ai-chat-openai";
 
 const dispatcher: ToolsDispatcher<CalculateChatData> = function(
         data: CalculateChatData,

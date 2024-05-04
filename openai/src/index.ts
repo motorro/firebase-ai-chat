@@ -1,11 +1,11 @@
 import {
     AssistantChat,
-    AiWrapper,
     ToolsDispatcher,
     FirebaseQueueTaskScheduler,
     ChatData,
     ChatState
 } from "@motorro/firebase-ai-chat-core";
+import {AiWrapper} from "./aichat/AiWrapper";
 import {OpenAiChatWorker} from "./aichat/OpenAiChatWorker";
 import {Functions} from "firebase-admin/lib/functions";
 import {firestore} from "firebase-admin";

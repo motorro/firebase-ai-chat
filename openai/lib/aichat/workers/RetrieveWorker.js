@@ -20,12 +20,12 @@ class RetrieveWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
         const latestInBatchId = await this.getNextBatchSortIndex(data.chatDocumentPath, data.dispatchId);
         const newMessages = await this.wrapper.getMessages(threadId, state.lastMessageId);
         const batch = this.db.batch();
-        newMessages.messages.forEach(([id, message], index) => {
-            batch.set(messageCollectionRef.doc(`ai_${id}`), {
+        newMessages.messages.forEach((message, index) => {
+            batch.set(messageCollectionRef.doc(), {
                 userId: data.ownerId,
                 dispatchId: data.dispatchId,
                 author: "ai",
-                text: message,
+                text: message[1],
                 inBatchSortIndex: latestInBatchId + index,
                 createdAt: FieldValue.serverTimestamp()
             });
