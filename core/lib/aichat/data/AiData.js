@@ -18,7 +18,18 @@ exports.isPermanentError = isPermanentError;
  * @returns TPrinted example
  */
 function printAiExample(example, exampleNumber) {
-    return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput: ${example.input}\nOutput: ${example.output}`;
+    switch (example.type) {
+        case "functionCall":
+            return printFunctionCall(example);
+        default:
+            return printResponse(example);
+    }
+    function printResponse(example) {
+        return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput from user: ${example.input}\nOutput: ${example.output}`;
+    }
+    function printFunctionCall(example) {
+        return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput from user: ${example.input}\nFunction to call: ${example.name}\nFunction arguments: ${JSON.stringify(example.arguments)}`;
+    }
 }
 exports.printAiExample = printAiExample;
 //# sourceMappingURL=AiData.js.map

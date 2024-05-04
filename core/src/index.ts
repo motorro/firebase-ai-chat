@@ -1,4 +1,13 @@
-export {Messages, AiError, isPermanentError, AiExample, SystemInstructions, printAiExample} from "./aichat/data/AiData";
+export {
+    Messages,
+    AiError,
+    isPermanentError,
+    AiExample,
+    AiResponseExample,
+    AiFunctionCallExample,
+    SystemInstructions,
+    printAiExample
+} from "./aichat/data/AiData";
 export {AssistantConfig, ChatData, ChatState, ChatStatus} from "./aichat/data/ChatState";
 export {ChatCommandData} from "./aichat/data/ChatCommandData";
 export {ChatMessage} from "./aichat/data/ChatMessage";

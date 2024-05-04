@@ -27,6 +27,13 @@ export declare class VertexAiWrapper implements AiWrapper {
     private static generateSystemInstructions;
     private static isFunctionCall;
     /**
+     * Sometimes Gemini creates a call with faulty data:
+     * '{"functionCall":{"args":{"value":25}}}'
+     * @param part
+     * @private
+     */
+    private static checkFunctionCall;
+    /**
      * Thread messages
      * Visible for testing
      * @param threadId Thread ID

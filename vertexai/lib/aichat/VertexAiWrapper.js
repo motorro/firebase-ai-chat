@@ -42,6 +42,19 @@ class VertexAiWrapper {
         return "functionCall" in part && undefined !== part.functionCall;
     }
     /**
+     * Sometimes Gemini creates a call with faulty data:
+     * '{"functionCall":{"args":{"value":25}}}'
+     * @param part
+     * @private
+     */
+    static checkFunctionCall(part) {
+        if (undefined === part.functionCall.name) {
+            firebase_ai_chat_core_1.logger.w("Function call error: no function name in call:", JSON.stringify(part));
+            return { error: "You didn't supply a function name. Check tools definition and supply a function name!" };
+        }
+        return undefined;
+    }
+    /**
      * Thread messages
      * Visible for testing
      * @param threadId Thread ID
@@ -139,18 +152,25 @@ class VertexAiWrapper {
         const functionResults = [];
         for (const part of aiResult.content.parts) {
             if (VertexAiWrapper.isFunctionCall(part)) {
+                firebase_ai_chat_core_1.logger.d("Function called:", JSON.stringify(part));
                 let dispatchResult;
-                try {
-                    data = await dispatcher(data, part.functionCall.name, part.functionCall.args);
-                    dispatchResult = { data: data };
+                const checkError = VertexAiWrapper.checkFunctionCall(part);
+                if (undefined !== checkError) {
+                    dispatchResult = checkError;
                 }
-                catch (e) {
-                    firebase_ai_chat_core_1.logger.w("Error dispatching function:", e);
-                    dispatchResult = (0, firebase_ai_chat_core_1.getDispatchError)(e);
+                else {
+                    try {
+                        data = await dispatcher(data, part.functionCall.name, part.functionCall.args);
+                        dispatchResult = { data: data };
+                    }
+                    catch (e) {
+                        firebase_ai_chat_core_1.logger.w("Error dispatching function:", e);
+                        dispatchResult = (0, firebase_ai_chat_core_1.getDispatchError)(e);
+                    }
                 }
                 functionResults.push({
                     functionResponse: {
-                        name: part.functionCall.name,
+                        name: part.functionCall.name || "function name was not provided",
                         response: dispatchResult
                     }
                 });

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.factory = exports.AssistantChat = exports.VertexAiChatWorker = exports.Collections = exports.setLogger = void 0;
+exports.factory = exports.AssistantChat = exports.VertexAiChatWorker = exports.printAiExample = exports.Collections = exports.setLogger = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 Object.defineProperty(exports, "AssistantChat", { enumerable: true, get: function () { return firebase_ai_chat_core_1.AssistantChat; } });
 const VertexAiChatWorker_1 = require("./aichat/VertexAiChatWorker");
@@ -10,6 +10,7 @@ const VertexAiWrapper_1 = require("./aichat/VertexAiWrapper");
 var firebase_ai_chat_core_2 = require("@motorro/firebase-ai-chat-core");
 Object.defineProperty(exports, "setLogger", { enumerable: true, get: function () { return firebase_ai_chat_core_2.setLogger; } });
 Object.defineProperty(exports, "Collections", { enumerable: true, get: function () { return firebase_ai_chat_core_2.Collections; } });
+Object.defineProperty(exports, "printAiExample", { enumerable: true, get: function () { return firebase_ai_chat_core_2.printAiExample; } });
 /**
  * Chat tools factory
  * @param firestore Firestore instance

@@ -25,15 +25,21 @@ export {
     Logger,
     setLogger,
     TaskScheduler,
-    Collections
+    Collections,
+    SystemInstructions,
+    AiExample,
+    AiResponseExample,
+    AiFunctionCallExample,
+    printAiExample
 } from "@motorro/firebase-ai-chat-core";
 export {
     AiWrapper,
     VertexAiChatWorker,
     ToolsDispatcher,
     AssistantChat,
-    VertexAiSystemInstructions
+    VertexAiSystemInstructions,
 };
+export {VertexAiTools} from "./aichat/data/VertexAiSystemInstructions";
 export {VertexAiAssistantConfig} from "./aichat/data/VertexAiAssistantConfig";
 export {VertexAiChatCommand} from "./aichat/data/VertexAiChatCommand";
 

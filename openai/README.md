@@ -65,3 +65,6 @@ export const calculator = onTaskDispatched(
 ```
 The `OpenAiChatWorker` handles the [OpenAiChatCommand](src/aichat/data/OpenAiChatCommand.ts) and updates [OpenAiChatState](src/index.ts)
 with the results.
+
+Full example is available in the [sample Firebase project](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts).
+

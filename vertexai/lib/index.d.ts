@@ -7,8 +7,9 @@ import { VertexAiAssistantConfig } from "./aichat/data/VertexAiAssistantConfig";
 import { AiWrapper } from "./aichat/AiWrapper";
 import { VertexAiSystemInstructions } from "./aichat/data/VertexAiSystemInstructions";
 import { GenerativeModel } from "@google-cloud/vertexai";
-export { ChatData, ChatState, ChatStatus, ChatMessage, Meta, Logger, setLogger, TaskScheduler, Collections } from "@motorro/firebase-ai-chat-core";
-export { AiWrapper, VertexAiChatWorker, ToolsDispatcher, AssistantChat, VertexAiSystemInstructions };
+export { ChatData, ChatState, ChatStatus, ChatMessage, Meta, Logger, setLogger, TaskScheduler, Collections, SystemInstructions, AiExample, AiResponseExample, AiFunctionCallExample, printAiExample } from "@motorro/firebase-ai-chat-core";
+export { AiWrapper, VertexAiChatWorker, ToolsDispatcher, AssistantChat, VertexAiSystemInstructions, };
+export { VertexAiTools } from "./aichat/data/VertexAiSystemInstructions";
 export { VertexAiAssistantConfig } from "./aichat/data/VertexAiAssistantConfig";
 export { VertexAiChatCommand } from "./aichat/data/VertexAiChatCommand";
 /**

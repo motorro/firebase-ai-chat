@@ -1,6 +1,6 @@
 import {
     ChatData,
-    ChatError,
+    ChatError, DispatchError,
     DispatchResult,
     getDispatchError,
     logger,
@@ -73,6 +73,20 @@ export class VertexAiWrapper implements AiWrapper {
 
     private static isFunctionCall(part: Part): part is FunctionCallPart {
         return "functionCall" in part && undefined !== part.functionCall;
+    }
+
+    /**
+     * Sometimes Gemini creates a call with faulty data:
+     * '{"functionCall":{"args":{"value":25}}}'
+     * @param part
+     * @private
+     */
+    private static checkFunctionCall(part: FunctionCallPart): DispatchError | undefined {
+        if (undefined === part.functionCall.name) {
+            logger.w("Function call error: no function name in call:", JSON.stringify(part));
+            return {error: "You didn't supply a function name. Check tools definition and supply a function name!"};
+        }
+        return undefined;
     }
 
     /**
@@ -202,17 +216,23 @@ export class VertexAiWrapper implements AiWrapper {
         const functionResults: Array<FunctionResponsePart> = [];
         for (const part of aiResult.content.parts) {
             if (VertexAiWrapper.isFunctionCall(part)) {
+                logger.d("Function called:", JSON.stringify(part));
                 let dispatchResult: DispatchResult<DATA>;
-                try {
-                    data = await dispatcher(data, part.functionCall.name, <Record<string, unknown>>part.functionCall.args);
-                    dispatchResult = {data: data};
-                } catch (e: unknown) {
-                    logger.w("Error dispatching function:", e);
-                    dispatchResult = getDispatchError(e);
+                const checkError = VertexAiWrapper.checkFunctionCall(part);
+                if (undefined !== checkError) {
+                    dispatchResult = checkError;
+                } else {
+                    try {
+                        data = await dispatcher(data, part.functionCall.name, <Record<string, unknown>>part.functionCall.args);
+                        dispatchResult = {data: data};
+                    } catch (e: unknown) {
+                        logger.w("Error dispatching function:", e);
+                        dispatchResult = getDispatchError(e);
+                    }
                 }
                 functionResults.push({
                     functionResponse: {
-                        name: part.functionCall.name,
+                        name: part.functionCall.name || "function name was not provided",
                         response: dispatchResult
                     }
                 });

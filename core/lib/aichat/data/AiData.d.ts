@@ -34,14 +34,51 @@ export interface SystemInstructions {
     /**
      * AI examples if any
      */
-    readonly examples?: ReadonlyArray<AiExample> | null;
+    readonly examples?: ReadonlyArray<AiResponseExample | AiFunctionCallExample> | null;
 }
 /**
  * Example for AI
  */
 export interface AiExample {
+    /**
+     * Example type
+     */
+    type: "response" | "functionCall";
+}
+/**
+ * Response example
+ */
+export interface AiResponseExample extends AiExample {
+    /**
+     * Example type
+     */
+    type: "response";
+    /**
+     * Question from user
+     */
     input: string;
+    /**
+     * Response from AI
+     */
     output: string;
+}
+export interface AiFunctionCallExample extends AiExample {
+    /**
+     * Example type
+     */
+    type: "functionCall";
+    /**
+     * Question from user
+     */
+    input: string;
+    /**
+     * Function name
+     */
+    name: string;
+    /**
+     * Function arguments
+     */
+    arguments: Record<string, unknown>;
 }
 /**
  * Prints example for AI

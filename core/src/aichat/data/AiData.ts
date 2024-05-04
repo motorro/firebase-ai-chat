@@ -41,15 +41,59 @@ export interface SystemInstructions {
     /**
      * AI examples if any
      */
-    readonly examples?: ReadonlyArray<AiExample> | null
+    readonly examples?: ReadonlyArray<AiResponseExample | AiFunctionCallExample> | null
 }
 
 /**
  * Example for AI
  */
 export interface AiExample {
-    input: string,
+    /**
+     * Example type
+     */
+    type: "response" | "functionCall"
+}
+
+/**
+ * Response example
+ */
+export interface AiResponseExample extends AiExample {
+    /**
+     * Example type
+     */
+    type: "response"
+
+    /**
+     * Question from user
+     */
+    input: string
+
+    /**
+     * Response from AI
+     */
     output: string
+}
+
+export interface AiFunctionCallExample extends AiExample {
+    /**
+     * Example type
+     */
+    type: "functionCall"
+
+    /**
+     * Question from user
+     */
+    input: string
+
+    /**
+     * Function name
+     */
+    name: string
+
+    /**
+     * Function arguments
+     */
+    arguments: Record<string, unknown>
 }
 
 /**
@@ -59,6 +103,19 @@ export interface AiExample {
  * @returns TPrinted example
  */
 export function printAiExample(example: AiExample, exampleNumber?: number): string {
-    return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput: ${example.input}\nOutput: ${example.output}`;
+    switch (example.type) {
+        case "functionCall":
+            return printFunctionCall(<AiFunctionCallExample>example);
+        default:
+            return printResponse(<AiResponseExample>example);
+    }
+
+    function printResponse(example: AiResponseExample): string {
+        return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput from user: ${example.input}\nOutput: ${example.output}`;
+    }
+
+    function printFunctionCall(example: AiFunctionCallExample): string {
+        return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput from user: ${example.input}\nFunction to call: ${example.name}\nFunction arguments: ${JSON.stringify(example.arguments)}`
+    }
 }
 

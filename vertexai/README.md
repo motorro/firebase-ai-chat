@@ -14,23 +14,6 @@ import {projectID} from "firebase-functions/params";
 import {VertexAI} from "@google-cloud/vertexai";
 import {factory} from "@motorro/firebase-ai-chat-vertexai";
 
-const region = "europe-west1";
-const vertexAi = new VertexAI({
-    project: projectID.value(),
-    location: this.region
-});
-const model = vertexAi.getGenerativeModel(
-    {
-        model: "gemini-1.0-pro",
-        generationConfig: {
-            candidateCount: 1
-        }
-    },
-    {
-        timeout: 30 * 1000
-    }
-);
-
 // Chat component factory
 const chatFactory = factory(firestore(), getFunctions(), region);
 
@@ -70,6 +53,10 @@ import {onTaskDispatched} from "firebase-functions/v2/tasks";
 import {firestore} from "firebase-admin";
 import {getFunctions} from "firebase-admin/functions";
 
+// Function region
+const region = "europe-west1";
+// Collection path to store threads
+const VERTEXAI_THREADS = "treads";
 
 export const calculator = onTaskDispatched(
     {
@@ -85,6 +72,24 @@ export const calculator = onTaskDispatched(
     async (req) => {
       // Create and run a worker
       // See the `dispatchers` definitions below
+      const vertexAi = new VertexAI({
+          project: projectID.value(),
+          location: region
+      });
+      const model = vertexAi.getGenerativeModel(
+          {
+              model: "gemini-1.0-pro",
+              generationConfig: {
+                  candidateCount: 1
+              }
+          },
+          {
+              timeout: 30 * 1000
+          }
+      );
+      const ai = chatFactory.ai(model, VERTEXAI_THREADS)
+
+      // Dispatch request  
       await chatFactory.worker(ai, instructions).dispatch(
           req,
           (chatDocumentPath: string, meta: Meta) => {
@@ -97,3 +102,5 @@ export const calculator = onTaskDispatched(
 ```
 The `VertexAiChatWorker` handles the [VertexAiChatCommand](src/aichat/data/VertexAiChatCommand.ts) and updates [VertexAiChatState](src/index.ts)
 with the results.
+
+Full example is available in the [sample Firebase project](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/vertexai/vertexai.ts).
