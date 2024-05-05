@@ -89,7 +89,7 @@ Let's take a closer look at the implementation...
 ## Module API
 The module has three classes to use in your project:
 - [AssistantChat](core/src/aichat/AssistantChat.ts) - handles requests from the App user
-- [AiChatWorker](core/src/aichat/BaseChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
+- [AiChatWorker](core/src/aichat/workers/ChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
 - [AiChat](openai/src/index.ts) - a factory to create those above
 
 ### Scaffolds
@@ -365,7 +365,7 @@ export const postToCalculate = onCall2(options, async (request: CallableRequest<
 ### Running AI
 The requests to front-facing functions return to user as fast as possible after changing the chat state in Firestore.
 As soon as the AI run could take a considerable time, we run theme in a Cloud Task "offline" from the client request.
-To execute the Assistant run we use the second class from the library - the [ChatWorker](core/src/aichat/BaseChatWorker.ts).
+To execute the Assistant run we use the second class from the library - the [ChatWorker](core/src/aichat/workers/ChatWorker.ts).
 To create it, use the [AiChat](openai/src/index.ts) factory we created in previous steps.
 
 To register the Cloud Task handler you may want to create the following function:

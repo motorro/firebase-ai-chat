@@ -13,7 +13,7 @@ var ToolsDispatcher_1 = require("./aichat/ToolsDispatcher");
 Object.defineProperty(exports, "getDispatchError", { enumerable: true, get: function () { return ToolsDispatcher_1.getDispatchError; } });
 var AssistantChat_1 = require("./aichat/AssistantChat");
 Object.defineProperty(exports, "AssistantChat", { enumerable: true, get: function () { return AssistantChat_1.AssistantChat; } });
-var BaseChatWorker_1 = require("./aichat/BaseChatWorker");
+var BaseChatWorker_1 = require("./aichat/workers/BaseChatWorker");
 Object.defineProperty(exports, "BaseChatWorker", { enumerable: true, get: function () { return BaseChatWorker_1.BaseChatWorker; } });
 var FirebaseQueueTaskScheduler_1 = require("./aichat/FirebaseQueueTaskScheduler");
 Object.defineProperty(exports, "FirebaseQueueTaskScheduler", { enumerable: true, get: function () { return FirebaseQueueTaskScheduler_1.FirebaseQueueTaskScheduler; } });

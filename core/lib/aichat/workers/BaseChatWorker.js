@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseChatWorker = void 0;
 const firebase_admin_1 = require("firebase-admin");
-const Collections_1 = require("./data/Collections");
-const logging_1 = require("../logging");
+const Collections_1 = require("../data/Collections");
+const logging_1 = require("../../logging");
 var FieldValue = firebase_admin_1.firestore.FieldValue;
-const ChatError_1 = require("./data/ChatError");
+const ChatError_1 = require("../data/ChatError");
 /**
  * Basic `OpenAiChatWorker` implementation that maintains chat state and dispatch runs
  */
@@ -213,4 +213,4 @@ class BaseChatWorker {
     }
 }
 exports.BaseChatWorker = BaseChatWorker;
-//# sourceMappingURL=ChatWorker.js.map
+//# sourceMappingURL=BaseChatWorker.js.map

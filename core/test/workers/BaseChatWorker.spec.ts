@@ -1,10 +1,9 @@
 import * as admin from "firebase-admin";
 import {firestore} from "firebase-admin";
-import {db, test} from "./functionsTest";
+import {db, test} from "../functionsTest";
 import {anything, capture, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
-import {AiConfig, chatState, data, Data, DispatchAction, threadId, userId} from "./mock";
+import {AiConfig, chatState, data, Data, DispatchAction, threadId, userId} from "../mock";
 import {
-    BaseChatWorker,
     ChatCommand,
     ChatCommandData,
     ChatError,
@@ -16,8 +15,9 @@ import {
     DispatchControl,
     Meta,
     Run,
-    TaskScheduler
-} from "../src";
+    TaskScheduler,
+    BaseChatWorker
+} from "../../src";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {expect} from "chai";
 import CollectionReference = admin.firestore.CollectionReference;
