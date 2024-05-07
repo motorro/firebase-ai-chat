@@ -138,7 +138,7 @@ describe("Chat worker", function() {
                     ...chatState.config.assistantConfig,
                     threadId: thread
                 }
-            }
+            };
         }
         const data: ChatState<VertexAiAssistantConfig, Data> = {
             ...chatState,
@@ -216,6 +216,7 @@ describe("Chat worker", function() {
             }
         });
 
+        // eslint-disable-next-line max-len
         const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data>(wrapper.postMessage).last();
         thread.should.be.equal(threadId);
         instructions.should.deep.include({instructions: instructions1});

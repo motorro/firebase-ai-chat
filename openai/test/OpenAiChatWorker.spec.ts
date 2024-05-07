@@ -137,7 +137,7 @@ describe("Chat worker", function() {
                     ...chatState.config.assistantConfig,
                     threadId: thread
                 }
-            }
+            };
         }
         const data: ChatState<OpenAiAssistantConfig, Data> = {
             ...chatState,
