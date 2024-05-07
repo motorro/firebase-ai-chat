@@ -30,5 +30,4 @@ export interface ChatState<out C extends AssistantConfig, out DATA extends ChatD
 export interface ChatStateUpdate<DATA> {
     status: ChatStatus,
     data: DATA
-    readonly lastMessageId?: string
 }
