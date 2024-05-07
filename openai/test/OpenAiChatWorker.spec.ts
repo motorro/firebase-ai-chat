@@ -129,9 +129,19 @@ describe("Chat worker", function() {
 
     async function createChat(thread?: string, status?: ChatStatus, dispatch?: string) {
         const dispatchDoc = dispatch || dispatchId;
+        let config = chatState.config;
+        if (undefined !== thread) {
+            config = {
+                ...chatState.config,
+                assistantConfig: {
+                    ...chatState.config.assistantConfig,
+                    threadId: thread
+                }
+            }
+        }
         const data: ChatState<OpenAiAssistantConfig, Data> = {
             ...chatState,
-            config: (thread ? {...chatState.config, threadId: thread} : chatState.config),
+            config: config,
             ...(status ? {status: status} : {status: "processing"}),
             latestDispatchId: dispatchDoc
         };
@@ -172,7 +182,10 @@ describe("Chat worker", function() {
         updatedChatState.should.deep.include({
             config: {
                 ...chatState.config,
-                threadId: threadId
+                assistantConfig: {
+                    ...chatState.config.assistantConfig,
+                    threadId: threadId
+                }
             }
         });
 
@@ -197,7 +210,7 @@ describe("Chat worker", function() {
         if (undefined === updatedChatState) {
             throw new Error("Should have chat status");
         }
-        updatedChatState.should.deep.include({
+        updatedChatState.config.assistantConfig.should.deep.include({
             lastMessageId: lastPostMessageId
         });
 
@@ -258,7 +271,7 @@ describe("Chat worker", function() {
         if (undefined === updatedChatState) {
             throw new Error("Should have chat status");
         }
-        updatedChatState.should.deep.include({
+        updatedChatState.config.assistantConfig.should.deep.include({
             lastMessageId: lastChatMessageId
         });
 

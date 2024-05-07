@@ -15,7 +15,7 @@ export class RunWorker extends BaseOpenAiWorker {
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
         logger.d("Running assistant...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));

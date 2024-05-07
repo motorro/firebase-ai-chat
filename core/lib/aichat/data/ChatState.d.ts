@@ -19,7 +19,6 @@ export interface ChatState<out C extends AssistantConfig, out DATA extends ChatD
     readonly status: ChatStatus;
     readonly latestDispatchId: string;
     readonly data: DATA;
-    readonly lastMessageId?: string;
     readonly createdAt: Timestamp;
     readonly updatedAt: Timestamp;
     readonly lastError?: string;

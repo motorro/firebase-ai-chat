@@ -15,7 +15,7 @@ export class CloseWorker extends BaseOpenAiWorker {
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
         logger.d("Closing chat...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined !== threadId) {
             await this.wrapper.deleteThread(threadId);
         }

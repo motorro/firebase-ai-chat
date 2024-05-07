@@ -9,7 +9,7 @@ class PostWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
     }
     async doDispatch(actions, data, state, control) {
         firebase_ai_chat_core_1.logger.d("Posting messages...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             firebase_ai_chat_core_1.logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
@@ -19,7 +19,9 @@ class PostWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
         for (const message of messages) {
             latestMessageId = await this.wrapper.postMessage(threadId, message.text);
         }
-        await control.updateChatState(Object.assign({}, (undefined != latestMessageId ? { lastMessageId: latestMessageId } : {})));
+        if (undefined !== latestMessageId) {
+            await this.updateConfig(control, state, (soFar) => ({ lastMessageId: latestMessageId }));
+        }
         await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }

@@ -11,14 +11,14 @@ class RetrieveWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
     }
     async doDispatch(actions, data, state, control) {
         firebase_ai_chat_core_1.logger.d("Retrieving messages...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             firebase_ai_chat_core_1.logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
         const messageCollectionRef = this.getMessageCollection(data.chatDocumentPath);
         const latestInBatchId = await this.getNextBatchSortIndex(data.chatDocumentPath, data.dispatchId);
-        const newMessages = await this.wrapper.getMessages(threadId, state.lastMessageId);
+        const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         const batch = this.db.batch();
         newMessages.messages.forEach((message, index) => {
             batch.set(messageCollectionRef.doc(), {
@@ -31,9 +31,7 @@ class RetrieveWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
             });
         });
         await batch.commit();
-        await control.updateChatState({
-            lastMessageId: newMessages.latestMessageId
-        });
+        await this.updateConfig(control, state, (soFar) => ({ lastMessageId: newMessages.latestMessageId }));
         await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }

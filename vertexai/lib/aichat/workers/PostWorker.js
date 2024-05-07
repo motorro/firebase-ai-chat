@@ -9,7 +9,7 @@ class PostWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
     }
     async doDispatch(actions, data, state, control) {
         firebase_ai_chat_core_1.logger.d("Posting messages...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             firebase_ai_chat_core_1.logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
@@ -23,7 +23,6 @@ class PostWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
         const response = await this.wrapper.postMessage(threadId, instructions, messages.map((it) => it.text), state.data);
         const messageCollectionRef = this.getMessageCollection(data.chatDocumentPath);
         const latestInBatchId = await this.getNextBatchSortIndex(data.chatDocumentPath, data.dispatchId);
-        let latestMessageId = undefined;
         const batch = this.db.batch();
         response.messages.forEach((message, index) => {
             batch.set(messageCollectionRef.doc(), {
@@ -34,10 +33,11 @@ class PostWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
                 inBatchSortIndex: latestInBatchId + index,
                 createdAt: message.createdAt
             });
-            latestMessageId = message.id;
         });
         await batch.commit();
-        await control.updateChatState(Object.assign(Object.assign({}, (undefined != latestMessageId ? { lastMessageId: latestMessageId } : {})), { data: response.data }));
+        await control.updateChatState({
+            data: response.data
+        });
         await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }

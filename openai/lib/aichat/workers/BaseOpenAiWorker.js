@@ -62,6 +62,19 @@ class BaseOpenAiWorker extends firebase_ai_chat_core_1.BaseChatWorker {
             status: "userInput"
         });
     }
+    /**
+     * Updates config
+     * @param control Chat control
+     * @param state Current state
+     * @param update Builds config changes
+     * @protected
+     */
+    async updateConfig(control, state, update) {
+        const config = Object.assign(Object.assign({}, state.config), { assistantConfig: Object.assign(Object.assign({}, state.config.assistantConfig), (update(state.config.assistantConfig))) });
+        await control.updateChatState({
+            config: config
+        });
+    }
 }
 exports.BaseOpenAiWorker = BaseOpenAiWorker;
 //# sourceMappingURL=BaseOpenAiWorker.js.map

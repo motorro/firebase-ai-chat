@@ -9,7 +9,7 @@ class RunWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
     }
     async doDispatch(actions, _data, state, control) {
         firebase_ai_chat_core_1.logger.d("Running assistant...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             firebase_ai_chat_core_1.logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));

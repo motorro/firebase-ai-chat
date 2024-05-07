@@ -1,10 +1,9 @@
-import { BaseChatWorker, ChatCommand, ChatData, ChatState, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
+import { BaseChatWorker, ChatCommand, ChatCommandData, ChatData, ChatState, DispatchControl, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { OpenAiChatActions } from "../data/OpenAiChatAction";
 import { OpenAiAssistantConfig } from "../data/OpenAiAssistantConfig";
-import { OpenAiDispatchControl } from "../OpenAiChatWorker";
 import { AiWrapper } from "../AiWrapper";
-export declare abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
+export declare abstract class BaseOpenAiWorkerCommand extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
     protected readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
     protected readonly defaultDispatcher: ToolsDispatcher<ChatData>;
@@ -30,13 +29,22 @@ export declare abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChat
      * @protected
      */
     protected abstract isSupportedAction(action: string): boolean;
+    doDispatch(actions: OpenAiChatActions, data: ChatCommandData, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
+    /**
+     * Executes command
+     * @param data
+     * @param state
+     * @param control
+     * @protected
+     */
+    protected abstract execute(data: ChatCommandData, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
      * @param control Dispatch control
      * @param actions Action queue
      * @protected
      */
-    protected continueQueue(control: OpenAiDispatchControl, actions: OpenAiChatActions): Promise<void>;
+    private continueQueue;
     /**
      * Switches to user input.
      * Made as a separate command as we can come here in several ways
@@ -44,12 +52,4 @@ export declare abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChat
      * @protected
      */
     private runSwitchToUser;
-    /**
-     * Updates config
-     * @param control Chat control
-     * @param state Current state
-     * @param update Builds config changes
-     * @protected
-     */
-    protected updateConfig(control: OpenAiDispatchControl, state: ChatState<OpenAiAssistantConfig, ChatData>, update: (soFar: OpenAiAssistantConfig) => Partial<OpenAiAssistantConfig>): Promise<void>;
 }

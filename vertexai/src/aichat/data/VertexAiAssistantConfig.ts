@@ -13,4 +13,9 @@ export interface VertexAiAssistantConfig extends AssistantConfig {
      * ID of `VertexAiSystemInstructions` to take from dispatcher registry
      */
     readonly instructionsId: string
+
+    /**
+     * Thread ID
+     */
+    readonly threadId?: string
 }

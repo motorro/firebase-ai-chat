@@ -15,7 +15,7 @@ export class PostWorker extends BaseOpenAiWorker {
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
         logger.d("Posting messages...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
@@ -27,9 +27,13 @@ export class PostWorker extends BaseOpenAiWorker {
             latestMessageId = await this.wrapper.postMessage(threadId, message.text);
         }
 
-        await control.updateChatState({
-            ...(undefined != latestMessageId ? {lastMessageId: latestMessageId} : {})
-        });
+        if (undefined !== latestMessageId) {
+            await this.updateConfig(
+                control,
+                state,
+                (soFar) => ({lastMessageId: latestMessageId})
+            );
+        }
 
         await this.continueQueue(control, actions.slice(1, actions.length));
     }

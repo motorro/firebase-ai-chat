@@ -18,12 +18,11 @@ export class CreateWorker extends BaseVertexAiWorker {
         const threadId = await this.wrapper.createThread({
             chat: data.chatDocumentPath
         });
-        await control.updateChatState({
-            config: {
-                ...state.config,
-                threadId: threadId
-            }
-        });
+        await this.updateConfig(
+            control,
+            state,
+            (soFar) => ({threadId: threadId})
+        );
         await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }

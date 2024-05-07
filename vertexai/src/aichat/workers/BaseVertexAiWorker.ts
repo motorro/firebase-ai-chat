@@ -1,6 +1,6 @@
 import {
     BaseChatWorker, ChatCommand,
-    ChatData, logger,
+    ChatData, ChatState, logger,
     TaskScheduler,
     ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
@@ -10,6 +10,7 @@ import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
 import {OpenAiDispatchControl} from "../VertexAiChatWorker";
 import {AiWrapper} from "../AiWrapper";
 import {VertexAiSystemInstructions} from "../data/VertexAiSystemInstructions";
+import {ChatConfig} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatConfig";
 
 export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActions, VertexAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
@@ -89,6 +90,31 @@ export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActi
         logger.d("Switching to user input");
         await control.updateChatState({
             status: "userInput"
+        });
+    }
+
+
+    /**
+     * Updates config
+     * @param control Chat control
+     * @param state Current state
+     * @param update Builds config changes
+     * @protected
+     */
+    protected async updateConfig(
+        control: OpenAiDispatchControl,
+        state: ChatState<VertexAiAssistantConfig, ChatData>,
+        update: (soFar: VertexAiAssistantConfig) => Partial<VertexAiAssistantConfig>
+    ): Promise<void> {
+        const config: ChatConfig<VertexAiAssistantConfig> = {
+            ...state.config,
+            assistantConfig: {
+                ...state.config.assistantConfig,
+                ...(update(state.config.assistantConfig))
+            }
+        }
+        await control.updateChatState({
+            config: config
         });
     }
 }

@@ -1,4 +1,4 @@
-import { BaseChatWorker, ChatCommand, ChatData, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
+import { BaseChatWorker, ChatCommand, ChatData, ChatState, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { VertexAiChatActions } from "../data/VertexAiChatAction";
 import { VertexAiAssistantConfig } from "../data/VertexAiAssistantConfig";
@@ -45,4 +45,12 @@ export declare abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAi
      * @protected
      */
     private runSwitchToUser;
+    /**
+     * Updates config
+     * @param control Chat control
+     * @param state Current state
+     * @param update Builds config changes
+     * @protected
+     */
+    protected updateConfig(control: OpenAiDispatchControl, state: ChatState<VertexAiAssistantConfig, ChatData>, update: (soFar: VertexAiAssistantConfig) => Partial<VertexAiAssistantConfig>): Promise<void>;
 }

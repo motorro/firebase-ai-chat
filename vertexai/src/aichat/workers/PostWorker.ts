@@ -15,7 +15,7 @@ export class PostWorker extends BaseVertexAiWorker {
         control: DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>
     ): Promise<void> {
         logger.d("Posting messages...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
@@ -36,7 +36,6 @@ export class PostWorker extends BaseVertexAiWorker {
 
         const messageCollectionRef = this.getMessageCollection(data.chatDocumentPath);
         const latestInBatchId = await this.getNextBatchSortIndex(data.chatDocumentPath, data.dispatchId);
-        let latestMessageId: string | undefined = undefined;
         const batch = this.db.batch();
         response.messages.forEach((message, index) => {
             batch.set(
@@ -50,11 +49,9 @@ export class PostWorker extends BaseVertexAiWorker {
                     createdAt: message.createdAt
                 }
             );
-            latestMessageId = message.id;
         });
         await batch.commit();
         await control.updateChatState({
-            ...(undefined != latestMessageId ? {lastMessageId: latestMessageId} : {}),
             data: response.data
         });
 

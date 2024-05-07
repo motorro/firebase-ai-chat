@@ -1,6 +1,6 @@
 import {
     BaseChatWorker, ChatCommand,
-    ChatData, logger,
+    ChatData, ChatState, logger,
     TaskScheduler,
     ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
@@ -9,6 +9,7 @@ import {OpenAiChatActions} from "../data/OpenAiChatAction";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiDispatchControl} from "../OpenAiChatWorker";
 import {AiWrapper} from "../AiWrapper";
+import {ChatConfig} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatConfig";
 
 export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
@@ -88,6 +89,30 @@ export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions,
         logger.d("Switching to user input");
         await control.updateChatState({
             status: "userInput"
+        });
+    }
+
+    /**
+     * Updates config
+     * @param control Chat control
+     * @param state Current state
+     * @param update Builds config changes
+     * @protected
+     */
+    protected async updateConfig(
+        control: OpenAiDispatchControl,
+        state: ChatState<OpenAiAssistantConfig, ChatData>,
+        update: (soFar: OpenAiAssistantConfig) => Partial<OpenAiAssistantConfig>
+    ): Promise<void> {
+        const config: ChatConfig<OpenAiAssistantConfig> = {
+            ...state.config,
+            assistantConfig: {
+                ...state.config.assistantConfig,
+                ...(update(state.config.assistantConfig))
+            }
+        }
+        await control.updateChatState({
+            config: config
         });
     }
 }

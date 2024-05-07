@@ -9,7 +9,7 @@ class CloseWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
     }
     async doDispatch(actions, data, state, control) {
         firebase_ai_chat_core_1.logger.d("Closing chat...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined !== threadId) {
             await this.wrapper.deleteThread(threadId);
         }
