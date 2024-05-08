@@ -1,5 +1,6 @@
 export const Collections = {
     messages: "messages",
     dispatches: "dispatches",
-    runs: "runs"
+    runs: "runs",
+    contextStack: "contextStack"
 };

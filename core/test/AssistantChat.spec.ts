@@ -7,6 +7,8 @@ import {assistantId, data, Data, userId, chatState, CHATS, AiConfig} from "./moc
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import {ChatState, AssistantChat, Meta, Collections, CommandScheduler} from "../src";
+import {AssistantConfig} from "../lib";
+import {ChatContextStackEntry} from "../src/aichat/data/ChatState";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 
@@ -327,6 +329,171 @@ describe("Assistant Chat", function() {
         });
 
         return chat.closeChat(chatDoc, userId).should
+            .eventually
+            .be.rejectedWith("Can't perform this operation due to current chat state");
+    });
+
+    it("hands over chat", async function() {
+        await chatDoc.set(chatState);
+        when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
+
+        const config: AssistantConfig = {engine: "other"};
+        const messages = ["Please help me with this"];
+        const update = await chat.handOver(
+            chatDoc,
+            userId,
+            config,
+            messages
+        );
+
+        update.should.deep.include({
+            status: "processing",
+            data: data
+        });
+        const updatedState: ChatState<AssistantConfig, Data> | undefined = (await chatDoc.get()).data();
+        if (undefined === updatedState) {
+            throw new Error("Chat should exist");
+        }
+        updatedState.should.deep.include({
+            config: {
+                assistantConfig: config
+            },
+            status: "processing"
+        });
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(updatedState.latestDispatchId);
+        (await dispatchDoc.get()).exists.should.be.true;
+
+        const savedStateDocs = await chatDoc.collection(Collections.contextStack)
+            .orderBy("createdAt", "desc")
+            .limit(1)
+            .get();
+        savedStateDocs.docs.length.should.equal(1);
+        const savedState = savedStateDocs.docs[0].data() as ChatContextStackEntry<Data>;
+        savedState.should.deep.include({
+            config: chatState.config,
+            status: "userInput",
+            latestDispatchId: chatState.latestDispatchId
+        });
+        savedState.latestDispatchId.should.not.equal(updatedState.latestDispatchId);
+
+        const [command, handOverMessages] = capture(scheduler.handOver).last();
+        command.should.deep.include(
+            {
+                ownerId: userId,
+                chatDocumentPath: chatDoc.path,
+                dispatchId: dispatchDoc.id
+            }
+        );
+        handOverMessages.should.deep.equal(messages);
+    });
+
+    it("does not hand over a closed chat", async function() {
+        await chatDoc.set({
+            ...chatState,
+            status: "complete"
+        });
+
+        return chat.handOver(chatDoc, userId, {engine: "other"}, []).should
+            .eventually
+            .be.rejectedWith("Can't perform this operation due to current chat state");
+    });
+
+    it("does not hand over a closing chat", async function() {
+        await chatDoc.set({
+            ...chatState,
+            status: "closing"
+        });
+
+        return chat.handOver(chatDoc, userId, {engine: "other"}, []).should
+            .eventually
+            .be.rejectedWith("Can't perform this operation due to current chat state");
+    });
+
+    it("does not hand over a failed chat", async function() {
+        await chatDoc.set({
+            ...chatState,
+            status: "failed"
+        });
+
+        return chat.handOver(chatDoc, userId, {engine: "other"}, []).should
+            .eventually
+            .be.rejectedWith("Can't perform this operation due to current chat state");
+    });
+
+    it("hands back chat", async function() {
+        await chatDoc.set(chatState);
+        when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
+        when(scheduler.handBack(anything())).thenReturn(Promise.resolve());
+
+        const config: AssistantConfig = {engine: "other"};
+        const messages = ["Please help me with this"];
+        await chat.handOver(
+            chatDoc,
+            userId,
+            config,
+            messages
+        );
+
+        const update = await chat.handBack(chatDoc, userId);
+        update.should.deep.include({
+            status: "userInput",
+            data: data
+        });
+
+        const updatedState: ChatState<AssistantConfig, Data> | undefined = (await chatDoc.get()).data();
+        if (undefined === updatedState) {
+            throw new Error("Chat should exist");
+        }
+        updatedState.should.deep.include({
+            config: chatState.config,
+            status: "userInput",
+            latestDispatchId: "dispatch"
+        });
+
+        const savedStateDocs = await chatDoc.collection(Collections.contextStack)
+            .orderBy("createdAt", "desc")
+            .limit(1)
+            .get();
+        savedStateDocs.docs.length.should.equal(0);
+
+        const [command] = capture(scheduler.handBack).last();
+        command.should.deep.include(
+            {
+                ownerId: userId,
+                chatDocumentPath: chatDoc.path
+            }
+        );
+    });
+
+    it("does not hand back a closed chat", async function() {
+        when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
+        await chatDoc.set(chatState);
+        await chat.handOver(chatDoc, userId, {}, []);
+        await chatDoc.set({status: "complete"}, {merge: true});
+
+        return chat.handBack(chatDoc, userId).should
+            .eventually
+            .be.rejectedWith("Can't perform this operation due to current chat state");
+    });
+
+    it("does not hand over a closing chat", async function() {
+        when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
+        await chatDoc.set(chatState);
+        await chat.handOver(chatDoc, userId, {}, []);
+        await chatDoc.set({status: "closing"}, {merge: true});
+
+        return chat.handBack(chatDoc, userId).should
+            .eventually
+            .be.rejectedWith("Can't perform this operation due to current chat state");
+    });
+
+    it("does not hand over a failed chat", async function() {
+        when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
+        await chatDoc.set(chatState);
+        await chat.handOver(chatDoc, userId, {}, []);
+        await chatDoc.set({status: "failed"}, {merge: true});
+
+        return chat.handBack(chatDoc, userId).should
             .eventually
             .be.rejectedWith("Can't perform this operation due to current chat state");
     });

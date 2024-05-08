@@ -29,6 +29,19 @@ export interface CommandScheduler {
     postAndRun(common: ChatCommandData): Promise<void>;
 
     /**
+     * Hands over chat to another assistant
+     * @param common Common command data
+     * @param handOverMessages Messages used to hand-over chat
+     */
+    handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<string>): Promise<void>
+
+    /**
+     * Returns chat to next popped assistant
+     * @param common Common command data
+     */
+    handBack(common: ChatCommandData): Promise<void>
+
+    /**
      * Closes chat and cleans-up
      * @param common Common command data
      */

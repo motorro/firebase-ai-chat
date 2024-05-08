@@ -32,7 +32,7 @@ module.exports = {
         "indent": ["error", 4, {"SwitchCase": 1}],
         "linebreak-style": 0,
         "comma-dangle": ["error", "never"],
-        "max-len": ["error", {"code": 140}],
+        "max-len": ["error", {"code": 160}],
         "require-jsdoc": 0,
         "valid-jsdoc": ["warn", {
             "requireReturnType": false,

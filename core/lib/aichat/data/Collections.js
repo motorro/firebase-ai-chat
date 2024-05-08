@@ -4,6 +4,7 @@ exports.Collections = void 0;
 exports.Collections = {
     messages: "messages",
     dispatches: "dispatches",
-    runs: "runs"
+    runs: "runs",
+    contextStack: "contextStack"
 };
 //# sourceMappingURL=Collections.js.map

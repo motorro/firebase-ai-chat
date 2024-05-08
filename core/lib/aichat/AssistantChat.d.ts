@@ -42,14 +42,34 @@ export declare class AssistantChat<DATA extends ChatData> {
      * @param assistantConfig Assistant Config
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
+     * @return Chat state update
      */
     singleRun(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    /**
+     * Hands over chat to another assistant
+     * @param document Document reference
+     * @param userId Chat owner
+     * @param assistantConfig Assistant Config
+     * @param handOverMessages Messages used to initialize the new chat passed  Hidden from user
+     * @param meta Metadata to pass to chat worker
+     * @return Chat stack update
+     */
+    handOver(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, assistantConfig: AssistantConfig, handOverMessages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    /**
+     * Hands chat back to the next popped assistant
+     * @param document Document reference
+     * @param userId Chat owner
+     * @param meta Metadata to pass to chat worker
+     * @return Chat stack update
+     */
+    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Posts messages to the thread
      * @param document Chat document
      * @param userId Chat owner
      * @param messages Messages to post
      * @param meta Metadata to pass to chat worker
+     * @return Chat state update
      */
     postMessage(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, messages: ReadonlyArray<string>, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
@@ -80,4 +100,14 @@ export declare class AssistantChat<DATA extends ChatData> {
      * @private
      */
     private prepareDispatchWithChecks;
+    /**
+     * Retrieves chat data
+     * @param tx Active transaction
+     * @param document Chat document
+     * @param userId Bound user ID
+     * @param checkStatus Checks current status for availability
+     * @return Chat state if checks are ok
+     * @private
+     */
+    private checkAndGetState;
 }

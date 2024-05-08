@@ -1,5 +1,12 @@
 import {firestore} from "firebase-admin";
-import {AssistantConfig, ChatData, ChatState, ChatStatus, ChatStateUpdate} from "./data/ChatState";
+import {
+    AssistantConfig,
+    ChatData,
+    ChatState,
+    ChatStatus,
+    ChatStateUpdate,
+    ChatContextStackEntry
+} from "./data/ChatState";
 import {logger} from "../logging";
 import {Collections} from "./data/Collections";
 import {ChatMessage} from "./data/ChatMessage";
@@ -8,11 +15,12 @@ import {ChatCommandData} from "./data/ChatCommandData";
 import {HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;
-import FieldValue = firestore.FieldValue;
 import Firestore = firestore.Firestore;
 import {Dispatch} from "./data/Dispatch";
 import {Meta} from "./data/Meta";
 import {CommandScheduler} from "./CommandScheduler";
+import Transaction = firestore.Transaction;
+import Timestamp = firestore.Timestamp;
 
 /**
  * Front-facing assistant chat
@@ -67,11 +75,11 @@ export class AssistantChat<DATA extends ChatData> {
             status: status,
             latestDispatchId: dispatchDoc.id,
             data: data,
-            createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp()
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
         });
         batch.set(dispatchDoc, {
-            createdAt: FieldValue.serverTimestamp()
+            createdAt: Timestamp.now()
         });
 
         let action: (common: ChatCommandData) => Promise<void> = async (common) => {
@@ -107,6 +115,7 @@ export class AssistantChat<DATA extends ChatData> {
      * @param assistantConfig Assistant Config
      * @param messages Starting messages
      * @param meta Metadata to pass to chat worker
+     * @return Chat state update
      */
     async singleRun(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
@@ -129,11 +138,11 @@ export class AssistantChat<DATA extends ChatData> {
             status: status,
             latestDispatchId: dispatchDoc.id,
             data: data,
-            createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp()
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
         });
         batch.set(dispatchDoc, {
-            createdAt: FieldValue.serverTimestamp()
+            createdAt: Timestamp.now()
         });
         this.insertMessages(batch, document, userId, dispatchDoc.id, messages);
         await batch.commit();
@@ -152,11 +161,133 @@ export class AssistantChat<DATA extends ChatData> {
     }
 
     /**
+     * Hands over chat to another assistant
+     * @param document Document reference
+     * @param userId Chat owner
+     * @param assistantConfig Assistant Config
+     * @param handOverMessages Messages used to initialize the new chat passed  Hidden from user
+     * @param meta Metadata to pass to chat worker
+     * @return Chat stack update
+     */
+    async handOver(
+        document: DocumentReference<ChatState<AssistantConfig, DATA>>,
+        userId: string,
+        assistantConfig: AssistantConfig,
+        handOverMessages: ReadonlyArray<string>,
+        meta?: Meta
+    ): Promise<ChatStateUpdate<DATA>> {
+        logger.d("Handing over chat: ", document.path);
+
+        const state = await this.db.runTransaction(async (tx) => {
+            const state = await this.checkAndGetState(
+                tx,
+                document,
+                userId,
+                (current) => false === ["closing", "complete", "failed"].includes(current)
+            );
+            const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
+            tx.set(dispatchDoc, {createdAt: Timestamp.now()});
+
+            const now = Timestamp.now();
+            const stackEntry: ChatContextStackEntry<DATA> = {
+                config: state.config,
+                createdAt: now,
+                latestDispatchId: state.latestDispatchId,
+                status: state.status
+            };
+            tx.set(document.collection(Collections.contextStack).doc(), stackEntry);
+
+            const newState: ChatState<AssistantConfig, DATA> = {
+                ...state,
+                config: {...state.config, assistantConfig: assistantConfig},
+                status: "processing",
+                latestDispatchId: dispatchDoc.id,
+                updatedAt: now
+            };
+            tx.set(document, newState);
+
+            return newState;
+        });
+
+        const command: ChatCommandData = {
+            ownerId: userId,
+            chatDocumentPath: document.path,
+            dispatchId: state.latestDispatchId,
+            meta: meta || null
+        };
+        await this.scheduler.handOver(command, handOverMessages);
+
+        return {
+            data: state.data,
+            status: state.status
+        };
+    }
+
+    /**
+     * Hands chat back to the next popped assistant
+     * @param document Document reference
+     * @param userId Chat owner
+     * @param meta Metadata to pass to chat worker
+     * @return Chat stack update
+     */
+    async handBack(
+        document: DocumentReference<ChatState<AssistantConfig, DATA>>,
+        userId: string,
+        meta?: Meta
+    ): Promise<ChatStateUpdate<DATA>> {
+        logger.d("Popping chat state: ", document.path);
+        const state = await this.db.runTransaction(async (tx) => {
+            const state = await this.checkAndGetState(
+                tx,
+                document,
+                userId,
+                (current) => false === ["closing", "complete", "failed"].includes(current)
+            );
+
+            const stackEntryQuery = (document.collection(Collections.contextStack) as CollectionReference<ChatContextStackEntry<DATA>>)
+                .orderBy("createdAt", "desc")
+                .limit(1);
+            const stackEntry = (await tx.get(stackEntryQuery)).docs[0];
+            const stackEntryData = stackEntry?.data();
+            if (undefined === stackEntry || undefined === stackEntryData) {
+                return Promise.reject(
+                    new HttpsError("failed-precondition", "No state to pop")
+                );
+            }
+
+            const newState: ChatState<AssistantConfig, DATA> = {
+                ...state,
+                config: stackEntryData.config,
+                status: stackEntryData.status,
+                latestDispatchId: stackEntryData.latestDispatchId,
+                updatedAt: Timestamp.now()
+            };
+            tx.set(document, newState);
+            tx.delete(stackEntry.ref);
+
+            return newState;
+        });
+        const command: ChatCommandData = {
+            ownerId: userId,
+            chatDocumentPath: document.path,
+            dispatchId: state.latestDispatchId,
+            meta: meta || null
+        };
+        await this.scheduler.handBack(command);
+
+        return {
+            data: state.data,
+            status: state.status
+        };
+    }
+
+    /**
      * Posts messages to the thread
      * @param document Chat document
      * @param userId Chat owner
      * @param messages Messages to post
      * @param meta Metadata to pass to chat worker
+     * @return Chat state update
      */
     async postMessage(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
@@ -165,7 +296,7 @@ export class AssistantChat<DATA extends ChatData> {
         meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Posting user messages to: ", document.path);
-        return this.prepareDispatchWithChecks(
+        const state = await this.prepareDispatchWithChecks(
             document,
             userId,
             (current) => ["userInput"].includes(current),
@@ -186,12 +317,13 @@ export class AssistantChat<DATA extends ChatData> {
                 };
                 await this.scheduler.postAndRun(command);
 
-                return {
-                    status: state.status,
-                    data: state.data
-                };
+                return state;
             }
         );
+        return {
+            data: state.data,
+            status: state.status
+        };
     }
 
     /**
@@ -221,7 +353,7 @@ export class AssistantChat<DATA extends ChatData> {
                     author: "user",
                     text: message,
                     inBatchSortIndex: index,
-                    createdAt: FieldValue.serverTimestamp()
+                    createdAt: Timestamp.now()
                 }
             );
         });
@@ -239,7 +371,7 @@ export class AssistantChat<DATA extends ChatData> {
         userId: string,
         meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
-        return this.prepareDispatchWithChecks(
+        const state = await this.prepareDispatchWithChecks(
             document,
             userId,
             (current) => false === ["closing", "complete", "failed"].includes(current),
@@ -254,13 +386,13 @@ export class AssistantChat<DATA extends ChatData> {
                     meta: meta || null
                 };
                 await this.scheduler.close(command);
-
-                return {
-                    status: state.status,
-                    data: state.data
-                };
+                return state;
             }
         );
+        return {
+            status: state.status,
+            data: state.data
+        };
     }
 
     /**
@@ -277,52 +409,66 @@ export class AssistantChat<DATA extends ChatData> {
         userId: string,
         checkStatus: (currentStatus: ChatStatus) => boolean,
         targetStatus: ChatStatus,
-        block: (state: ChatState<AssistantConfig, DATA>) => Promise<ChatStateUpdate<DATA>>
-    ): Promise<ChatStateUpdate<DATA>> {
+        block: (state: ChatState<AssistantConfig, DATA>) => Promise<ChatState<AssistantConfig, DATA>>
+    ): Promise<ChatState<AssistantConfig, DATA>> {
         const run = this.db.runTransaction(async (tx) => {
-            const doc = await tx.get(document);
-            const state = doc.data();
-            if (false === doc.exists || undefined === state) {
-                logger.w("Chat not found", document.path);
-                return Promise.reject(
-                    new HttpsError("not-found", "Chat not found")
-                );
-            }
-            if (userId !== state.userId) {
-                logger.w("Access denied to:", userId);
-                return Promise.reject(
-                    new HttpsError("permission-denied", "Access denied")
-                );
-            }
-            const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
-            tx.set(dispatchDoc, {createdAt: FieldValue.serverTimestamp()});
+            const state = await this.checkAndGetState(tx, document, userId, checkStatus);
 
-            if (false === checkStatus(state.status)) {
-                logger.w(`Chat is in invalid state ${state.status}`);
-                return Promise.reject(
-                    new HttpsError("failed-precondition", "Can't perform this operation due to current chat state")
-                );
-            }
+            const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
+            tx.set(dispatchDoc, {createdAt: Timestamp.now()});
+
             const newState: ChatState<AssistantConfig, DATA> = {
                 ...state,
                 status: targetStatus,
-                latestDispatchId: dispatchDoc.id
+                latestDispatchId: dispatchDoc.id,
+                updatedAt: Timestamp.now()
             };
 
-            tx.set(
-                document,
-                {
-                    ...newState,
-                    updatedAt: FieldValue.serverTimestamp()
-                }
-            );
+            tx.set(document, newState);
 
             return newState;
         });
 
-        const state = await run;
+        const newState = await run;
 
-        return await block(state);
+        return await block(newState);
+    }
+
+    /**
+     * Retrieves chat data
+     * @param tx Active transaction
+     * @param document Chat document
+     * @param userId Bound user ID
+     * @param checkStatus Checks current status for availability
+     * @return Chat state if checks are ok
+     * @private
+     */
+    private async checkAndGetState(
+        tx: Transaction,
+        document: DocumentReference<ChatState<AssistantConfig, DATA>>,
+        userId: string,
+        checkStatus: (currentStatus: ChatStatus) => boolean
+    ): Promise<ChatState<AssistantConfig, DATA>> {
+        const doc = await tx.get(document);
+        const state = doc.data();
+        if (false === doc.exists || undefined === state) {
+            logger.w("Chat not found", document.path);
+            return Promise.reject(
+                new HttpsError("not-found", "Chat not found")
+            );
+        }
+        if (userId !== state.userId) {
+            logger.w("Access denied to:", userId);
+            return Promise.reject(
+                new HttpsError("permission-denied", "Access denied")
+            );
+        }
+        if (false === checkStatus(state.status)) {
+            logger.w(`Chat is in invalid state ${state.status}`);
+            return Promise.reject(
+                new HttpsError("failed-precondition", "Can't perform this operation due to current chat state")
+            );
+        }
+        return state;
     }
 }
-
