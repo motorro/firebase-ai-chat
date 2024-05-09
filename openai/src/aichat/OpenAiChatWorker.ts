@@ -5,8 +5,7 @@ import {
     ChatWorker,
     DispatchControl, logger,
     Meta,
-    TaskScheduler,
-    ToolsDispatcher
+    TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiChatActions} from "./data/OpenAiChatAction";
 import {OpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
@@ -32,17 +31,15 @@ export class OpenAiChatWorker implements ChatWorker {
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>
     ) {
         this.workers = [
-            new CloseWorker(firestore, scheduler, wrapper, dispatchers),
-            new CreateWorker(firestore, scheduler, wrapper, dispatchers),
-            new PostWorker(firestore, scheduler, wrapper, dispatchers),
-            new PostExplicitWorker(firestore, scheduler, wrapper, dispatchers),
-            new RetrieveWorker(firestore, scheduler, wrapper, dispatchers),
-            new RunWorker(firestore, scheduler, wrapper, dispatchers),
-            new SwitchToUserWorker(firestore, scheduler, wrapper, dispatchers),
+            new CloseWorker(firestore, scheduler, wrapper),
+            new CreateWorker(firestore, scheduler, wrapper),
+            new PostWorker(firestore, scheduler, wrapper),
+            new PostExplicitWorker(firestore, scheduler, wrapper),
+            new RetrieveWorker(firestore, scheduler, wrapper),
+            new RunWorker(firestore, scheduler, wrapper),
+            new SwitchToUserWorker(firestore, scheduler, wrapper),
             new HandBackCleanupWorker(wrapper)
         ];
     }

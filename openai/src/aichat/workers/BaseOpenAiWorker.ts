@@ -1,8 +1,7 @@
 import {
     BaseChatWorker, ChatCommand,
     ChatData, ChatState, logger,
-    TaskScheduler,
-    ToolsDispatcher
+    TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
@@ -14,28 +13,20 @@ import {ActionWorker} from "./ActionWorker";
 
 export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> implements ActionWorker {
     protected readonly wrapper: AiWrapper;
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    protected readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
-
-    protected readonly defaultDispatcher: ToolsDispatcher<ChatData> = (data) => Promise.resolve(data);
 
     /**
      * Constructor
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
-     * @param dispatchers Tools dispatcher map
      */
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>
     ) {
         super(firestore, scheduler);
         this.wrapper = wrapper;
-        this.dispatchers = dispatchers;
     }
 
     /**

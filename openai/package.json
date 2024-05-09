@@ -37,7 +37,7 @@
   "peerDependencies": {
     "firebase-admin": "^10.0.0 || ^11.0.0 || ^12.1.0",
     "firebase-functions": "^4.9.0 || ^5.0.1",
-    "@motorro/firebase-ai-chat-core": "^6.3.5",
+    "@motorro/firebase-ai-chat-core": "^6.4.0",
     "openai": "^4.27.0"
   },
   "devDependencies": {

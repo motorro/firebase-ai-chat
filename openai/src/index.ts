@@ -14,6 +14,8 @@ import {firestore} from "firebase-admin";
 import Firestore = firestore.Firestore;
 import {OpenAiAssistantConfig} from "./aichat/data/OpenAiAssistantConfig";
 import {OpenAICommandScheduler} from "./aichat/OpenAICommandScheduler";
+import OpenAI from "openai";
+import {OpenAiWrapper} from "./aichat/OpenAiWrapper";
 
 export {
     ChatData,
@@ -33,7 +35,6 @@ export {
     ToolsDispatcher,
     AssistantChat
 };
-export {OpenAiWrapper} from "./aichat/OpenAiWrapper";
 export {OpenAiAssistantConfig} from "./aichat/data/OpenAiAssistantConfig";
 export {OpenAiChatCommand} from "./aichat/data/OpenAiChatCommand";
 
@@ -63,13 +64,22 @@ export interface AiChat {
     chat<DATA extends ChatData>(queueName: string): AssistantChat<DATA>
 
     /**
+     * Creates AI wrapper that runs AI requests
+     * @param openAi OpenAI instance
+     * @param dispatchers Tools dispatchers
+     * @return Instance of AI wrapper
+     * @see worker
+     */
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    ai(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): AiWrapper
+
+    /**
      * Chat worker to use in Firebase tasks
      * @param aiWrapper AI API wrapper
-     * @param dispatchers Tools dispatchers
      * @return Worker interface
      */
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    worker(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker
+    worker(aiWrapper: AiWrapper): OpenAiChatWorker
 }
 
 /**
@@ -100,9 +110,12 @@ export function factory(
         ): AssistantChat<DATA> {
             return new AssistantChat<DATA>(firestore, commandSchedulers(queueName, _taskScheduler));
         },
+        ai(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): AiWrapper {
+            return new OpenAiWrapper(openAi, dispatchers);
+        },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        worker: function(aiWrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker {
-            return new OpenAiChatWorker(firestore, _taskScheduler, aiWrapper, dispatchers);
+        worker: function(aiWrapper: AiWrapper): OpenAiChatWorker {
+            return new OpenAiChatWorker(firestore, _taskScheduler, aiWrapper);
         }
     };
 }

@@ -19,9 +19,17 @@ import {AiWrapper} from "./AiWrapper";
  */
 export class OpenAiWrapper implements AiWrapper {
     private readonly openAi: OpenAI;
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
+    protected readonly defaultDispatcher: ToolsDispatcher<ChatData> = (data) => Promise.resolve(data);
 
-    constructor(openAi: OpenAI) {
+    constructor(
+        openAi: OpenAI,
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>
+    ) {
         this.openAi = openAi;
+        this.dispatchers = dispatchers;
     }
 
     async createThread(meta: Readonly<Record<string, string>>): Promise<string> {
@@ -47,14 +55,19 @@ export class OpenAiWrapper implements AiWrapper {
         });
     }
 
-    // eslint-disable-next-line max-len
     async run<DATA extends ChatData>(
         threadId: string,
         assistantId: string,
         dataSoFar: DATA,
-        dispatcher: ToolsDispatcher<DATA>
+        dispatcherId: string
     ): Promise<DATA> {
         logger.d("Running Assistant for:", threadId);
+        logger.d("Selecting dispatcher:", dispatcherId);
+        let dispatcher = this.dispatchers[dispatcherId];
+        if (undefined === dispatcher) {
+            logger.w("Dispatcher not found:", dispatcherId);
+            dispatcher = this.defaultDispatcher;
+        }
         return this.runAi(async (ai) => {
             let run = await ai.beta.threads.runs.create(threadId, {assistant_id: assistantId});
             let data = dataSoFar;

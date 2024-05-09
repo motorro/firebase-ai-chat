@@ -1,4 +1,4 @@
-import {ChatData, Messages, ToolsDispatcher} from "@motorro/firebase-ai-chat-core";
+import {ChatData, Messages} from "@motorro/firebase-ai-chat-core";
 
 /**
  * Wraps OpenAI Assistant
@@ -24,15 +24,15 @@ export interface AiWrapper {
      * @param threadId Thread ID
      * @param assistantId Assistant ID
      * @param dataSoFar Current data state
-     * @param dispatcher Tools dispatcher
+     * @param dispatcherId Tools dispatcher ID
      * @return New data state
      */
     run<DATA extends ChatData>(
         threadId: string,
         assistantId: string,
         dataSoFar: DATA,
-        dispatcher: ToolsDispatcher<DATA>
-    ): Promise<DATA>
+        dispatcherId: string
+    ): Promise<ChatData>
 
     /**
      * Gets thread messages

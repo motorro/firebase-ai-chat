@@ -20,13 +20,13 @@ export class RunWorker extends BaseOpenAiWorker {
             logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
-        logger.d("Selecting dispatcher:", state.config.assistantConfig.dispatcherId);
-        let dispatcher = this.dispatchers[state.config.assistantConfig.dispatcherId];
-        if (undefined === dispatcher) {
-            logger.w("Dispatcher not found:", state.config.assistantConfig.dispatcherId);
-            dispatcher = this.defaultDispatcher;
-        }
-        const newData = await this.wrapper.run(threadId, state.config.assistantConfig.assistantId, state.data, dispatcher);
+
+        const newData = await this.wrapper.run(
+            threadId,
+            state.config.assistantConfig.assistantId,
+            state.data,
+            state.config.assistantConfig.dispatcherId
+        );
 
         await control.updateChatState({
             data: newData

@@ -4,13 +4,14 @@ import {ToolsDispatcher} from "@motorro/firebase-ai-chat-core";
 import {Threads} from "openai/resources/beta";
 import Beta = OpenAI.Beta;
 import Messages = Threads.Messages;
-import {assistantId, Data, data, runId, threadId} from "./mock";
+import {assistantId, Data, data, Data2, dispatcherId, runId, threadId} from "./mock";
 import Runs = Threads.Runs;
 import Run = Threads.Run;
 import {AbstractPage} from "openai/core";
-import {AiWrapper, OpenAiWrapper} from "../src";
+import {AiWrapper} from "../src";
 import {MessagesPage} from "openai/resources/beta/threads";
 import Message = Threads.Message;
+import {OpenAiWrapper} from "../src/aichat/OpenAiWrapper";
 
 const message1: Message = {
     assistant_id: assistantId,
@@ -58,11 +59,12 @@ const message2: Message = {
 };
 
 describe("OpenAI wrapper", function() {
-    const testDispatcher: ToolsDispatcher<Data> = () => Promise.resolve({value: "dispatched"});
     let wrapper: AiWrapper;
     let threads: Threads;
     let messages: Messages;
     let runs: Runs;
+    let dispatcher: ToolsDispatcher<Data>;
+    let dispatcher2: ToolsDispatcher<Data2>;
 
     beforeEach(async function() {
         const openAi: OpenAI = imock();
@@ -74,8 +76,14 @@ describe("OpenAI wrapper", function() {
         when(threads.runs).thenReturn(instance(runs));
         when(beta.threads).thenReturn(instance(threads));
         when(openAi.beta).thenReturn(instance(beta));
-
-        wrapper = new OpenAiWrapper(instance(openAi));
+        dispatcher = () => Promise.resolve({value: "dispatched"});
+        dispatcher2 = () => Promise.reject(new Error("error"));
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        const dispatchers: Record<string, ToolsDispatcher<any>> = {
+            [dispatcherId]: dispatcher,
+            "dispatcher2Id": dispatcher2
+        };
+        wrapper = new OpenAiWrapper(instance(openAi), dispatchers);
     });
 
     afterEach(async function() {
@@ -134,7 +142,7 @@ describe("OpenAI wrapper", function() {
         when(runs.create(anything(), anything())).thenResolve(instance(run1));
         when(runs.retrieve(anything(), anything())).thenResolve(instance(run2));
 
-        await wrapper.run(threadId, assistantId, data, testDispatcher);
+        await wrapper.run(threadId, assistantId, data, dispatcherId);
 
         verify(runs.create(strictEqual(threadId), deepEqual({assistant_id: assistantId}))).once();
         verify(runs.retrieve(strictEqual(threadId), strictEqual("r1"))).once();
@@ -173,7 +181,7 @@ describe("OpenAI wrapper", function() {
         when(runs.retrieve(anything(), anything())).thenResolve(instance(run2)).thenResolve(iRun3);
         when(runs.submitToolOutputs(anything(), anything(), anything())).thenResolve(iRun3);
 
-        const result = await wrapper.run(threadId, assistantId, data, testDispatcher);
+        const result = await wrapper.run(threadId, assistantId, data, dispatcherId);
         result.should.deep.equal({
             value: "dispatched"
         });
@@ -196,8 +204,6 @@ describe("OpenAI wrapper", function() {
     });
 
     it("runs tools and returns dispatch error", async function() {
-        const errorMessage = "Some error";
-        const errorDispatcher: ToolsDispatcher<Data> = () => Promise.reject(new Error(errorMessage));
         const toolCallId = "tc1";
 
         const run1: Run = imock();
@@ -230,7 +236,7 @@ describe("OpenAI wrapper", function() {
         when(runs.retrieve(anything(), anything())).thenResolve(instance(run2)).thenResolve(iRun3);
         when(runs.submitToolOutputs(anything(), anything(), anything())).thenResolve(iRun3);
 
-        const result = await wrapper.run(threadId, assistantId, data, errorDispatcher);
+        const result = await wrapper.run(threadId, assistantId, data, "dispatcher2Id");
         result.should.deep.equal({
             value: "test"
         });
@@ -241,7 +247,7 @@ describe("OpenAI wrapper", function() {
             deepEqual({
                 tool_outputs: [
                     {
-                        output: JSON.stringify({error: errorMessage}),
+                        output: JSON.stringify({error: "error"}),
                         tool_call_id: toolCallId
                     }
                 ]
@@ -250,11 +256,6 @@ describe("OpenAI wrapper", function() {
     });
 
     it("runs tools and returns dispatch error when dispatcher throws", async function() {
-        const errorMessage = "Some error";
-        const errorDispatcher: ToolsDispatcher<Data> = () => {
-            throw new Error(errorMessage);
-        };
-
         const toolCallId = "tc1";
 
         const run1: Run = imock();
@@ -287,7 +288,7 @@ describe("OpenAI wrapper", function() {
         when(runs.retrieve(anything(), anything())).thenResolve(instance(run2)).thenResolve(iRun3);
         when(runs.submitToolOutputs(anything(), anything(), anything())).thenResolve(iRun3);
 
-        const result = await wrapper.run(threadId, assistantId, data, errorDispatcher);
+        const result = await wrapper.run(threadId, assistantId, data, "dispatcher2Id");
         result.should.deep.equal({
             value: "test"
         });
@@ -298,7 +299,7 @@ describe("OpenAI wrapper", function() {
             deepEqual({
                 tool_outputs: [
                     {
-                        output: JSON.stringify({error: errorMessage}),
+                        output: JSON.stringify({error: "error"}),
                         tool_call_id: toolCallId
                     }
                 ]
@@ -318,7 +319,7 @@ describe("OpenAI wrapper", function() {
         when(runs.create(anything(), anything())).thenResolve(instance(run1));
         when(runs.retrieve(anything(), anything())).thenResolve(instance(run2));
 
-        return wrapper.run(threadId, assistantId, data, testDispatcher)
+        return wrapper.run(threadId, assistantId, data, dispatcherId)
             .should
             .eventually
             .be

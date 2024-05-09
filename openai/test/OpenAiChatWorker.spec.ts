@@ -2,7 +2,6 @@ import * as admin from "firebase-admin";
 import {firestore} from "firebase-admin";
 import {db, test} from "./functionsTest";
 import {
-    anyFunction,
     anything,
     capture,
     deepEqual,
@@ -13,7 +12,7 @@ import {
     verify,
     when
 } from "@johanblumenberg/ts-mockito";
-import {assistantId, chatState, Data, data, Data2, dispatcherId, threadId, userId} from "./mock";
+import {assistantId, chatState, Data, data, dispatcherId, threadId, userId} from "./mock";
 import {
     ChatCommand,
     ChatCommandData,
@@ -25,8 +24,7 @@ import {
     Dispatch,
     Meta,
     Run,
-    TaskScheduler,
-    ToolsDispatcher
+    TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {OpenAiChatWorker, OpenAiAssistantConfig, OpenAiChatCommand, AiWrapper} from "../src";
@@ -115,8 +113,6 @@ describe("Chat worker", function() {
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
-    let dispatcher: ToolsDispatcher<Data>;
-    let dispatcher2: ToolsDispatcher<Data2>;
     let worker: ChatWorker;
 
     before(async function() {
@@ -124,14 +120,7 @@ describe("Chat worker", function() {
         scheduler = imock<TaskScheduler>();
         when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
 
-        dispatcher = imock<ToolsDispatcher<Data>>();
-        dispatcher2 = imock<ToolsDispatcher<Data2>>();
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        const dispatchers: Record<string, ToolsDispatcher<any>> = {
-            "dispatcherId": dispatcher,
-            "dispatcher2Id": dispatcher2
-        };
-        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper), dispatchers);
+        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper));
     });
 
     after(async function() {
@@ -289,7 +278,7 @@ describe("Chat worker", function() {
             data: changedState.data
         });
 
-        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anyFunction())).once();
+        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), strictEqual(dispatcherId))).once();
     });
 
     it("processes retrieve command", async function() {
