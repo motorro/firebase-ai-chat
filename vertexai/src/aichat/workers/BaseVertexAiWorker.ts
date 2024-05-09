@@ -5,14 +5,15 @@ import {
     ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
-import {VertexAiChatActions} from "../data/VertexAiChatAction";
+import {VertexAiChatAction, VertexAiChatActions} from "../data/VertexAiChatAction";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
 import {OpenAiDispatchControl} from "../VertexAiChatWorker";
 import {AiWrapper} from "../AiWrapper";
 import {VertexAiSystemInstructions} from "../data/VertexAiSystemInstructions";
 import {ChatConfig} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatConfig";
+import {ActionWorker} from "./ActionWorker";
 
-export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActions, VertexAiAssistantConfig, ChatData> {
+export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActions, VertexAiAssistantConfig, ChatData> implements ActionWorker {
     protected readonly wrapper: AiWrapper;
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     protected readonly instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>;
@@ -52,12 +53,12 @@ export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActi
     }
 
     /**
-     * Is supported Open AI command
+     * Is supported Vertex AI command
      * @param action Command to check
      * @returns true if worker supports the command
      * @protected
      */
-    protected abstract isSupportedAction(action: string): boolean
+    abstract isSupportedAction(action: unknown): action is VertexAiChatAction
 
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
@@ -112,7 +113,7 @@ export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActi
                 ...state.config.assistantConfig,
                 ...(update(state.config.assistantConfig))
             }
-        }
+        };
         await control.updateChatState({
             config: config
         });

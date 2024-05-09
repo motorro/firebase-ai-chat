@@ -18,7 +18,7 @@ import {
     ChatCommandData,
     ChatMessage,
     ChatState,
-    ChatStatus,
+    ChatStatus, ChatWorker,
     Collections,
     Dispatch,
     Meta,
@@ -75,6 +75,11 @@ describe("Chat worker", function() {
         commonData: commandData,
         actionData: ["post"]
     };
+    const explicitPostCommand: VertexAiChatCommand = {
+        engine: "vertexai",
+        commonData: commandData,
+        actionData: [{name: "postExplicit", messages: ["hand over"]}]
+    };
     const switchToUserCommand: VertexAiChatCommand = {
         engine: "vertexai",
         commonData: commandData,
@@ -85,12 +90,22 @@ describe("Chat worker", function() {
         commonData: commandData,
         actionData: ["close"]
     };
+    const config: VertexAiAssistantConfig = {
+        engine: "vertexai",
+        instructionsId,
+        threadId
+    };
+    const handBackCommand: VertexAiChatCommand = {
+        engine: "vertexai",
+        commonData: commandData,
+        actionData: [{name: "handBackCleanup", config: config}]
+    };
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
     let dispatcher: ToolsDispatcher<Data>;
     let dispatcher2: ToolsDispatcher<Data2>;
-    let worker: VertexAiChatWorker;
+    let worker: ChatWorker;
 
     before(async function() {
         wrapper = imock<AiWrapper>();
@@ -251,6 +266,69 @@ describe("Chat worker", function() {
         });
     });
 
+    it("processes explicit post command", async function() {
+        await createChat(threadId, "processing", dispatchId);
+
+        when(wrapper.postMessage(anything(), anything(), anything(), anything())).thenResolve({
+            messages: aiMessages,
+            data: {
+                value: "test2"
+            }
+        });
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: explicitPostCommand
+        };
+
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<VertexAiAssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            data: {
+                value: "test2"
+            }
+        });
+
+        // eslint-disable-next-line max-len
+        const [thread, instructions, passedMessages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data>(wrapper.postMessage).last();
+        thread.should.be.equal(threadId);
+        instructions.should.deep.include({instructions: instructions1});
+        passedMessages.should.include("hand over");
+        data.should.be.deep.equal(data);
+
+        const newChatMessages = await chatMessages.get();
+        newChatMessages.docs.should.have.lengthOf(4);
+        const insertedData = newChatMessages.docs
+            .map((doc: QueryDocumentSnapshot<DocumentData>) => doc.data())
+            .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
+        insertedData[0].should.deep.include({
+            userId: userId,
+            author: "user",
+            text: messages[0]
+        });
+        insertedData[1].should.deep.include({
+            userId: userId,
+            author: "user",
+            text: messages[1]
+        });
+        insertedData[2].should.deep.include({
+            userId: userId,
+            author: "ai",
+            text: aiMessages[0].text
+        });
+        insertedData[3].should.deep.include({
+            userId: userId,
+            author: "ai",
+            text: aiMessages[1].text
+        });
+    });
+
     it("processes switch to user command", async function() {
         await createChat(threadId, "processing", dispatchId);
 
@@ -293,6 +371,23 @@ describe("Chat worker", function() {
         });
 
         verify(wrapper.deleteThread(threadId)).once();
+    });
+
+    it("runs hand back cleanup handler", async function() {
+        when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve(threadId));
+
+        const request: Request<VertexAiChatCommand> = {
+            ...context,
+            data: handBackCommand
+        };
+
+        let handlerCalled = false;
+        await worker.dispatch(request, () => {
+            handlerCalled = true;
+        });
+
+        verify(wrapper.deleteThread(threadId)).once();
+        handlerCalled.should.be.false;
     });
 
     it("runs command batch", async function() {

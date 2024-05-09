@@ -16,6 +16,13 @@ var Timestamp = firebase_admin_1.firestore.Timestamp;
  * Functions post commands to processing table and complete ASAP
  */
 class AssistantChat {
+    getScheduler(config) {
+        const scheduler = this.schedulers.find((it) => it.isSupported(config));
+        if (undefined === scheduler) {
+            throw new https_1.HttpsError("unimplemented", "Chat configuration not supported");
+        }
+        return scheduler;
+    }
     /**
      * Constructor
      * @param db Firestore
@@ -23,7 +30,7 @@ class AssistantChat {
      */
     constructor(db, scheduler) {
         this.db = db;
-        this.scheduler = scheduler;
+        this.schedulers = Array.isArray(scheduler) ? scheduler : [scheduler];
     }
     /**
      * Creates new chat thread
@@ -53,13 +60,14 @@ class AssistantChat {
         batch.set(dispatchDoc, {
             createdAt: Timestamp.now()
         });
+        const scheduler = this.getScheduler(assistantConfig);
         let action = async (common) => {
-            await this.scheduler.create(common);
+            await scheduler.create(common);
         };
         if (undefined !== messages && messages.length > 0) {
             this.insertMessages(batch, document, userId, dispatchDoc.id, messages);
             action = async (common) => {
-                await this.scheduler.createAndRun(common);
+                await scheduler.createAndRun(common);
             };
         }
         await batch.commit();
@@ -113,7 +121,7 @@ class AssistantChat {
             dispatchId: dispatchDoc.id,
             meta: meta || null
         };
-        await this.scheduler.singleRun(command);
+        await this.getScheduler(assistantConfig).singleRun(command);
         return {
             status: status,
             data: data
@@ -152,7 +160,7 @@ class AssistantChat {
             dispatchId: state.latestDispatchId,
             meta: meta || null
         };
-        await this.scheduler.handOver(command, handOverMessages);
+        await this.getScheduler(state.config.assistantConfig).handOver(command, handOverMessages);
         return {
             data: state.data,
             status: state.status
@@ -167,7 +175,7 @@ class AssistantChat {
      */
     async handBack(document, userId, meta) {
         logging_1.logger.d("Popping chat state: ", document.path);
-        const state = await this.db.runTransaction(async (tx) => {
+        const [state, formerConfig] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
             const stackEntryQuery = document.collection(Collections_1.Collections.contextStack)
                 .orderBy("createdAt", "desc")
@@ -180,7 +188,7 @@ class AssistantChat {
             const newState = Object.assign(Object.assign({}, state), { config: stackEntryData.config, status: stackEntryData.status, latestDispatchId: stackEntryData.latestDispatchId, updatedAt: Timestamp.now() });
             tx.set(document, newState);
             tx.delete(stackEntry.ref);
-            return newState;
+            return [newState, state.config.assistantConfig];
         });
         const command = {
             ownerId: userId,
@@ -188,7 +196,7 @@ class AssistantChat {
             dispatchId: state.latestDispatchId,
             meta: meta || null
         };
-        await this.scheduler.handBack(command);
+        await this.getScheduler(formerConfig).handBackCleanup(command, formerConfig);
         return {
             data: state.data,
             status: state.status
@@ -212,7 +220,7 @@ class AssistantChat {
                 dispatchId: state.latestDispatchId,
                 meta: meta || null
             };
-            await this.scheduler.postAndRun(command);
+            await this.getScheduler(state.config.assistantConfig).postAndRun(command);
             return state;
         });
         return {
@@ -259,7 +267,7 @@ class AssistantChat {
                 dispatchId: state.latestDispatchId,
                 meta: meta || null
             };
-            await this.scheduler.close(command);
+            await this.getScheduler(state.config.assistantConfig).close(command);
             return state;
         });
         return {

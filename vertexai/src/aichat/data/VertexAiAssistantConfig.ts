@@ -19,3 +19,9 @@ export interface VertexAiAssistantConfig extends AssistantConfig {
      */
     readonly threadId?: string
 }
+
+export function isVertexAiAssistantConfig(config: unknown): config is VertexAiAssistantConfig {
+    return "object" === typeof config && null !== config
+        && "engine" in config && "vertexai" === config.engine
+        && "instructionsId" in config;
+}

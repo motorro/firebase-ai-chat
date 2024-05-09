@@ -9,13 +9,13 @@ import {
 } from "@motorro/firebase-ai-chat-core";
 import {VertexAiChatActions} from "./data/VertexAiChatAction";
 import {VertexAiAssistantConfig} from "./data/VertexAiAssistantConfig";
-import {BaseVertexAiWorker} from "./workers/BaseVertexAiWorker";
 import {CreateWorker} from "./workers/CreateWorker";
 import {CloseWorker} from "./workers/CloseWorker";
-import {PostWorker} from "./workers/PostWorker";
+import {ExplicitPostWorker, PostWorker} from "./workers/PostWorker";
 import {SwitchToUserWorker} from "./workers/SwitchToUserWorker";
 import {AiWrapper} from "./AiWrapper";
 import {VertexAiSystemInstructions} from "./data/VertexAiSystemInstructions";
+import {HandBackCleanupWorker} from "./workers/HandBackCleanupWorker";
 
 export type OpenAiDispatchControl = DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>;
 
@@ -23,7 +23,7 @@ export type OpenAiDispatchControl = DispatchControl<VertexAiChatActions, VertexA
  * Chat worker that dispatches chat commands and runs AI
  */
 export class VertexAiChatWorker implements ChatWorker {
-    private workers: ReadonlyArray<BaseVertexAiWorker>;
+    private workers: ReadonlyArray<ChatWorker>;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -36,7 +36,9 @@ export class VertexAiChatWorker implements ChatWorker {
             new CloseWorker(firestore, scheduler, wrapper, instructions),
             new CreateWorker(firestore, scheduler, wrapper, instructions),
             new PostWorker(firestore, scheduler, wrapper, instructions),
-            new SwitchToUserWorker(firestore, scheduler, wrapper, instructions)
+            new ExplicitPostWorker(firestore, scheduler, wrapper, instructions),
+            new SwitchToUserWorker(firestore, scheduler, wrapper, instructions),
+            new HandBackCleanupWorker(wrapper)
         ];
     }
     async dispatch(

@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import {db, test} from "./functionsTest";
 
-import {anything, capture, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
+import {anything, capture, deepEqual, imock, instance, reset, verify, when} from "@johanblumenberg/ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
 import {assistantId, data, Data, userId, chatState, CHATS, AiConfig} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
@@ -9,6 +9,7 @@ import DocumentData = admin.firestore.DocumentData;
 import {ChatState, AssistantChat, Meta, Collections, CommandScheduler} from "../src";
 import {AssistantConfig} from "../lib";
 import {ChatContextStackEntry} from "../src/aichat/data/ChatState";
+import {beforeEach} from "mocha";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 
@@ -26,6 +27,10 @@ describe("Assistant Chat", function() {
 
     after(async function() {
         test.cleanup();
+    });
+
+    beforeEach(function() {
+        when(scheduler.isSupported(anything())).thenReturn(true);
     });
 
     afterEach(async function() {
@@ -376,7 +381,8 @@ describe("Assistant Chat", function() {
         });
         savedState.latestDispatchId.should.not.equal(updatedState.latestDispatchId);
 
-        const [command, handOverMessages] = capture(scheduler.handOver).last();
+        verify(scheduler.isSupported(deepEqual(config))).once();
+        const [command, passedMessages] = capture(scheduler.handOver).last();
         command.should.deep.include(
             {
                 ownerId: userId,
@@ -384,7 +390,7 @@ describe("Assistant Chat", function() {
                 dispatchId: dispatchDoc.id
             }
         );
-        handOverMessages.should.deep.equal(messages);
+        passedMessages.should.deep.equal(messages);
     });
 
     it("does not hand over a closed chat", async function() {
@@ -423,7 +429,7 @@ describe("Assistant Chat", function() {
     it("hands back chat", async function() {
         await chatDoc.set(chatState);
         when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
-        when(scheduler.handBack(anything())).thenReturn(Promise.resolve());
+        when(scheduler.handBackCleanup(anything(), anything())).thenReturn(Promise.resolve());
 
         const config: AssistantConfig = {engine: "other"};
         const messages = ["Please help me with this"];
@@ -456,13 +462,8 @@ describe("Assistant Chat", function() {
             .get();
         savedStateDocs.docs.length.should.equal(0);
 
-        const [command] = capture(scheduler.handBack).last();
-        command.should.deep.include(
-            {
-                ownerId: userId,
-                chatDocumentPath: chatDoc.path
-            }
-        );
+        verify(scheduler.isSupported(deepEqual(config))).twice();
+        verify(scheduler.handBackCleanup(anything(), deepEqual(config))).once();
     });
 
     it("does not hand back a closed chat", async function() {

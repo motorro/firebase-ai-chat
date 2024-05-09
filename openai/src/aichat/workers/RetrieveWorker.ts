@@ -1,12 +1,12 @@
 import {ChatState, ChatData, DispatchControl, logger, ChatError, ChatCommandData} from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {OpenAiChatActions} from "../data/OpenAiChatAction";
+import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {BaseOpenAiWorker} from "./BaseOpenAiWorker";
 import {firestore} from "firebase-admin";
 import FieldValue = firestore.FieldValue;
 
 export class RetrieveWorker extends BaseOpenAiWorker {
-    protected isSupportedAction(action: string): boolean {
+    isSupportedAction(action: unknown): action is OpenAiChatAction {
         return "retrieve" === action;
     }
 

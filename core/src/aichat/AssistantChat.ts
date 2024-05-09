@@ -33,16 +33,24 @@ import Timestamp = firestore.Timestamp;
  */
 export class AssistantChat<DATA extends ChatData> {
     private readonly db: FirebaseFirestore.Firestore;
-    private readonly scheduler: CommandScheduler;
+    private readonly schedulers: ReadonlyArray<CommandScheduler>;
+
+    private getScheduler(config: AssistantConfig): CommandScheduler {
+        const scheduler = this.schedulers.find((it) => it.isSupported(config));
+        if (undefined === scheduler) {
+            throw new HttpsError("unimplemented", "Chat configuration not supported");
+        }
+        return scheduler;
+    }
 
     /**
      * Constructor
      * @param db Firestore
      * @param scheduler Command scheduler
      */
-    constructor(db: Firestore, scheduler: CommandScheduler) {
+    constructor(db: Firestore, scheduler: CommandScheduler | ReadonlyArray<CommandScheduler>) {
         this.db = db;
-        this.scheduler = scheduler;
+        this.schedulers = Array.isArray(scheduler) ? scheduler : [scheduler];
     }
 
     /**
@@ -82,13 +90,14 @@ export class AssistantChat<DATA extends ChatData> {
             createdAt: Timestamp.now()
         });
 
+        const scheduler = this.getScheduler(assistantConfig);
         let action: (common: ChatCommandData) => Promise<void> = async (common) => {
-            await this.scheduler.create(common);
+            await scheduler.create(common);
         };
         if (undefined !== messages && messages.length > 0) {
             this.insertMessages(batch, document, userId, dispatchDoc.id, messages);
             action = async (common) => {
-                await this.scheduler.createAndRun(common);
+                await scheduler.createAndRun(common);
             };
         }
         await batch.commit();
@@ -153,7 +162,7 @@ export class AssistantChat<DATA extends ChatData> {
             dispatchId: dispatchDoc.id,
             meta: meta || null
         };
-        await this.scheduler.singleRun(command);
+        await this.getScheduler(assistantConfig).singleRun(command);
         return {
             status: status,
             data: data
@@ -215,7 +224,7 @@ export class AssistantChat<DATA extends ChatData> {
             dispatchId: state.latestDispatchId,
             meta: meta || null
         };
-        await this.scheduler.handOver(command, handOverMessages);
+        await this.getScheduler(state.config.assistantConfig).handOver(command, handOverMessages);
 
         return {
             data: state.data,
@@ -236,7 +245,7 @@ export class AssistantChat<DATA extends ChatData> {
         meta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Popping chat state: ", document.path);
-        const state = await this.db.runTransaction(async (tx) => {
+        const [state, formerConfig] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(
                 tx,
                 document,
@@ -265,7 +274,7 @@ export class AssistantChat<DATA extends ChatData> {
             tx.set(document, newState);
             tx.delete(stackEntry.ref);
 
-            return newState;
+            return [newState, state.config.assistantConfig];
         });
         const command: ChatCommandData = {
             ownerId: userId,
@@ -273,7 +282,7 @@ export class AssistantChat<DATA extends ChatData> {
             dispatchId: state.latestDispatchId,
             meta: meta || null
         };
-        await this.scheduler.handBack(command);
+        await this.getScheduler(formerConfig).handBackCleanup(command, formerConfig);
 
         return {
             data: state.data,
@@ -315,7 +324,7 @@ export class AssistantChat<DATA extends ChatData> {
                     dispatchId: state.latestDispatchId,
                     meta: meta || null
                 };
-                await this.scheduler.postAndRun(command);
+                await this.getScheduler(state.config.assistantConfig).postAndRun(command);
 
                 return state;
             }
@@ -385,7 +394,7 @@ export class AssistantChat<DATA extends ChatData> {
                     dispatchId: state.latestDispatchId,
                     meta: meta || null
                 };
-                await this.scheduler.close(command);
+                await this.getScheduler(state.config.assistantConfig).close(command);
                 return state;
             }
         );

@@ -1,10 +1,10 @@
 import {ChatCommandData, ChatState, ChatData, DispatchControl, logger, ChatError} from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {OpenAiChatActions} from "../data/OpenAiChatAction";
+import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {BaseOpenAiWorker} from "./BaseOpenAiWorker";
 
 export class RunWorker extends BaseOpenAiWorker {
-    protected isSupportedAction(action: string): boolean {
+    isSupportedAction(action: unknown): action is OpenAiChatAction {
         return "run" === action;
     }
 

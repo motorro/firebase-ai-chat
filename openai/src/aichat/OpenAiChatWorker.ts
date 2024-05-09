@@ -10,7 +10,6 @@ import {
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiChatActions} from "./data/OpenAiChatAction";
 import {OpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
-import {BaseOpenAiWorker} from "./workers/BaseOpenAiWorker";
 import {CreateWorker} from "./workers/CreateWorker";
 import {CloseWorker} from "./workers/CloseWorker";
 import {PostWorker} from "./workers/PostWorker";
@@ -18,6 +17,8 @@ import {RetrieveWorker} from "./workers/RetrieveWorker";
 import {RunWorker} from "./workers/RunWorker";
 import {SwitchToUserWorker} from "./workers/SwitchToUserWorker";
 import {AiWrapper} from "./AiWrapper";
+import {PostExplicitWorker} from "./workers/PostExplicitWorker";
+import {HandBackCleanupWorker} from "./workers/HandBackCleanupWorker";
 
 export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
 
@@ -25,7 +26,7 @@ export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAss
  * Chat worker that dispatches chat commands and runs AI
  */
 export class OpenAiChatWorker implements ChatWorker {
-    private workers: ReadonlyArray<BaseOpenAiWorker>;
+    private workers: ReadonlyArray<ChatWorker>;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -38,9 +39,11 @@ export class OpenAiChatWorker implements ChatWorker {
             new CloseWorker(firestore, scheduler, wrapper, dispatchers),
             new CreateWorker(firestore, scheduler, wrapper, dispatchers),
             new PostWorker(firestore, scheduler, wrapper, dispatchers),
+            new PostExplicitWorker(firestore, scheduler, wrapper, dispatchers),
             new RetrieveWorker(firestore, scheduler, wrapper, dispatchers),
             new RunWorker(firestore, scheduler, wrapper, dispatchers),
-            new SwitchToUserWorker(firestore, scheduler, wrapper, dispatchers)
+            new SwitchToUserWorker(firestore, scheduler, wrapper, dispatchers),
+            new HandBackCleanupWorker(wrapper)
         ];
     }
     async dispatch(

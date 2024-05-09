@@ -3,7 +3,9 @@ import {
     ToolsDispatcher,
     FirebaseQueueTaskScheduler,
     ChatData,
-    ChatState
+    ChatState,
+    TaskScheduler,
+    CommandScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {VertexAiChatWorker} from "./aichat/VertexAiChatWorker";
 import {Functions} from "firebase-admin/lib/functions";
@@ -25,6 +27,7 @@ export {
     Logger,
     setLogger,
     TaskScheduler,
+    CommandScheduler,
     Collections,
     SystemInstructions,
     AiExample,
@@ -52,6 +55,14 @@ export type VertexAiChatState<DATA extends ChatData> = ChatState<VertexAiAssista
  * AI chat components to build Firestore functions
  */
 export interface AiChat {
+    /**
+     * Creates default command scheduler that schedules commands to dispatch
+     * @param queueName Provides queue name to schedule tasks to
+     * @param taskScheduler Provides task-schedule to put tasks to queue
+     * @return Array of default task schedulers for this library
+     */
+    createDefaultCommandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>
+
     /**
      * Chat user-facing callable functions
      * @param queueName Chat dispatcher function (queue) name to dispatch work
@@ -84,20 +95,32 @@ export interface AiChat {
  * @param firestore Firestore instance
  * @param functions Functions instance
  * @param location Function location
+ * @param taskScheduler Task scheduler that puts tasks to queue
  * @return Chat tools interface
  */
-export function factory(firestore: Firestore, functions: Functions, location: string): AiChat {
-    const scheduler = new FirebaseQueueTaskScheduler(functions, location);
+export function factory(
+    firestore: Firestore,
+    functions: Functions,
+    location: string,
+    taskScheduler?: TaskScheduler
+): AiChat {
+    const _taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
+
+    function defaultSchedulers(queueName: string, taskScheduler: TaskScheduler): ReadonlyArray<CommandScheduler> {
+        return [new VertexAICommandScheduler(queueName, taskScheduler)];
+    }
+
     return {
+        createDefaultCommandSchedulers: defaultSchedulers,
         chat: function<DATA extends ChatData>(queueName: string): AssistantChat<DATA> {
-            return new AssistantChat<DATA>(firestore, new VertexAICommandScheduler(queueName, scheduler));
+            return new AssistantChat<DATA>(firestore, new VertexAICommandScheduler(queueName, _taskScheduler));
         },
         ai(model: GenerativeModel, threadsPath: string): AiWrapper {
             return new VertexAiWrapper(model, firestore, threadsPath);
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         worker: function(aiWrapper: AiWrapper, instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>): VertexAiChatWorker {
-            return new VertexAiChatWorker(firestore, scheduler, aiWrapper, instructions);
+            return new VertexAiChatWorker(firestore, _taskScheduler, aiWrapper, instructions);
         }
     };
 }

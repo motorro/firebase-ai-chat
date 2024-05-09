@@ -21,5 +21,5 @@ export interface ChatWorker {
      * @param req Dispatch request
      * @param onQueueComplete Called when `req` queue is dispatched
      */
-    dispatch(req: Request<ChatCommand<unknown>>, onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>): Promise<boolean>;
+    dispatch(req: Request<unknown>, onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>): Promise<boolean>;
 }

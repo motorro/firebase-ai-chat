@@ -1,10 +1,10 @@
 import {ChatCommandData, ChatState, ChatData, DispatchControl, logger} from "@motorro/firebase-ai-chat-core";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
-import {VertexAiChatActions} from "../data/VertexAiChatAction";
+import {VertexAiChatAction, VertexAiChatActions} from "../data/VertexAiChatAction";
 import {BaseVertexAiWorker} from "./BaseVertexAiWorker";
 
 export class CreateWorker extends BaseVertexAiWorker {
-    protected isSupportedAction(action: string): boolean {
+    isSupportedAction(action: unknown): action is VertexAiChatAction {
         return "create" === action;
     }
 

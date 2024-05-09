@@ -13,14 +13,14 @@ import {
     verify,
     when
 } from "@johanblumenberg/ts-mockito";
-import {assistantId, chatState, Data, data, Data2, threadId, userId} from "./mock";
+import {assistantId, chatState, Data, data, Data2, dispatcherId, threadId, userId} from "./mock";
 import {
     ChatCommand,
     ChatCommandData,
     ChatError,
     ChatMessage,
     ChatState,
-    ChatStatus,
+    ChatStatus, ChatWorker,
     Collections,
     Dispatch,
     Meta,
@@ -76,6 +76,11 @@ describe("Chat worker", function() {
         commonData: commandData,
         actionData: ["post"]
     };
+    const explicitPostCommand: OpenAiChatCommand = {
+        engine: "openai",
+        commonData: commandData,
+        actionData: [{name: "postExplicit", messages: ["hand over"]}]
+    };
     const runCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
@@ -96,12 +101,23 @@ describe("Chat worker", function() {
         commonData: commandData,
         actionData: ["close"]
     };
+    const config: OpenAiAssistantConfig = {
+        engine: "openai",
+        assistantId,
+        dispatcherId: dispatcherId,
+        threadId: threadId
+    };
+    const handBackCommand: OpenAiChatCommand = {
+        engine: "openai",
+        commonData: commandData,
+        actionData: [{name: "handBackCleanup", config: config}]
+    };
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
     let dispatcher: ToolsDispatcher<Data>;
     let dispatcher2: ToolsDispatcher<Data2>;
-    let worker: OpenAiChatWorker;
+    let worker: ChatWorker;
 
     before(async function() {
         wrapper = imock<AiWrapper>();
@@ -216,6 +232,31 @@ describe("Chat worker", function() {
 
         verify(wrapper.postMessage(strictEqual(threadId), strictEqual(messages[0]))).once();
         verify(wrapper.postMessage(strictEqual(threadId), strictEqual(messages[1]))).once();
+    });
+
+    it("processes explicit post command", async function() {
+        await createChat(threadId, "processing", dispatchId);
+
+        when(wrapper.postMessage(anything(), anything())).thenReturn(Promise.resolve(lastPostMessageId));
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: explicitPostCommand
+        };
+
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<OpenAiAssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.config.assistantConfig.should.deep.include({
+            lastMessageId: lastPostMessageId
+        });
+
+        verify(wrapper.postMessage(strictEqual(threadId), strictEqual("hand over"))).once();
     });
 
     it("processes run command", async function() {
@@ -334,6 +375,23 @@ describe("Chat worker", function() {
         });
 
         verify(wrapper.deleteThread(threadId)).once();
+    });
+
+    it("runs hand back cleanup handler", async function() {
+        when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve(threadId));
+
+        const request: Request<OpenAiChatCommand> = {
+            ...context,
+            data: handBackCommand
+        };
+
+        let handlerCalled = false;
+        await worker.dispatch(request, () => {
+            handlerCalled = true;
+        });
+
+        verify(wrapper.deleteThread(threadId)).once();
+        handlerCalled.should.be.false;
     });
 
     it("doesn't update chat if state changes while processing", async function() {

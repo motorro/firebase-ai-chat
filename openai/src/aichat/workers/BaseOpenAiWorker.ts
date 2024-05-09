@@ -5,13 +5,14 @@ import {
     ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
-import {OpenAiChatActions} from "../data/OpenAiChatAction";
+import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiDispatchControl} from "../OpenAiChatWorker";
 import {AiWrapper} from "../AiWrapper";
 import {ChatConfig} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatConfig";
+import {ActionWorker} from "./ActionWorker";
 
-export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
+export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> implements ActionWorker {
     protected readonly wrapper: AiWrapper;
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     protected readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
@@ -51,12 +52,12 @@ export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions,
     }
 
     /**
-     * Is supported Open AI command
+     * Is supported Open AI action
      * @param action Command to check
      * @returns true if worker supports the command
      * @protected
      */
-    protected abstract isSupportedAction(action: string): boolean
+    abstract isSupportedAction(action: unknown): action is OpenAiChatAction
 
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
@@ -110,7 +111,7 @@ export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions,
                 ...state.config.assistantConfig,
                 ...(update(state.config.assistantConfig))
             }
-        }
+        };
         await control.updateChatState({
             config: config
         });

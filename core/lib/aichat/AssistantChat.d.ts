@@ -16,13 +16,14 @@ import { CommandScheduler } from "./CommandScheduler";
  */
 export declare class AssistantChat<DATA extends ChatData> {
     private readonly db;
-    private readonly scheduler;
+    private readonly schedulers;
+    private getScheduler;
     /**
      * Constructor
      * @param db Firestore
      * @param scheduler Command scheduler
      */
-    constructor(db: Firestore, scheduler: CommandScheduler);
+    constructor(db: Firestore, scheduler: CommandScheduler | ReadonlyArray<CommandScheduler>);
     /**
      * Creates new chat thread
      * @param document Document reference

@@ -1,0 +1,56 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+actor User
+participant MasterChat
+participant MasterScheduler
+participant MasterWorker
+boundary AI
+participant SlaveScheduler
+participant SlaveWorker
+
+=== Talking with main assistant ===
+User -> MasterChat: post
+MasterChat -> MasterScheduler: postAndRun
+create MasterWorker
+MasterScheduler -> MasterWorker: create
+MasterScheduler -> MasterWorker: run
+MasterWorker -> AI: post
+AI -> MasterWorker: tool: switch assistant
+
+MasterWorker -> MasterChat: handOver
+MasterWorker -> MasterWorker: suspend
+
+=== Slave takes over ===
+MasterChat -> SlaveScheduler: handOver
+create SlaveWorker
+SlaveScheduler -> SlaveWorker: create
+SlaveScheduler -> SlaveWorker: handOver
+SlaveWorker -> AI: post
+AI -> SlaveWorker: respond
+SlaveWorker -> MasterChat: put messages
+MasterChat -> User: response
+
+User -> MasterChat: ask
+MasterChat -> SlaveScheduler: postAndRun
+SlaveScheduler -> SlaveWorker: run
+SlaveWorker -> AI: post
+AI -> SlaveWorker: respond
+SlaveWorker -> MasterChat: put messages
+MasterChat -> User: response
+
+=== User confirms ===
+User -> MasterChat: confirm
+MasterChat -> SlaveScheduler: postAndRun
+SlaveScheduler -> SlaveWorker: run
+SlaveWorker -> AI: post
+AI -> SlaveWorker: tool: hand back
+SlaveWorker -> MasterChat: handBack
+MasterChat -> MasterScheduler: handBack
+MasterScheduler -> MasterWorker: resume
+MasterWorker -> MasterChat: put messages
+MasterChat -> User: response
+
+@enduml

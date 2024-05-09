@@ -1,12 +1,20 @@
 import {ChatCommandData, ChatState, ChatData, DispatchControl, logger, ChatError} from "@motorro/firebase-ai-chat-core";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
-import {VertexAiChatActions} from "../data/VertexAiChatAction";
+import {isPostExplicitAction, VertexAiChatAction, VertexAiChatActions} from "../data/VertexAiChatAction";
 import {BaseVertexAiWorker} from "./BaseVertexAiWorker";
 
-export class PostWorker extends BaseVertexAiWorker {
-    protected isSupportedAction(action: string): boolean {
-        return "post" === action;
+abstract class BasePostWorker extends BaseVertexAiWorker {
+    isSupportedAction(action: unknown): action is VertexAiChatAction {
+        return "post" === action || isPostExplicitAction(action);
     }
+
+    /**
+     * Retrieves messages
+     * @param data Command data
+     * @param action Processed action
+     * @protected
+     */
+    protected abstract doGetMessages(data: ChatCommandData, action: VertexAiChatAction): Promise<ReadonlyArray<string>>;
 
     async doDispatch(
         actions: VertexAiChatActions,
@@ -26,11 +34,10 @@ export class PostWorker extends BaseVertexAiWorker {
             return Promise.reject(new ChatError("internal", true, "Requested instructions not found"));
         }
 
-        const messages = await this.getMessages(data.chatDocumentPath, data.dispatchId);
         const response = await this.wrapper.postMessage(
             threadId,
             instructions,
-            messages.map((it) => it.text),
+            (await this.doGetMessages(data, actions[0])),
             state.data
         );
 
@@ -58,3 +65,25 @@ export class PostWorker extends BaseVertexAiWorker {
         await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }
+
+export class PostWorker extends BasePostWorker {
+    isSupportedAction(action: unknown): action is VertexAiChatAction {
+        return "post" === action;
+    }
+
+    protected async doGetMessages(data: ChatCommandData): Promise<ReadonlyArray<string>> {
+        return (await this.getMessages(data.chatDocumentPath, data.dispatchId)).map((it) => it.text);
+    }
+}
+
+export class ExplicitPostWorker extends BasePostWorker {
+    isSupportedAction(action: unknown): action is VertexAiChatAction {
+        return isPostExplicitAction(action);
+    }
+
+    protected async doGetMessages(_data: ChatCommandData, action: VertexAiChatAction): Promise<ReadonlyArray<string>> {
+        return isPostExplicitAction(action) ? (action.messages || []) : [];
+    }
+}
+
+
