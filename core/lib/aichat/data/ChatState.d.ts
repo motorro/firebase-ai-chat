@@ -1,6 +1,7 @@
 import { ChatConfig } from "./ChatConfig";
 import * as admin from "firebase-admin";
 import Timestamp = admin.firestore.Timestamp;
+import { Meta } from "./Meta";
 /**
  * Chat status
  */
@@ -16,7 +17,7 @@ export type ChatData = Record<string, unknown>;
 /**
  * Chat state
  */
-export interface ChatState<out C extends AssistantConfig, out DATA extends ChatData> {
+export interface ChatState<out C extends AssistantConfig, out DATA extends ChatData, M extends Meta = Meta> {
     /**
      * Owning user
      */
@@ -49,6 +50,10 @@ export interface ChatState<out C extends AssistantConfig, out DATA extends ChatD
      * Latest error if chat status is failed
      */
     readonly lastError?: string;
+    /**
+     * Chat metadata
+     */
+    readonly meta: M | null;
 }
 /**
  * Chat state update

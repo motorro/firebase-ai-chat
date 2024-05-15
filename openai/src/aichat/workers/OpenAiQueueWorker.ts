@@ -1,17 +1,20 @@
 import {
     BaseChatWorker, ChatCommand,
-    ChatData, ChatState, logger,
+    ChatData,
+    ChatState,
+    logger,
     TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
-import {Request} from "firebase-functions/lib/common/providers/tasks";
-import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
+import {OpenAiChatActions} from "../data/OpenAiChatAction";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiDispatchControl} from "../OpenAiChatWorker";
 import {AiWrapper} from "../AiWrapper";
 import {ChatConfig} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatConfig";
-import {ActionWorker} from "./ActionWorker";
+import {Request} from "firebase-functions/lib/common/providers/tasks";
 
-export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> implements ActionWorker {
+export type OpenAiQueueWorker = BaseWorker<OpenAiChatActions>;
+
+export abstract class BaseWorker<A> extends BaseChatWorker<A, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
 
     /**
@@ -35,20 +38,11 @@ export abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions,
      * @returns true if request is supported
      * @protected
      */
-    protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<OpenAiChatActions>> {
-        return "engine" in req.data && "openai" === req.data.engine
-            && Array.isArray(req.data.actionData)
-            && undefined !== req.data.actionData[0]
-            && this.isSupportedAction(req.data.actionData[0]);
+    protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<A>> {
+        // Handled in common worker and factory
+        return true;
     }
 
-    /**
-     * Is supported Open AI action
-     * @param action Command to check
-     * @returns true if worker supports the command
-     * @protected
-     */
-    abstract isSupportedAction(action: unknown): action is OpenAiChatAction
 
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands

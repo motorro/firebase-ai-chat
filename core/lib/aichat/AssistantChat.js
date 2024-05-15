@@ -39,9 +39,10 @@ class AssistantChat {
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
      * @param messages Starting messages
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
+     * @param chatMeta Metadata saved to chat state
      */
-    async create(document, userId, data, assistantConfig, messages, meta) {
+    async create(document, userId, data, assistantConfig, messages, workerMeta, chatMeta) {
         logging_1.logger.d("Creating new chat with assistant:", JSON.stringify(assistantConfig));
         const batch = this.db.batch();
         const status = "processing";
@@ -55,7 +56,8 @@ class AssistantChat {
             latestDispatchId: dispatchDoc.id,
             data: data,
             createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now()
+            updatedAt: Timestamp.now(),
+            meta: chatMeta || null
         });
         batch.set(dispatchDoc, {
             createdAt: Timestamp.now()
@@ -75,7 +77,7 @@ class AssistantChat {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: dispatchDoc.id,
-            meta: meta || null
+            meta: workerMeta || null
         };
         await action(command);
         return {
@@ -91,10 +93,11 @@ class AssistantChat {
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
      * @param messages Starting messages
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
+     * @param chatMeta Metadata saved to chat state
      * @return Chat state update
      */
-    async singleRun(document, userId, data, assistantConfig, messages, meta) {
+    async singleRun(document, userId, data, assistantConfig, messages, workerMeta, chatMeta) {
         logging_1.logger.d("Creating new single run with assistant:", JSON.stringify(assistantConfig));
         const batch = this.db.batch();
         const status = "processing";
@@ -108,7 +111,8 @@ class AssistantChat {
             latestDispatchId: dispatchDoc.id,
             data: data,
             createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now()
+            updatedAt: Timestamp.now(),
+            meta: chatMeta || null
         });
         batch.set(dispatchDoc, {
             createdAt: Timestamp.now()
@@ -119,7 +123,7 @@ class AssistantChat {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: dispatchDoc.id,
-            meta: meta || null
+            meta: workerMeta || null
         };
         await this.getScheduler(assistantConfig).singleRun(command);
         return {
@@ -133,10 +137,10 @@ class AssistantChat {
      * @param userId Chat owner
      * @param assistantConfig Assistant Config
      * @param handOverMessages Messages used to initialize the new chat passed  Hidden from user
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
      * @return Chat stack update
      */
-    async handOver(document, userId, assistantConfig, handOverMessages, meta) {
+    async handOver(document, userId, assistantConfig, handOverMessages, workerMeta) {
         logging_1.logger.d("Handing over chat: ", document.path);
         const state = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
@@ -158,7 +162,7 @@ class AssistantChat {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: state.latestDispatchId,
-            meta: meta || null
+            meta: workerMeta || null
         };
         await this.getScheduler(state.config.assistantConfig).handOver(command, handOverMessages);
         return {
@@ -170,10 +174,10 @@ class AssistantChat {
      * Hands chat back to the next popped assistant
      * @param document Document reference
      * @param userId Chat owner
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
      * @return Chat stack update
      */
-    async handBack(document, userId, meta) {
+    async handBack(document, userId, workerMeta) {
         logging_1.logger.d("Popping chat state: ", document.path);
         const [state, formerConfig] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
@@ -194,7 +198,7 @@ class AssistantChat {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: state.latestDispatchId,
-            meta: meta || null
+            meta: workerMeta || null
         };
         await this.getScheduler(formerConfig).handBackCleanup(command, formerConfig);
         return {
@@ -207,10 +211,10 @@ class AssistantChat {
      * @param document Chat document
      * @param userId Chat owner
      * @param messages Messages to post
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
      * @return Chat state update
      */
-    async postMessage(document, userId, messages, meta) {
+    async postMessage(document, userId, messages, workerMeta) {
         logging_1.logger.d("Posting user messages to: ", document.path);
         const state = await this.prepareDispatchWithChecks(document, userId, (current) => ["userInput"].includes(current), "processing", async (state) => {
             await this.insertMessages(this.db.batch(), document, userId, state.latestDispatchId, messages).commit();
@@ -218,7 +222,7 @@ class AssistantChat {
                 ownerId: userId,
                 chatDocumentPath: document.path,
                 dispatchId: state.latestDispatchId,
-                meta: meta || null
+                meta: workerMeta || null
             };
             await this.getScheduler(state.config.assistantConfig).postAndRun(command);
             return state;

@@ -1,13 +1,10 @@
-import {ChatCommandData, ChatState, ChatData, DispatchControl, logger} from "@motorro/firebase-ai-chat-core";
+import {ChatCommandData, ChatState, ChatData, DispatchControl, logger, ChatWorker} from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
-import {BaseOpenAiWorker} from "./BaseOpenAiWorker";
+import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
+import {WorkerFactory} from "./WorkerFactory";
 
-export class CloseWorker extends BaseOpenAiWorker {
-    isSupportedAction(action: unknown): action is OpenAiChatAction {
-        return "close" === action;
-    }
-
+class CloseWorker extends OpenAiQueueWorker {
     async doDispatch(
         actions: OpenAiChatActions,
         data: ChatCommandData,
@@ -24,5 +21,14 @@ export class CloseWorker extends BaseOpenAiWorker {
         });
 
         await this.continueQueue(control, actions.slice(1, actions.length));
+    }
+}
+
+export class CloseFactory extends WorkerFactory {
+    protected isSupportedAction(action: unknown): action is OpenAiChatAction {
+        return "close" === action;
+    }
+    create(): ChatWorker {
+        return new CloseWorker(this.firestore, this.scheduler, this.wrapper);
     }
 }

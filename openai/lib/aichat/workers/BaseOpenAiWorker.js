@@ -8,15 +8,10 @@ class BaseOpenAiWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
-     * @param dispatchers Tools dispatcher map
      */
-    constructor(firestore, scheduler, wrapper, 
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    dispatchers) {
+    constructor(firestore, scheduler, wrapper) {
         super(firestore, scheduler);
-        this.defaultDispatcher = (data) => Promise.resolve(data);
         this.wrapper = wrapper;
-        this.dispatchers = dispatchers;
     }
     /**
      * Checks if command passed in `req` is supported by this dispatcher

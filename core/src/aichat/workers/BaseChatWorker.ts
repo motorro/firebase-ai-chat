@@ -3,18 +3,15 @@ import {ChatCommandData} from "../data/ChatCommandData";
 import {Collections} from "../data/Collections";
 import {ChatMessage} from "../data/ChatMessage";
 import {logger} from "../../logging";
-import FieldValue = firestore.FieldValue;
 import CollectionReference = firestore.CollectionReference;
 import {AssistantConfig, ChatData, ChatState} from "../data/ChatState";
-import {isPermanentError} from "../data/ChatError";
 import {TaskScheduler} from "../TaskScheduler";
-import DocumentReference = firestore.DocumentReference;
 import {Request} from "firebase-functions/lib/common/providers/tasks";
-import {Run, RunStatus} from "../data/Dispatch";
 import {Meta} from "../data/Meta";
 import Query = firestore.Query;
-import {ChatCommand} from "../data/ChatCommand";
+import {ChatCommand, isBoundChatCommand} from "../data/ChatCommand";
 import {ChatWorker, DispatchControl} from "./ChatWorker";
+import {DispatchRunner} from "./DispatchRunner";
 
 /**
  * Basic `OpenAiChatWorker` implementation that maintains chat state and dispatch runs
@@ -22,6 +19,7 @@ import {ChatWorker, DispatchControl} from "./ChatWorker";
 export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends ChatData> implements ChatWorker {
     protected readonly db: FirebaseFirestore.Firestore;
     protected readonly scheduler: TaskScheduler;
+    private readonly runner: DispatchRunner<A, AC, DATA>;
 
     /**
      * Constructor
@@ -31,6 +29,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
     protected constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler) {
         this.db = firestore;
         this.scheduler = scheduler;
+        this.runner = new DispatchRunner(firestore, scheduler);
     }
 
     /**
@@ -150,124 +149,39 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
             control: DispatchControl<A, AC, DATA>
         ) => Promise<void>
     ): Promise<void> {
-        const db = this.db;
-        const command = req.data;
-        const doc = this.db.doc(command.commonData.chatDocumentPath) as DocumentReference<ChatState<AC, DATA>>;
-        const runDoc = doc.collection(Collections.dispatches)
-            .doc(command.commonData.dispatchId)
-            .collection(Collections.runs)
-            .doc(req.id) as DocumentReference<Run>;
-        const action = command.actionData;
-        if (undefined === action) {
-            logger.w("Empty command queue in command", JSON.stringify(command));
-            return;
-        }
-
-        logger.d(`Dispatching action ${action} for document: ${command.commonData.chatDocumentPath}`);
-        const stateToDispatch = await db.runTransaction(async (tx) => {
-            const state = (await tx.get(doc)).data();
-
-            if (undefined === state) {
-                logger.w("Chat not found. Aborting...");
-                return undefined;
-            }
-            if (command.commonData.dispatchId !== state.latestDispatchId) {
-                logger.w("Another command is dispatched. Aborting...");
-                return undefined;
-            }
-
-            const run = await tx.get(runDoc);
-            if (run.exists) {
-                const runData = run.data();
-                if ("complete" === runData?.status) {
-                    logger.w("Already done. Aborting...");
-                    return undefined;
+        return this.runner.dispatchWithCheck(
+            req,
+            async (soFar, chatCommand, updateState) => {
+                const command = isBoundChatCommand(chatCommand) ? chatCommand.command : chatCommand;
+                const action = command.actionData;
+                if (undefined === action) {
+                    logger.w("Empty command queue in command", JSON.stringify(command));
+                    return;
                 }
-                if ("running" === runData?.status) {
-                    logger.w("Already running. Aborting...");
-                    return undefined;
-                }
-            }
-            tx.set(runDoc, {status: "running", runAttempt: req.retryCount, createdAt: FieldValue.serverTimestamp()});
-            return state;
-        });
-
-        if (undefined === stateToDispatch) {
-            logger.w("Aborting...");
-            return;
-        }
-
-        const updateChatState = async (state: Partial<ChatState<AC, DATA>>) => {
-            return await this.db.runTransaction(async (tx) => {
-                const stateData = (await tx.get(doc)).data();
-                if (command.commonData.dispatchId === stateData?.latestDispatchId) {
-                    logger.d(`Updating chat state of ${doc.path}:`, JSON.stringify(state));
-                    tx.set(doc, {...state, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
-                    return true;
-                } else {
-                    logger.d("Chat has dispatch another command. Data update cancelled");
-                    return false;
-                }
-            });
-        };
-        const getContinuation = (action: A) => {
-            return {...command, actionData: action};
-        };
-        const control: DispatchControl<A, AC, DATA> = {
-            updateChatState: updateChatState,
-            getContinuation: getContinuation,
-            continueQueue: async (action: A) => {
-                logger.d("Scheduling next step: ", JSON.stringify(action));
-                await this.scheduler.schedule(req.queueName, getContinuation(action));
-            },
-            completeQueue: async () => {
-                logger.d("Command queue complete");
-                if (undefined !== onQueueComplete) {
-                    logger.d("Running queue complete handler...");
-                    try {
-                        await onQueueComplete(command.commonData.chatDocumentPath, command.commonData.meta);
-                    } catch (e: unknown) {
-                        logger.w("Error running complete handler", e);
+                const getContinuation = (action: A) => {
+                    return {...command, actionData: action};
+                };
+                const control: DispatchControl<A, AC, DATA> = {
+                    updateChatState: updateState,
+                    getContinuation: getContinuation,
+                    continueQueue: async (action: A) => {
+                        logger.d("Scheduling next step: ", JSON.stringify(action));
+                        await this.scheduler.schedule(req.queueName, getContinuation(action));
+                    },
+                    completeQueue: async () => {
+                        logger.d("Command queue complete");
+                        if (undefined !== onQueueComplete) {
+                            logger.d("Running queue complete handler...");
+                            try {
+                                await onQueueComplete(command.commonData.chatDocumentPath, command.commonData.meta);
+                            } catch (e: unknown) {
+                                logger.w("Error running complete handler", e);
+                            }
+                        }
                     }
-                }
+                };
+                await processAction(action, command.commonData, soFar, control);
             }
-        };
-
-        try {
-            await processAction(action, command.commonData, stateToDispatch, control);
-        } catch (e) {
-            logger.w("Error running dispatch", e);
-            if (isPermanentError(e)) {
-                logger.w("Permanent error. Failing chat...");
-                await updateChatState({
-                    status: "failed",
-                    lastError: String(e)
-                });
-                await updateRun("complete");
-                return;
-            }
-            const retryCount = req.retryCount;
-            const maxRetries = await this.scheduler.getQueueMaxRetries(req.queueName);
-            logger.d(`Current retry count attempt: ${retryCount}, maximum retry count: ${maxRetries}`);
-            if (maxRetries != -1 && retryCount + 1 == maxRetries) {
-                logger.w("Maximum retry count reached. Failing chat...");
-                await updateChatState({
-                    status: "failed",
-                    lastError: String(e)
-                });
-                await updateRun("complete");
-                return;
-            }
-            logger.d(`Scheduling retry ${retryCount} of ${maxRetries}`);
-            await updateRun("waitingForRetry");
-            return Promise.reject(e);
-        }
-
-        await updateRun("complete");
-
-        async function updateRun(status: RunStatus) {
-            logger.d("Updating run to:", status);
-            await runDoc.set({status: status}, {merge: true});
-        }
+        )
     }
 }

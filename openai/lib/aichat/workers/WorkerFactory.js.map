@@ -1,0 +1,1 @@
+{"version":3,"file":"WorkerFactory.js","sourceRoot":"","sources":["../../../src/aichat/workers/WorkerFactory.ts"],"names":[],"mappings":";;;AAIA,MAAsB,aAAa;IAK/B;;;;;OAKG;IACH,YACI,SAAsC,EACtC,SAAwB,EACxB,OAAkB;QAElB,IAAI,CAAC,SAAS,GAAG,SAAS,CAAC;QAC3B,IAAI,CAAC,SAAS,GAAG,SAAS,CAAC;QAC3B,IAAI,CAAC,OAAO,GAAG,OAAO,CAAC;IAC3B,CAAC;CAcJ;AAjCD,sCAiCC"}

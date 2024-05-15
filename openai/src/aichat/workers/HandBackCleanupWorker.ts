@@ -1,12 +1,13 @@
 import {ChatCommand, ChatWorker, logger} from "@motorro/firebase-ai-chat-core";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {AiWrapper} from "../AiWrapper";
-import {HandBackCleanup, isHandBackCleanupAction} from "../data/OpenAiChatAction";
+import {HandBackCleanup, isHandBackCleanupAction, OpenAiChatAction} from "../data/OpenAiChatAction";
+import {WorkerFactory} from "./WorkerFactory";
 
 /**
  * Cleans-up OpenAI thread on hand-back
  */
-export class HandBackCleanupWorker implements ChatWorker {
+class HandBackCleanupWorker implements ChatWorker {
     protected readonly wrapper: AiWrapper;
 
     /**
@@ -39,5 +40,14 @@ export class HandBackCleanupWorker implements ChatWorker {
             return true;
         }
         return false;
+    }
+}
+
+export class HandBackCleanupFactory extends WorkerFactory {
+    protected isSupportedAction(action: unknown): action is OpenAiChatAction {
+        return isHandBackCleanupAction(action);
+    }
+    create(): ChatWorker {
+        return new HandBackCleanupWorker(this.wrapper);
     }
 }

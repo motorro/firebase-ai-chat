@@ -1,11 +1,12 @@
 import {
     ChatData,
     ChatError,
-    DispatchResult,
-    getDispatchError,
+    Continuation,
+    isDispatchError,
+    isDispatchSuccess,
     logger,
     Messages,
-    ToolsDispatcher
+    ToolsContinuationDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import OpenAI from "openai";
 import {ThreadCreateParams} from "openai/src/resources/beta/threads/threads";
@@ -13,23 +14,16 @@ import {sleep} from "openai/core";
 import {MessagesPage, RequiredActionFunctionToolCall, RunSubmitToolOutputsParams} from "openai/resources/beta/threads";
 import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
 import {AiWrapper} from "./AiWrapper";
+import {RunContinuationMeta, RunContinuationRequest} from "./data/RunResponse";
 
 /**
  * Wraps Open AI assistant use
  */
 export class OpenAiWrapper implements AiWrapper {
     private readonly openAi: OpenAI;
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
-    protected readonly defaultDispatcher: ToolsDispatcher<ChatData> = (data) => Promise.resolve(data);
 
-    constructor(
-        openAi: OpenAI,
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>
-    ) {
+    constructor(openAi: OpenAI) {
         this.openAi = openAi;
-        this.dispatchers = dispatchers;
     }
 
     async createThread(meta: Readonly<Record<string, string>>): Promise<string> {
@@ -59,19 +53,78 @@ export class OpenAiWrapper implements AiWrapper {
         threadId: string,
         assistantId: string,
         dataSoFar: DATA,
-        dispatcherId: string
-    ): Promise<DATA> {
+        dispatcher: ToolsContinuationDispatcher<DATA, RunContinuationMeta>,
+        meta: (runId: string) => RunContinuationMeta
+    ): Promise<Continuation<DATA>> {
+        return await this.doRun(
+            threadId,
+            assistantId,
+            dataSoFar,
+            dispatcher,
+            meta
+        )
+    }
+
+    private async doRun<DATA extends ChatData>(
+        threadId: string,
+        assistantId: string,
+        dataSoFar: DATA,
+        dispatcher: ToolsContinuationDispatcher<DATA, RunContinuationMeta>,
+        meta: (runId: string) => RunContinuationMeta,
+        passedRun?: OpenAI.Beta.Threads.Runs.Run
+    ): Promise<Continuation<DATA>> {
         logger.d("Running Assistant for:", threadId);
-        logger.d("Selecting dispatcher:", dispatcherId);
-        let dispatcher = this.dispatchers[dispatcherId];
-        if (undefined === dispatcher) {
-            logger.w("Dispatcher not found:", dispatcherId);
-            dispatcher = this.defaultDispatcher;
-        }
         return this.runAi(async (ai) => {
-            let run = await ai.beta.threads.runs.create(threadId, {assistant_id: assistantId});
+            let run = passedRun || await ai.beta.threads.runs.create(
+                threadId,
+                {assistant_id: assistantId}
+            );
             let data = dataSoFar;
             let complete = false;
+
+            const runTools = async (toolCalls: Array<RequiredActionFunctionToolCall>)=> {
+                if (0 === toolCalls.length) {
+                    return Continuation.resolve(data);
+                }
+
+                logger.d("Dispatching tools...");
+                try {
+                    const result = await dispatcher.dispatch(
+                        data,
+                        toolCalls.map((call) => ({
+                            toolCallId: call.id,
+                            toolName: call.function.name,
+                            soFar: data,
+                            args: JSON.parse(call.function.arguments)
+                        })),
+                        meta(run.id)
+                    );
+                    if (result.isResolved()) {
+                        logger.d("All tools dispatched");
+                        return await this.processToolsResponse(
+                            threadId,
+                            assistantId,
+                            dataSoFar,
+                            dispatcher,
+                            meta,
+                            {
+                                runId: run.id,
+                                toolsResult: result.value.responses
+                            }
+                        )
+                    } else {
+                        logger.d("Some tools suspended...")
+                        return Continuation.suspend();
+                    }
+                } catch (e) {
+                    logger.e("Tool dispatch failed:", e);
+                    throw new ChatError("internal", true, "Error dispatching tool calls", e);
+                }
+            };
+
+            const isRunning = () => {
+                return ["queued", "in_progress", "cancelling"].indexOf(run.status) >= 0;
+            }
 
             while (false === complete) {
                 logger.d("Started assistant run: ", run.id);
@@ -102,63 +155,55 @@ export class OpenAiWrapper implements AiWrapper {
                         logger.d("Running Assistant actions for:", threadId);
                         switch (requiredActionType) {
                             case "submit_tool_outputs":
-                                await runTools(requiredAction?.submit_tool_outputs?.tool_calls || []);
-                                break;
+                                return runTools(requiredAction?.submit_tool_outputs?.tool_calls || []);
                             default:
                                 throw new ChatError("internal", true, `Unknown action: ${requiredActionType}`);
                         }
-                        break;
                     default:
                         throw new ChatError("unimplemented", true, `Thread run error - unknown status. Status: ${status}`);
                 }
             }
 
-            return data;
-
-            /**
-             * Checks thread run status
-             * @return True if thread is still running
-             */
-            function isRunning(): boolean {
-                return ["queued", "in_progress", "cancelling"].indexOf(run.status) >= 0;
-            }
-
-            /**
-             * Runs tools and updates the thread with result
-             * @param toolCalls Tool call instructions
-             */
-            async function runTools(toolCalls: Array<RequiredActionFunctionToolCall>): Promise<void> {
-                if (0 === toolCalls.length) {
-                    return Promise.resolve();
-                }
-
-                const dispatches: Array<ToolOutput> = [];
-                for (const toolCall of toolCalls) {
-                    logger.d(`Running tool ${toolCall.function.name}. Thread:`, threadId);
-                    logger.d("Data so far:", data);
-                    logger.d("Arguments:", JSON.parse(toolCall.function.arguments));
-
-                    let result: DispatchResult<DATA>;
-                    try {
-                        data = await dispatcher(data, toolCall.function.name, JSON.parse(toolCall.function.arguments));
-                        result = {data: data};
-                    } catch (e: unknown) {
-                        logger.w("Error dispatching function:", e);
-                        result = getDispatchError(e);
-                    }
-
-                    logger.d("Result:", result);
-                    dispatches.push(
-                        {
-                            output: JSON.stringify(result),
-                            tool_call_id: toolCall.id
-                        }
-                    );
-                }
-
-                run = await ai.beta.threads.runs.submitToolOutputs(threadId, run.id, {tool_outputs: dispatches});
-            }
+            return Continuation.resolve(data);
         });
+    }
+
+    async processToolsResponse<DATA extends ChatData>(
+        threadId: string,
+        assistantId: string,
+        dataSoFar: DATA,
+        dispatcher: ToolsContinuationDispatcher<DATA, RunContinuationMeta>,
+        meta: (runId: string) => RunContinuationMeta,
+        request: RunContinuationRequest<DATA>
+    ): Promise<Continuation<DATA>> {
+        logger.d(`Submitting tools result: ${threadId} / ${assistantId}`);
+        const dispatches: Array<ToolOutput> = request.toolsResult.map((it) => ({
+            output: JSON.stringify(it.response),
+            tool_call_id: it.toolCallId
+        }));
+
+        let data: DATA = dataSoFar;
+        for (const r of request.toolsResult) {
+            const response = r.response;
+            if (isDispatchSuccess(response)) {
+                data = response.data;
+            }
+            if (isDispatchError(response)) {
+                logger.d("Error in dispatch response:", response);
+                break;
+            }
+        }
+
+        return await this.doRun(
+            threadId,
+            assistantId,
+            data,
+            dispatcher,
+            meta,
+            await this.runAi((ai) => {
+                return ai.beta.threads.runs.submitToolOutputs(threadId, request.runId, {tool_outputs: dispatches});
+            })
+        );
     }
 
     async getMessages(threadId: string, from: string | undefined): Promise<Messages> {

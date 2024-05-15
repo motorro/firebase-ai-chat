@@ -2,5 +2,7 @@ export const Collections = {
     messages: "messages",
     dispatches: "dispatches",
     runs: "runs",
-    contextStack: "contextStack"
+    contextStack: "contextStack",
+    continuations: "continuations",
+    toolCalls: "toolCalls"
 };

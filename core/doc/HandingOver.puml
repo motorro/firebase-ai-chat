@@ -11,7 +11,7 @@ boundary AI
 participant SlaveScheduler
 participant SlaveWorker
 
-=== Talking with main assistant ===
+== Talking with main assistant ==
 User -> MasterChat: post
 MasterChat -> MasterScheduler: postAndRun
 create MasterWorker
@@ -23,7 +23,7 @@ AI -> MasterWorker: tool: switch assistant
 MasterWorker -> MasterChat: handOver
 MasterWorker -> MasterWorker: suspend
 
-=== Slave takes over ===
+== Slave takes over ==
 MasterChat -> SlaveScheduler: handOver
 create SlaveWorker
 SlaveScheduler -> SlaveWorker: create
@@ -41,7 +41,7 @@ AI -> SlaveWorker: respond
 SlaveWorker -> MasterChat: put messages
 MasterChat -> User: response
 
-=== User confirms ===
+== User confirms ==
 User -> MasterChat: confirm
 MasterChat -> SlaveScheduler: postAndRun
 SlaveScheduler -> SlaveWorker: run

@@ -1,12 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PostWorker = void 0;
+exports.PostFactory = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
-const BaseOpenAiWorker_1 = require("./BaseOpenAiWorker");
-class PostWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
-    isSupportedAction(action) {
-        return "post" === action;
-    }
+const WorkerFactory_1 = require("./WorkerFactory");
+const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
+class PostWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
     async doDispatch(actions, data, state, control) {
         firebase_ai_chat_core_1.logger.d("Posting messages...");
         const threadId = state.config.assistantConfig.threadId;
@@ -25,5 +23,13 @@ class PostWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
         await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }
-exports.PostWorker = PostWorker;
+class PostFactory extends WorkerFactory_1.WorkerFactory {
+    isSupportedAction(action) {
+        return "post" === action;
+    }
+    create() {
+        return new PostWorker(this.firestore, this.scheduler, this.wrapper);
+    }
+}
+exports.PostFactory = PostFactory;
 //# sourceMappingURL=PostWorker.js.map

@@ -3,4 +3,6 @@ export declare const Collections: {
     dispatches: string;
     runs: string;
     contextStack: string;
+    continuations: string;
+    toolCalls: string;
 };

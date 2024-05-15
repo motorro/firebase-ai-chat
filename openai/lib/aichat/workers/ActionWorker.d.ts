@@ -1,5 +1,4 @@
-import {OpenAiChatAction} from "../data/OpenAiChatAction";
-
+import { OpenAiChatAction } from "../data/OpenAiChatAction";
 export interface ActionWorker {
     /**
      * Is supported Open AI action
@@ -7,5 +6,5 @@ export interface ActionWorker {
      * @returns true if worker supports the command
      * @protected
      */
-    isSupportedAction(action: unknown): action is OpenAiChatAction
+    isSupportedAction(action: unknown): action is OpenAiChatAction;
 }

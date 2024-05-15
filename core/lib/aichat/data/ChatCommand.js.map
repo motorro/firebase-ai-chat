@@ -1,1 +1,1 @@
-{"version":3,"file":"ChatCommand.js","sourceRoot":"","sources":["../../../src/aichat/data/ChatCommand.ts"],"names":[],"mappings":""}
+{"version":3,"file":"ChatCommand.js","sourceRoot":"","sources":["../../../src/aichat/data/ChatCommand.ts"],"names":[],"mappings":";;;AAkBA,SAAgB,kBAAkB,CAAI,IAAa;IAC/C,OAAO,QAAQ,KAAK,OAAO,IAAI,IAAI,IAAI,KAAK,IAAI;WACzC,WAAW,IAAI,IAAI,IAAI,QAAQ,KAAK,OAAO,IAAI,CAAC,SAAS;WACzD,SAAS,IAAI,IAAI,IAAI,QAAQ,KAAK,OAAO,IAAI,CAAC,OAAO,CAAC;AACjE,CAAC;AAJD,gDAIC"}

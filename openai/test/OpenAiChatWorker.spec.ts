@@ -6,8 +6,7 @@ import {
     capture,
     deepEqual,
     imock,
-    instance,
-    reset,
+    instance, reset,
     strictEqual,
     verify,
     when
@@ -19,12 +18,17 @@ import {
     ChatError,
     ChatMessage,
     ChatState,
-    ChatStatus, ChatWorker,
+    ChatStatus,
+    ChatWorker,
     Collections,
-    Dispatch,
+    Continuation,
+    Dispatch, getDispatchSuccess,
     Meta,
     Run,
-    TaskScheduler
+    TaskScheduler,
+    ToolCallsResult,
+    ToolContinuationFactory,
+    ToolsContinuationDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {OpenAiChatWorker, OpenAiAssistantConfig, OpenAiChatCommand, AiWrapper} from "../src";
@@ -33,6 +37,7 @@ import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
+import {RunContinuationMeta} from "../src/aichat/data/RunResponse";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -64,6 +69,16 @@ describe("Chat worker", function() {
         dispatchId: dispatchId,
         meta: meta
     };
+    const openAiMeta: RunContinuationMeta = {
+        engine: "openai",
+        runId: "runId",
+        next: {
+            engine: "openai",
+            commonData: commandData,
+            actionData: ["create"]
+        }
+    }
+
     const createCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
@@ -82,7 +97,7 @@ describe("Chat worker", function() {
     const runCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
-        actionData: ["run"]
+        actionData: ["run", "retrieve"]
     };
     const retrieveCommand: OpenAiChatCommand = {
         engine: "openai",
@@ -113,14 +128,15 @@ describe("Chat worker", function() {
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
+    let toolContinuationFactory: ToolContinuationFactory
     let worker: ChatWorker;
 
     before(async function() {
         wrapper = imock<AiWrapper>();
         scheduler = imock<TaskScheduler>();
-        when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
+        toolContinuationFactory = imock<ToolContinuationFactory>()
 
-        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper));
+        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper), instance(toolContinuationFactory));
     });
 
     after(async function() {
@@ -128,8 +144,10 @@ describe("Chat worker", function() {
     });
 
     afterEach(async function() {
-        reset(wrapper);
         await db.recursiveDelete(chats);
+        reset(wrapper);
+        reset(scheduler);
+        reset(toolContinuationFactory);
     });
 
     async function createChat(thread?: string, status?: ChatStatus, dispatch?: string) {
@@ -248,7 +266,7 @@ describe("Chat worker", function() {
         verify(wrapper.postMessage(strictEqual(threadId), strictEqual("hand over"))).once();
     });
 
-    it("processes run command", async function() {
+    it("processes run command when tools are dispatched", async function() {
         await createChat(threadId, "processing", dispatchId);
 
         const changedState: ChatState<OpenAiAssistantConfig, Data> = {
@@ -257,8 +275,21 @@ describe("Chat worker", function() {
                 value: "Test2"
             }
         };
-        when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(() => {
-            return Promise.resolve(changedState.data);
+        const toolResponse: ToolCallsResult<Data, RunContinuationMeta> = {
+            responses: [{
+                toolCallId: "toolId",
+                toolName: "toolName",
+                response: getDispatchSuccess({
+                    value: "Test2"
+                })
+            }],
+            meta: openAiMeta
+        }
+        const toolDispatcher: ToolsContinuationDispatcher<Data, RunContinuationMeta> = imock();
+        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenReturn(Promise.resolve(Continuation.resolve(toolResponse)));
+        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(wrapper.run(anything(), anything(), anything(), anything(), anything())).thenCall(() => {
+            return Promise.resolve(Continuation.resolve(changedState.data));
         });
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
@@ -278,7 +309,29 @@ describe("Chat worker", function() {
             data: changedState.data
         });
 
-        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), strictEqual(dispatcherId))).once();
+        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anything(), anything())).once();
+        verify(scheduler.schedule(anything(), anything())).once();
+    });
+
+    it("processes run command when tools are suspended", async function() {
+        await createChat(threadId, "processing", dispatchId);
+
+        const toolDispatcher: ToolsContinuationDispatcher<Data, RunContinuationMeta> = imock();
+        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenResolve(Continuation.suspend());
+        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(wrapper.run(anything(), anything(), anything(), anything(), anything())).thenCall(() => {
+            return Promise.resolve(Continuation.suspend());
+        });
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: runCommand
+        };
+
+        await worker.dispatch(request);
+        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anything(), anything())).once();
+        verify(scheduler.schedule(anything(), anything())).never();
     });
 
     it("processes retrieve command", async function() {

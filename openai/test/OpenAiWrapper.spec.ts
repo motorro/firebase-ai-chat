@@ -1,10 +1,16 @@
 import {anything, capture, deepEqual, instance, imock, reset, strictEqual, verify, when} from "@johanblumenberg/ts-mockito";
 import OpenAI from "openai";
-import {ToolsDispatcher} from "@motorro/firebase-ai-chat-core";
+import {
+    ChatCommandData,
+    Continuation,
+    getDispatchSuccess,
+    ToolCallsResult,
+    ToolsContinuationDispatcher
+} from "@motorro/firebase-ai-chat-core";
 import {Threads} from "openai/resources/beta";
 import Beta = OpenAI.Beta;
 import Messages = Threads.Messages;
-import {assistantId, Data, data, Data2, dispatcherId, runId, threadId} from "./mock";
+import {assistantId, Data, data, runId, threadId, userId} from "./mock";
 import Runs = Threads.Runs;
 import Run = Threads.Run;
 import {AbstractPage} from "openai/core";
@@ -12,6 +18,7 @@ import {AiWrapper} from "../src";
 import {MessagesPage} from "openai/resources/beta/threads";
 import Message = Threads.Message;
 import {OpenAiWrapper} from "../src/aichat/OpenAiWrapper";
+import {RunContinuationMeta} from "../src/aichat/data/RunResponse";
 
 const message1: Message = {
     assistant_id: assistantId,
@@ -58,13 +65,29 @@ const message2: Message = {
     thread_id: threadId
 };
 
+const commandData: ChatCommandData = {
+    ownerId: userId,
+    chatDocumentPath: "chat",
+    dispatchId: "dispatch",
+    meta: null
+}
+
+const meta: RunContinuationMeta = {
+    engine: "openai",
+    runId: "runId",
+    next: {
+        engine: "openai",
+        commonData: commandData,
+        actionData: ["create"]
+    }
+}
+
 describe("OpenAI wrapper", function() {
     let wrapper: AiWrapper;
     let threads: Threads;
     let messages: Messages;
     let runs: Runs;
-    let dispatcher: ToolsDispatcher<Data>;
-    let dispatcher2: ToolsDispatcher<Data2>;
+    let dispatcher: ToolsContinuationDispatcher<Data, RunContinuationMeta>;
 
     beforeEach(async function() {
         const openAi: OpenAI = imock();
@@ -76,20 +99,15 @@ describe("OpenAI wrapper", function() {
         when(threads.runs).thenReturn(instance(runs));
         when(beta.threads).thenReturn(instance(threads));
         when(openAi.beta).thenReturn(instance(beta));
-        dispatcher = () => Promise.resolve({value: "dispatched"});
-        dispatcher2 = () => Promise.reject(new Error("error"));
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        const dispatchers: Record<string, ToolsDispatcher<any>> = {
-            [dispatcherId]: dispatcher,
-            "dispatcher2Id": dispatcher2
-        };
-        wrapper = new OpenAiWrapper(instance(openAi), dispatchers);
+        dispatcher = imock();
+        wrapper = new OpenAiWrapper(instance(openAi));
     });
 
     afterEach(async function() {
         reset(messages);
         reset(runs);
         reset(threads);
+        reset(dispatcher);
     });
 
     it("creates thread", async function() {
@@ -141,8 +159,7 @@ describe("OpenAI wrapper", function() {
 
         when(runs.create(anything(), anything())).thenResolve(instance(run1));
         when(runs.retrieve(anything(), anything())).thenResolve(instance(run2));
-
-        await wrapper.run(threadId, assistantId, data, dispatcherId);
+        await wrapper.run(threadId, assistantId, data, instance(dispatcher), () => meta);
 
         verify(runs.create(strictEqual(threadId), deepEqual({assistant_id: assistantId}))).once();
         verify(runs.retrieve(strictEqual(threadId), strictEqual("r1"))).once();
@@ -181,10 +198,34 @@ describe("OpenAI wrapper", function() {
         when(runs.retrieve(anything(), anything())).thenResolve(instance(run2)).thenResolve(iRun3);
         when(runs.submitToolOutputs(anything(), anything(), anything())).thenResolve(iRun3);
 
-        const result = await wrapper.run(threadId, assistantId, data, dispatcherId);
-        result.should.deep.equal({
-            value: "dispatched"
-        });
+        const toolResponse: ToolCallsResult<Data, RunContinuationMeta> = {
+            responses: [{
+                toolCallId: toolCallId,
+                toolName: "multiply",
+                response: getDispatchSuccess({
+                    value: "4"
+                })
+            }],
+            meta: {
+                engine: "openai",
+                runId: "runId",
+                next: {
+                    engine: "openai",
+                    commonData: commandData,
+                    actionData: ["create"]
+                }
+            }
+        }
+        when(dispatcher.dispatch(anything(), anything(), anything())).thenResolve(Continuation.resolve(toolResponse));
+
+        const result = await wrapper.run(threadId, assistantId, data, instance(dispatcher), () => meta);
+        if (result.isResolved()) {
+            result.value.should.deep.equal({
+                value: "4"
+            });
+        } else {
+            throw new Error("Expecting resolved continuation")
+        }
 
         verify(runs.create(strictEqual(threadId), deepEqual({assistant_id: assistantId}))).once();
         verify(runs.retrieve(strictEqual(threadId), strictEqual("r1"))).once();
@@ -194,117 +235,13 @@ describe("OpenAI wrapper", function() {
             deepEqual({
                 tool_outputs: [
                     {
-                        output: JSON.stringify({data: {value: "dispatched"}}),
+                        output: JSON.stringify({data: {value: "4"}}),
                         tool_call_id: toolCallId
                     }
                 ]
             })
         )).once();
         verify(runs.retrieve(strictEqual(threadId), strictEqual("r3"))).once();
-    });
-
-    it("runs tools and returns dispatch error", async function() {
-        const toolCallId = "tc1";
-
-        const run1: Run = imock();
-        when(run1.id).thenReturn("r1");
-        when(run1.status).thenReturn("queued");
-
-        const run2: Run = imock();
-        when(run2.id).thenReturn("r2");
-        when(run2.required_action).thenReturn({
-            type: "submit_tool_outputs",
-            submit_tool_outputs: {
-                tool_calls: [{
-                    id: toolCallId,
-                    type: "function",
-                    function: {
-                        arguments: JSON.stringify({a: 2, b: 2}),
-                        name: "multiply"
-                    }
-                }]
-            }
-        });
-        when(run2.status).thenReturn("requires_action");
-
-        const run3: Run = imock();
-        when(run3.id).thenReturn("r3");
-        when(run3.status).thenReturn("completed");
-        const iRun3 = instance(run3);
-
-        when(runs.create(anything(), anything())).thenResolve(instance(run1));
-        when(runs.retrieve(anything(), anything())).thenResolve(instance(run2)).thenResolve(iRun3);
-        when(runs.submitToolOutputs(anything(), anything(), anything())).thenResolve(iRun3);
-
-        const result = await wrapper.run(threadId, assistantId, data, "dispatcher2Id");
-        result.should.deep.equal({
-            value: "test"
-        });
-
-        verify(runs.submitToolOutputs(
-            anything(),
-            anything(),
-            deepEqual({
-                tool_outputs: [
-                    {
-                        output: JSON.stringify({error: "error"}),
-                        tool_call_id: toolCallId
-                    }
-                ]
-            })
-        )).once();
-    });
-
-    it("runs tools and returns dispatch error when dispatcher throws", async function() {
-        const toolCallId = "tc1";
-
-        const run1: Run = imock();
-        when(run1.id).thenReturn("r1");
-        when(run1.status).thenReturn("queued");
-
-        const run2: Run = imock();
-        when(run2.id).thenReturn("r2");
-        when(run2.required_action).thenReturn({
-            type: "submit_tool_outputs",
-            submit_tool_outputs: {
-                tool_calls: [{
-                    id: toolCallId,
-                    type: "function",
-                    function: {
-                        arguments: JSON.stringify({a: 2, b: 2}),
-                        name: "multiply"
-                    }
-                }]
-            }
-        });
-        when(run2.status).thenReturn("requires_action");
-
-        const run3: Run = imock();
-        when(run3.id).thenReturn("r3");
-        when(run3.status).thenReturn("completed");
-        const iRun3 = instance(run3);
-
-        when(runs.create(anything(), anything())).thenResolve(instance(run1));
-        when(runs.retrieve(anything(), anything())).thenResolve(instance(run2)).thenResolve(iRun3);
-        when(runs.submitToolOutputs(anything(), anything(), anything())).thenResolve(iRun3);
-
-        const result = await wrapper.run(threadId, assistantId, data, "dispatcher2Id");
-        result.should.deep.equal({
-            value: "test"
-        });
-
-        verify(runs.submitToolOutputs(
-            anything(),
-            anything(),
-            deepEqual({
-                tool_outputs: [
-                    {
-                        output: JSON.stringify({error: "error"}),
-                        tool_call_id: toolCallId
-                    }
-                ]
-            })
-        )).once();
     });
 
     it("fails if AI fails", async function() {
@@ -319,7 +256,7 @@ describe("OpenAI wrapper", function() {
         when(runs.create(anything(), anything())).thenResolve(instance(run1));
         when(runs.retrieve(anything(), anything())).thenResolve(instance(run2));
 
-        return wrapper.run(threadId, assistantId, data, dispatcherId)
+        return wrapper.run(threadId, assistantId, data, instance(dispatcher), () => meta)
             .should
             .eventually
             .be

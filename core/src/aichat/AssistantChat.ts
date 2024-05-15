@@ -31,7 +31,7 @@ import Timestamp = firestore.Timestamp;
  * - Close - closes chat
  * Functions post commands to processing table and complete ASAP
  */
-export class AssistantChat<DATA extends ChatData> {
+export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM extends Meta = Meta> {
     private readonly db: FirebaseFirestore.Firestore;
     private readonly schedulers: ReadonlyArray<CommandScheduler>;
 
@@ -60,7 +60,8 @@ export class AssistantChat<DATA extends ChatData> {
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
      * @param messages Starting messages
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
+     * @param chatMeta Metadata saved to chat state
      */
     async create(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
@@ -68,7 +69,8 @@ export class AssistantChat<DATA extends ChatData> {
         data: DATA,
         assistantConfig: AssistantConfig,
         messages?: ReadonlyArray<string>,
-        meta?: Meta
+        workerMeta?: WM,
+        chatMeta?: CM
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Creating new chat with assistant:", JSON.stringify(assistantConfig));
         const batch = this.db.batch();
@@ -84,7 +86,8 @@ export class AssistantChat<DATA extends ChatData> {
             latestDispatchId: dispatchDoc.id,
             data: data,
             createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now()
+            updatedAt: Timestamp.now(),
+            meta: chatMeta || null
         });
         batch.set(dispatchDoc, {
             createdAt: Timestamp.now()
@@ -106,7 +109,7 @@ export class AssistantChat<DATA extends ChatData> {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: dispatchDoc.id,
-            meta: meta || null
+            meta: workerMeta || null
         };
         await action(command);
         return {
@@ -123,7 +126,8 @@ export class AssistantChat<DATA extends ChatData> {
      * @param data Chat data to reduce
      * @param assistantConfig Assistant Config
      * @param messages Starting messages
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
+     * @param chatMeta Metadata saved to chat state
      * @return Chat state update
      */
     async singleRun(
@@ -132,7 +136,8 @@ export class AssistantChat<DATA extends ChatData> {
         data: DATA,
         assistantConfig: AssistantConfig,
         messages: ReadonlyArray<string>,
-        meta?: Meta
+        workerMeta?: WM,
+        chatMeta?: CM
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Creating new single run with assistant:", JSON.stringify(assistantConfig));
         const batch = this.db.batch();
@@ -148,7 +153,8 @@ export class AssistantChat<DATA extends ChatData> {
             latestDispatchId: dispatchDoc.id,
             data: data,
             createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now()
+            updatedAt: Timestamp.now(),
+            meta: chatMeta || null
         });
         batch.set(dispatchDoc, {
             createdAt: Timestamp.now()
@@ -160,7 +166,7 @@ export class AssistantChat<DATA extends ChatData> {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: dispatchDoc.id,
-            meta: meta || null
+            meta: workerMeta || null
         };
         await this.getScheduler(assistantConfig).singleRun(command);
         return {
@@ -175,7 +181,7 @@ export class AssistantChat<DATA extends ChatData> {
      * @param userId Chat owner
      * @param assistantConfig Assistant Config
      * @param handOverMessages Messages used to initialize the new chat passed  Hidden from user
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
      * @return Chat stack update
      */
     async handOver(
@@ -183,7 +189,7 @@ export class AssistantChat<DATA extends ChatData> {
         userId: string,
         assistantConfig: AssistantConfig,
         handOverMessages: ReadonlyArray<string>,
-        meta?: Meta
+        workerMeta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Handing over chat: ", document.path);
 
@@ -222,7 +228,7 @@ export class AssistantChat<DATA extends ChatData> {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: state.latestDispatchId,
-            meta: meta || null
+            meta: workerMeta || null
         };
         await this.getScheduler(state.config.assistantConfig).handOver(command, handOverMessages);
 
@@ -236,13 +242,13 @@ export class AssistantChat<DATA extends ChatData> {
      * Hands chat back to the next popped assistant
      * @param document Document reference
      * @param userId Chat owner
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
      * @return Chat stack update
      */
     async handBack(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
-        meta?: Meta
+        workerMeta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Popping chat state: ", document.path);
         const [state, formerConfig] = await this.db.runTransaction(async (tx) => {
@@ -280,7 +286,7 @@ export class AssistantChat<DATA extends ChatData> {
             ownerId: userId,
             chatDocumentPath: document.path,
             dispatchId: state.latestDispatchId,
-            meta: meta || null
+            meta: workerMeta || null
         };
         await this.getScheduler(formerConfig).handBackCleanup(command, formerConfig);
 
@@ -295,14 +301,14 @@ export class AssistantChat<DATA extends ChatData> {
      * @param document Chat document
      * @param userId Chat owner
      * @param messages Messages to post
-     * @param meta Metadata to pass to chat worker
+     * @param workerMeta Metadata to pass to chat worker
      * @return Chat state update
      */
     async postMessage(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         messages: ReadonlyArray<string>,
-        meta?: Meta
+        workerMeta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Posting user messages to: ", document.path);
         const state = await this.prepareDispatchWithChecks(
@@ -322,7 +328,7 @@ export class AssistantChat<DATA extends ChatData> {
                     ownerId: userId,
                     chatDocumentPath: document.path,
                     dispatchId: state.latestDispatchId,
-                    meta: meta || null
+                    meta: workerMeta || null
                 };
                 await this.getScheduler(state.config.assistantConfig).postAndRun(command);
 

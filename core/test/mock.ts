@@ -41,7 +41,8 @@ export const chatState: ChatState<AiConfig, Data> = {
     status: "userInput",
     latestDispatchId: "dispatch",
     createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
-    updatedAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23))
+    updatedAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
+    meta: null
 };
 
 

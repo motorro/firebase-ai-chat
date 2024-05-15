@@ -1,12 +1,10 @@
-import {ChatCommandData, ChatState, ChatData, DispatchControl} from "@motorro/firebase-ai-chat-core";
+import {ChatCommandData, ChatData, ChatState, ChatWorker, DispatchControl} from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
-import {BaseOpenAiWorker} from "./BaseOpenAiWorker";
+import {WorkerFactory} from "./WorkerFactory";
+import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 
-export class SwitchToUserWorker extends BaseOpenAiWorker {
-    isSupportedAction(action: unknown): action is OpenAiChatAction {
-        return "switchToUserInput" === action;
-    }
+class SwitchToUserWorker extends OpenAiQueueWorker {
 
     async doDispatch(
         actions: OpenAiChatActions,
@@ -15,5 +13,14 @@ export class SwitchToUserWorker extends BaseOpenAiWorker {
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
         await this.continueQueue(control, actions);
+    }
+}
+
+export class SwitchToUserFactory extends WorkerFactory {
+    protected isSupportedAction(action: unknown): action is OpenAiChatAction {
+        return "switchToUserInput" === action;
+    }
+    create(): ChatWorker {
+        return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
     }
 }

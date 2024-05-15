@@ -5,7 +5,7 @@ import {
     ChatData,
     ChatState,
     TaskScheduler,
-    CommandScheduler
+    CommandScheduler, toolContinuationFactory
 } from "@motorro/firebase-ai-chat-core";
 import {AiWrapper} from "./aichat/AiWrapper";
 import {OpenAiChatWorker} from "./aichat/OpenAiChatWorker";
@@ -87,6 +87,7 @@ export interface AiChat {
  * @param firestore Firestore instance
  * @param functions Functions instance
  * @param location Function location
+ * @param dispatchers Tools dispatchers
  * @param taskScheduler Task scheduler that puts tasks to queue
  * @return Chat tools interface
  */
@@ -94,9 +95,12 @@ export function factory(
     firestore: Firestore,
     functions: Functions,
     location: string,
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>,
     taskScheduler?: TaskScheduler
 ): AiChat {
     const _taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
+    const _toolsContinuationFactory = toolContinuationFactory(firestore, dispatchers, _taskScheduler);
 
     function defaultSchedulers(queueName: string, taskScheduler: TaskScheduler): ReadonlyArray<CommandScheduler> {
         return [new OpenAICommandScheduler(queueName, taskScheduler)];
@@ -110,12 +114,11 @@ export function factory(
         ): AssistantChat<DATA> {
             return new AssistantChat<DATA>(firestore, commandSchedulers(queueName, _taskScheduler));
         },
-        ai(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): AiWrapper {
-            return new OpenAiWrapper(openAi, dispatchers);
+        ai(openAi: OpenAI): AiWrapper {
+            return new OpenAiWrapper(openAi);
         },
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         worker: function(aiWrapper: AiWrapper): OpenAiChatWorker {
-            return new OpenAiChatWorker(firestore, _taskScheduler, aiWrapper);
+            return new OpenAiChatWorker(firestore, _taskScheduler, aiWrapper, _toolsContinuationFactory);
         }
     };
 }

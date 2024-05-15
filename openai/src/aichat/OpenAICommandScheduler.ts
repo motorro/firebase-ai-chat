@@ -3,8 +3,8 @@ import {ChatCommandData} from "@motorro/firebase-ai-chat-core/lib/aichat/data/Ch
 import {OpenAiChatActions} from "./data/OpenAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
 import {OpenAiChatCommand} from "./data/OpenAiChatCommand";
-import {isOpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
-import {OpenAiAssistantConfig} from "../../lib";
+import {isOpenAiAssistantConfig, OpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
+import {engineId} from "../engineId";
 
 /**
  * Close command delay to settle down AI runs
@@ -58,7 +58,7 @@ export class OpenAICommandScheduler implements CommandScheduler {
 
     private async schedule(common: ChatCommandData, actions: OpenAiChatActions, schedule?: DeliverySchedule): Promise<void> {
         const command: OpenAiChatCommand = {
-            engine: "openai",
+            engine: engineId,
             commonData: common,
             actionData: actions
         };

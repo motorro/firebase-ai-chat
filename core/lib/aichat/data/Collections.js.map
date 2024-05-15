@@ -1,1 +1,1 @@
-{"version":3,"file":"Collections.js","sourceRoot":"","sources":["../../../src/aichat/data/Collections.ts"],"names":[],"mappings":";;;AAAa,QAAA,WAAW,GAAG;IACvB,QAAQ,EAAE,UAAU;IACpB,UAAU,EAAE,YAAY;IACxB,IAAI,EAAE,MAAM;IACZ,YAAY,EAAE,cAAc;CAC/B,CAAC"}
+{"version":3,"file":"Collections.js","sourceRoot":"","sources":["../../../src/aichat/data/Collections.ts"],"names":[],"mappings":";;;AAAa,QAAA,WAAW,GAAG;IACvB,QAAQ,EAAE,UAAU;IACpB,UAAU,EAAE,YAAY;IACxB,IAAI,EAAE,MAAM;IACZ,YAAY,EAAE,cAAc;IAC5B,aAAa,EAAE,eAAe;IAC9B,SAAS,EAAE,WAAW;CACzB,CAAC"}

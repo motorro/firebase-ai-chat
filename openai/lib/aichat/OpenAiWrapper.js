@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenAiWrapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const core_1 = require("openai/core");
+const engineId_1 = require("../engineId");
 /**
  * Wraps Open AI assistant use
  */
@@ -35,14 +36,51 @@ class OpenAiWrapper {
             return created.id;
         });
     }
-    // eslint-disable-next-line max-len
     async run(threadId, assistantId, dataSoFar, dispatcher) {
+        return await this.doRun(threadId, assistantId, dataSoFar, dispatcher);
+    }
+    async doRun(threadId, assistantId, dataSoFar, dispatcher, passedRun) {
         firebase_ai_chat_core_1.logger.d("Running Assistant for:", threadId);
         return this.runAi(async (ai) => {
             var _a;
-            let run = await ai.beta.threads.runs.create(threadId, { assistant_id: assistantId });
+            let run = passedRun || await ai.beta.threads.runs.create(threadId, { assistant_id: assistantId });
             let data = dataSoFar;
             let complete = false;
+            const runTools = async (toolCalls) => {
+                if (0 === toolCalls.length) {
+                    return firebase_ai_chat_core_1.Continuation.resolve(data);
+                }
+                firebase_ai_chat_core_1.logger.d("Dispatching tools...");
+                try {
+                    const result = await dispatcher.dispatch(data, toolCalls.map((call) => ({
+                        toolCallId: call.id,
+                        toolName: call.function.name,
+                        soFar: data,
+                        args: JSON.parse(call.function.arguments)
+                    })), {
+                        engine: engineId_1.engineId,
+                        runId: run.id
+                    });
+                    if (result.isResolved()) {
+                        firebase_ai_chat_core_1.logger.d("All tools dispatched");
+                        return await this.processToolsResponse(threadId, assistantId, dataSoFar, dispatcher, {
+                            runId: run.id,
+                            toolsResult: result.value.responses
+                        });
+                    }
+                    else {
+                        firebase_ai_chat_core_1.logger.d("Some tools suspended...");
+                        return firebase_ai_chat_core_1.Continuation.suspend();
+                    }
+                }
+                catch (e) {
+                    firebase_ai_chat_core_1.logger.e("Tool dispatch failed:", e);
+                    throw new firebase_ai_chat_core_1.ChatError("internal", true, "Error dispatching tool calls", e);
+                }
+            };
+            const isRunning = () => {
+                return ["queued", "in_progress", "cancelling"].indexOf(run.status) >= 0;
+            };
             while (false === complete) {
                 firebase_ai_chat_core_1.logger.d("Started assistant run: ", run.id);
                 do {
@@ -68,55 +106,37 @@ class OpenAiWrapper {
                         firebase_ai_chat_core_1.logger.d("Running Assistant actions for:", threadId);
                         switch (requiredActionType) {
                             case "submit_tool_outputs":
-                                await runTools(((_a = requiredAction === null || requiredAction === void 0 ? void 0 : requiredAction.submit_tool_outputs) === null || _a === void 0 ? void 0 : _a.tool_calls) || []);
-                                break;
+                                return runTools(((_a = requiredAction === null || requiredAction === void 0 ? void 0 : requiredAction.submit_tool_outputs) === null || _a === void 0 ? void 0 : _a.tool_calls) || []);
                             default:
                                 throw new firebase_ai_chat_core_1.ChatError("internal", true, `Unknown action: ${requiredActionType}`);
                         }
-                        break;
                     default:
                         throw new firebase_ai_chat_core_1.ChatError("unimplemented", true, `Thread run error - unknown status. Status: ${status}`);
                 }
             }
-            return data;
-            /**
-             * Checks thread run status
-             * @return True if thread is still running
-             */
-            function isRunning() {
-                return ["queued", "in_progress", "cancelling"].indexOf(run.status) >= 0;
-            }
-            /**
-             * Runs tools and updates the thread with result
-             * @param toolCalls Tool call instructions
-             */
-            async function runTools(toolCalls) {
-                if (0 === toolCalls.length) {
-                    return Promise.resolve();
-                }
-                const dispatches = [];
-                for (const toolCall of toolCalls) {
-                    firebase_ai_chat_core_1.logger.d(`Running tool ${toolCall.function.name}. Thread:`, threadId);
-                    firebase_ai_chat_core_1.logger.d("Data so far:", data);
-                    firebase_ai_chat_core_1.logger.d("Arguments:", JSON.parse(toolCall.function.arguments));
-                    let result;
-                    try {
-                        data = await dispatcher(data, toolCall.function.name, JSON.parse(toolCall.function.arguments));
-                        result = { data: data };
-                    }
-                    catch (e) {
-                        firebase_ai_chat_core_1.logger.w("Error dispatching function:", e);
-                        result = (0, firebase_ai_chat_core_1.getDispatchError)(e);
-                    }
-                    firebase_ai_chat_core_1.logger.d("Result:", result);
-                    dispatches.push({
-                        output: JSON.stringify(result),
-                        tool_call_id: toolCall.id
-                    });
-                }
-                run = await ai.beta.threads.runs.submitToolOutputs(threadId, run.id, { tool_outputs: dispatches });
-            }
+            return firebase_ai_chat_core_1.Continuation.resolve(data);
         });
+    }
+    async processToolsResponse(threadId, assistantId, dataSoFar, dispatcher, request) {
+        firebase_ai_chat_core_1.logger.d(`Submitting tools result: ${threadId} / ${assistantId}`);
+        const dispatches = request.toolsResult.map((it) => ({
+            output: JSON.stringify(it.response),
+            tool_call_id: it.toolCallId
+        }));
+        let data = dataSoFar;
+        for (const r of request.toolsResult) {
+            const response = r.response;
+            if ((0, firebase_ai_chat_core_1.isDispatchSuccess)(response)) {
+                data = response.data;
+            }
+            if ((0, firebase_ai_chat_core_1.isDispatchError)(response)) {
+                firebase_ai_chat_core_1.logger.d("Error in dispatch response:", response);
+                break;
+            }
+        }
+        return await this.doRun(threadId, assistantId, data, dispatcher, await this.runAi((ai) => {
+            return ai.beta.threads.runs.submitToolOutputs(threadId, request.runId, { tool_outputs: dispatches });
+        }));
     }
     async getMessages(threadId, from) {
         firebase_ai_chat_core_1.logger.d("Getting messages from: ", threadId);

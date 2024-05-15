@@ -1,14 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RetrieveWorker = void 0;
+exports.RetrieveFactory = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
-const BaseOpenAiWorker_1 = require("./BaseOpenAiWorker");
 const firebase_admin_1 = require("firebase-admin");
 var FieldValue = firebase_admin_1.firestore.FieldValue;
-class RetrieveWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
-    isSupportedAction(action) {
-        return "retrieve" === action;
-    }
+const WorkerFactory_1 = require("./WorkerFactory");
+const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
+class RetrieveWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
     async doDispatch(actions, data, state, control) {
         firebase_ai_chat_core_1.logger.d("Retrieving messages...");
         const threadId = state.config.assistantConfig.threadId;
@@ -35,5 +33,13 @@ class RetrieveWorker extends BaseOpenAiWorker_1.BaseOpenAiWorker {
         await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }
-exports.RetrieveWorker = RetrieveWorker;
+class RetrieveFactory extends WorkerFactory_1.WorkerFactory {
+    isSupportedAction(action) {
+        return "retrieve" === action;
+    }
+    create() {
+        return new RetrieveWorker(this.firestore, this.scheduler, this.wrapper);
+    }
+}
+exports.RetrieveFactory = RetrieveFactory;
 //# sourceMappingURL=RetrieveWorker.js.map

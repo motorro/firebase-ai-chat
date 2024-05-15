@@ -14,6 +14,7 @@ import { ChatWorker, DispatchControl } from "./ChatWorker";
 export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends ChatData> implements ChatWorker {
     protected readonly db: FirebaseFirestore.Firestore;
     protected readonly scheduler: TaskScheduler;
+    private readonly runner;
     /**
      * Constructor
      * @param firestore Firestore reference

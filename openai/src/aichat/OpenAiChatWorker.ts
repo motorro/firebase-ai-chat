@@ -3,21 +3,23 @@ import {
     ChatCommand,
     ChatData,
     ChatWorker,
-    DispatchControl, logger,
+    DispatchControl,
     Meta,
-    TaskScheduler
+    TaskScheduler, ToolContinuationFactory
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiChatActions} from "./data/OpenAiChatAction";
 import {OpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
-import {CreateWorker} from "./workers/CreateWorker";
-import {CloseWorker} from "./workers/CloseWorker";
-import {PostWorker} from "./workers/PostWorker";
-import {RetrieveWorker} from "./workers/RetrieveWorker";
-import {RunWorker} from "./workers/RunWorker";
-import {SwitchToUserWorker} from "./workers/SwitchToUserWorker";
+import {CreateFactory} from "./workers/CreateWorker";
+import {CloseFactory} from "./workers/CloseWorker";
+import {PostFactory} from "./workers/PostWorker";
+import {RetrieveFactory} from "./workers/RetrieveWorker";
+import {RunFactory} from "./workers/RunWorker";
+import {SwitchToUserFactory} from "./workers/SwitchToUserWorker";
 import {AiWrapper} from "./AiWrapper";
-import {PostExplicitWorker} from "./workers/PostExplicitWorker";
-import {HandBackCleanupWorker} from "./workers/HandBackCleanupWorker";
+import {PostExplicitFactory} from "./workers/PostExplicitWorker";
+import {HandBackCleanupFactory} from "./workers/HandBackCleanupWorker";
+import {WorkerFactory} from "./workers/WorkerFactory";
+import {ContinuationFactory} from "./workers/ToolContinuationWorker";
 
 export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
 
@@ -25,34 +27,40 @@ export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAss
  * Chat worker that dispatches chat commands and runs AI
  */
 export class OpenAiChatWorker implements ChatWorker {
-    private workers: ReadonlyArray<ChatWorker>;
+    private workers: ReadonlyArray<WorkerFactory>;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
+        toolsDispatchFactory: ToolContinuationFactory
     ) {
         this.workers = [
-            new CloseWorker(firestore, scheduler, wrapper),
-            new CreateWorker(firestore, scheduler, wrapper),
-            new PostWorker(firestore, scheduler, wrapper),
-            new PostExplicitWorker(firestore, scheduler, wrapper),
-            new RetrieveWorker(firestore, scheduler, wrapper),
-            new RunWorker(firestore, scheduler, wrapper),
-            new SwitchToUserWorker(firestore, scheduler, wrapper),
-            new HandBackCleanupWorker(wrapper)
+            new CloseFactory(firestore, scheduler, wrapper),
+            new CreateFactory(firestore, scheduler, wrapper),
+            new PostFactory(firestore, scheduler, wrapper),
+            new PostExplicitFactory(firestore, scheduler, wrapper),
+            new RetrieveFactory(firestore, scheduler, wrapper),
+            new RunFactory(firestore, scheduler, wrapper, toolsDispatchFactory),
+            new SwitchToUserFactory(firestore, scheduler, wrapper),
+            new HandBackCleanupFactory(firestore, scheduler, wrapper),
+            new ContinuationFactory(firestore, scheduler, wrapper, toolsDispatchFactory)
         ];
     }
+
+    private getFactory(req: Request<ChatCommand<unknown>>): WorkerFactory | false | undefined {
+        return this.workers.find((w) => w.isSupportedCommand(req.data));
+    }
+
     async dispatch(
         req: Request<ChatCommand<unknown>>,
         onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>
     ): Promise<boolean> {
-        for (let i = 0; i < this.workers.length; ++i) {
-            if (await this.workers[i].dispatch(req, onQueueComplete)) {
-                return true;
-            }
+        const factory = this.getFactory(req);
+        if (factory) {
+            return await factory.create(req.queueName).dispatch(req, onQueueComplete);
+        } else {
+            return false;
         }
-        logger.d("Didn't find worker for command:", JSON.stringify(req.data));
-        return false;
     }
 }
