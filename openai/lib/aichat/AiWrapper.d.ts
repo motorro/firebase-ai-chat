@@ -1,5 +1,5 @@
-import { ChatData, Continuation, Messages, ToolsContinuationDispatcher } from "@motorro/firebase-ai-chat-core";
-import { RunContinuationMeta, RunContinuationRequest } from "./data/RunResponse";
+import { ChatData, Continuation, Messages, ToolCallRequest, ToolCallsResult } from "@motorro/firebase-ai-chat-core";
+import { RunContinuationRequest } from "./data/RunResponse";
 /**
  * Wraps OpenAI Assistant
  */
@@ -21,21 +21,21 @@ export interface AiWrapper {
      * Runs assistant
      * @param threadId Thread ID
      * @param assistantId Assistant ID
-     * @param dataSoFar Current data state
-     * @param dispatcher Continuation dispatcher
+     * @param dataSoFar Data so far
+     * @param dispatch Tool dispatch function
      * @return New data state
      */
-    run<DATA extends ChatData>(threadId: string, assistantId: string, dataSoFar: DATA, dispatcher: ToolsContinuationDispatcher<DATA, RunContinuationMeta>): Promise<Continuation<DATA>>;
+    run<DATA extends ChatData>(threadId: string, assistantId: string, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>, runId: string) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<DATA>>;
     /**
      * Processes AI tools response
      * @param threadId Thread ID
      * @param assistantId Assistant ID
-     * @param dataSoFar Current data state
-     * @param dispatcher Continuation dispatcher
+     * @param dataSoFar Data so far
+     * @param dispatch Tool dispatch function
      * @param request Tools dispatch request
      * @return New data state
      */
-    processToolsResponse<DATA extends ChatData>(threadId: string, assistantId: string, dataSoFar: DATA, dispatcher: ToolsContinuationDispatcher<DATA, RunContinuationMeta>, request: RunContinuationRequest<DATA>): Promise<Continuation<DATA>>;
+    processToolsResponse<DATA extends ChatData>(threadId: string, assistantId: string, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>, runId: string) => Promise<Continuation<ToolCallsResult<DATA>>>, request: RunContinuationRequest<DATA>): Promise<Continuation<DATA>>;
     /**
      * Gets thread messages
      * @param threadId Thread ID

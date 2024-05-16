@@ -1,42 +1,35 @@
 import {
     BaseChatWorker, ChatCommand,
-    ChatData, ChatState, logger,
-    TaskScheduler,
-    ToolsDispatcher
+    ChatData,
+    ChatState, DispatchControl,
+    logger,
+    TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
-import {Request} from "firebase-functions/lib/common/providers/tasks";
-import {VertexAiChatAction, VertexAiChatActions} from "../data/VertexAiChatAction";
+import {VertexAiChatActions} from "../data/VertexAiChatAction";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
-import {OpenAiDispatchControl} from "../VertexAiChatWorker";
 import {AiWrapper} from "../AiWrapper";
-import {VertexAiSystemInstructions} from "../data/VertexAiSystemInstructions";
 import {ChatConfig} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatConfig";
-import {ActionWorker} from "./ActionWorker";
+import {Request} from "firebase-functions/lib/common/providers/tasks";
+import {VertexAiChatCommand} from "../data/VertexAiChatCommand";
 
-export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActions, VertexAiAssistantConfig, ChatData> implements ActionWorker {
+export type VertexAiDispatchControl = DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>;
+
+export abstract class VertexAiQueueWorker extends BaseChatWorker<VertexAiChatActions, VertexAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    protected readonly instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>;
-
-    protected readonly defaultDispatcher: ToolsDispatcher<ChatData> = (data) => Promise.resolve(data);
 
     /**
      * Constructor
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
-     * @param instructions Tools dispatcher map
      */
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
-        wrapper: AiWrapper,
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>
+        wrapper: AiWrapper
     ) {
         super(firestore, scheduler);
         this.wrapper = wrapper;
-        this.instructions = instructions;
     }
 
     /**
@@ -46,39 +39,36 @@ export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActi
      * @protected
      */
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<VertexAiChatActions>> {
-        return "engine" in req.data && "vertexai" === req.data.engine
-            && Array.isArray(req.data.actionData)
-            && undefined !== req.data.actionData[0]
-            && this.isSupportedAction(req.data.actionData[0]);
+        // Handled statically
+        return true;
     }
 
-    /**
-     * Is supported Vertex AI command
-     * @param action Command to check
-     * @returns true if worker supports the command
-     * @protected
-     */
-    abstract isSupportedAction(action: unknown): action is VertexAiChatAction
+    protected async continueNextInQueue(control: VertexAiDispatchControl, currentCommand: VertexAiChatCommand): Promise<void> {
+        await this.continueQueue(control, {
+            ...currentCommand,
+            actionData: currentCommand.actionData.slice(1, currentCommand.actionData.length)
+        });
+    }
 
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
      * @param control Dispatch control
-     * @param actions Action queue
+     * @param command Next command
      * @protected
      */
-    protected async continueQueue(control: OpenAiDispatchControl, actions: VertexAiChatActions): Promise<void> {
-        if (0 === actions.length) {
+    protected async continueQueue(control: VertexAiDispatchControl, command: VertexAiChatCommand): Promise<void> {
+        if (0 === command.actionData.length) {
             logger.d("Queue complete");
             await control.completeQueue();
             return;
         }
-        if ("switchToUserInput" === actions[0]) {
+        if ("switchToUserInput" === command.actionData[0]) {
             await this.runSwitchToUser(control);
-            await this.continueQueue(control, actions.slice(1, actions.length));
+            await this.continueNextInQueue(control, command);
             return;
         }
-        logger.d("Scheduling next in queue:", JSON.stringify(actions));
-        await control.continueQueue(actions);
+        logger.d("Scheduling next in queue:", JSON.stringify(command));
+        await control.continueQueue(command);
     }
 
     /**
@@ -87,13 +77,12 @@ export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActi
      * @param control Chat control
      * @protected
      */
-    private async runSwitchToUser(control: OpenAiDispatchControl): Promise<void> {
+    private async runSwitchToUser(control: VertexAiDispatchControl): Promise<void> {
         logger.d("Switching to user input");
         await control.updateChatState({
             status: "userInput"
         });
     }
-
 
     /**
      * Updates config
@@ -103,7 +92,7 @@ export abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActi
      * @protected
      */
     protected async updateConfig(
-        control: OpenAiDispatchControl,
+        control: VertexAiDispatchControl,
         state: ChatState<VertexAiAssistantConfig, ChatData>,
         update: (soFar: VertexAiAssistantConfig) => Partial<VertexAiAssistantConfig>
     ): Promise<void> {

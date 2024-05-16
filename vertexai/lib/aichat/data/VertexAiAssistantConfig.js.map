@@ -1,1 +1,1 @@
-{"version":3,"file":"VertexAiAssistantConfig.js","sourceRoot":"","sources":["../../../src/aichat/data/VertexAiAssistantConfig.ts"],"names":[],"mappings":""}
+{"version":3,"file":"VertexAiAssistantConfig.js","sourceRoot":"","sources":["../../../src/aichat/data/VertexAiAssistantConfig.ts"],"names":[],"mappings":";;;AAsBA,SAAgB,yBAAyB,CAAC,MAAe;IACrD,OAAO,QAAQ,KAAK,OAAO,MAAM,IAAI,IAAI,KAAK,MAAM;WAC7C,QAAQ,IAAI,MAAM,IAAI,UAAU,KAAK,MAAM,CAAC,MAAM;WAClD,gBAAgB,IAAI,MAAM,CAAC;AACtC,CAAC;AAJD,8DAIC"}

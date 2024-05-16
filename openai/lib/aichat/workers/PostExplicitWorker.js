@@ -6,8 +6,8 @@ const OpenAiChatAction_1 = require("../data/OpenAiChatAction");
 const WorkerFactory_1 = require("./WorkerFactory");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 class PostExplicitWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
-    async doDispatch(actions, data, state, control) {
-        const postExplicit = actions[0];
+    async doDispatch(command, state, control) {
+        const postExplicit = command.actionData[0];
         if ((0, OpenAiChatAction_1.isPostExplicitAction)(postExplicit)) {
             firebase_ai_chat_core_1.logger.d("Posting explicit messages...");
             const threadId = state.config.assistantConfig.threadId;
@@ -23,7 +23,7 @@ class PostExplicitWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
             if (undefined !== latestMessageId) {
                 await this.updateConfig(control, state, () => ({ lastMessageId: latestMessageId }));
             }
-            await this.continueQueue(control, actions.slice(1, actions.length));
+            await this.continueNextInQueue(control, command);
         }
         else {
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("unknown", true, "Expected explicit post action", JSON.stringify(postExplicit)));

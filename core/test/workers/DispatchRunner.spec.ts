@@ -25,7 +25,7 @@ import FieldValue = firestore.FieldValue;
 import {beforeEach} from "mocha";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
-describe("Base chat worker", function() {
+describe("Dispatch runner", function() {
     const chats = firestore().collection("chats") as CollectionReference<ChatState<AiConfig, Data>>;
     const chatDoc = chats.doc();
     const chatMessages = chatDoc.collection(Collections.messages) as CollectionReference<ChatMessage>;
@@ -65,7 +65,7 @@ describe("Base chat worker", function() {
         runner = new DispatchRunner(db, instance(scheduler));
     });
 
-    beforeEach(function () {
+    beforeEach(function() {
         when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
     });
 
@@ -146,7 +146,7 @@ describe("Base chat worker", function() {
 
         return runner.dispatchWithCheck(
             request,
-            async (soFar, command, updateState) => {
+            async () => {
                 return Promise.reject(new ChatError("internal", false, "AI error"));
             }
         ).should.eventually.be.rejectedWith("AI error");
@@ -165,7 +165,7 @@ describe("Base chat worker", function() {
 
         await runner.dispatchWithCheck(
             request,
-            async (soFar, command, updateState) => {
+            async () => {
                 return Promise.reject(new ChatError("internal", false, "AI error"));
             }
         );
@@ -216,7 +216,7 @@ describe("Base chat worker", function() {
 
         await runner.dispatchWithCheck(
             request,
-            async (soFar, command, updateState) => {
+            async () => {
                 return Promise.reject(new ChatError("internal", false, "AI error"));
             }
         );
@@ -238,13 +238,13 @@ describe("Base chat worker", function() {
             data: createCommand
         };
 
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
+
         await runner.dispatchWithCheck(
             request,
-            async (soFar, command, updateState) => {
+            async () => {
                 return Promise.reject(new ChatError("internal", false, "AI error"));
             }
-        ).catch(() => { });
+        ).catch(() => { }); // eslint-disable-line @typescript-eslint/no-empty-function
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
         run.exists.should.be.true;

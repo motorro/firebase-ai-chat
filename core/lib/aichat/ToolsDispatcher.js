@@ -2,8 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dispatchToContinuation = exports.isDispatchError = exports.getDispatchError = exports.isDispatchSuccess = exports.getDispatchSuccess = exports.isDispatchResult = void 0;
 const Continuation_1 = require("./data/Continuation");
-const SUCCESS = Symbol("DispatchSuccess");
-const ERROR = Symbol("DispatchError");
 /**
  * Checks if `data` is `DispatchResult`
  * @param data Data to check
@@ -20,11 +18,7 @@ exports.isDispatchResult = isDispatchResult;
  * @returns Success result
  */
 function getDispatchSuccess(data, comment) {
-    return {
-        data: data,
-        comment: comment,
-        [SUCCESS]: SUCCESS
-    };
+    return Object.assign({ data: data }, (undefined !== comment ? { comment: comment } : {}));
 }
 exports.getDispatchSuccess = getDispatchSuccess;
 /**
@@ -33,7 +27,7 @@ exports.getDispatchSuccess = getDispatchSuccess;
  * @return True if `data' is `DispatchSuccess`
  */
 function isDispatchSuccess(data) {
-    return "object" === typeof data && null !== data && SUCCESS in data && SUCCESS === data[SUCCESS];
+    return "object" === typeof data && null !== data && "data" in data && "object" === typeof data.data && null !== data.data;
 }
 exports.isDispatchSuccess = isDispatchSuccess;
 /**
@@ -47,31 +41,26 @@ function getDispatchError(e) {
     }
     if ("string" === typeof e) {
         return {
-            error: e,
-            [ERROR]: ERROR
+            error: e
         };
     }
     if ("object" === typeof e && null !== e) {
         if ("error" in e && "string" === typeof e.error) {
             return {
-                error: e.error,
-                [ERROR]: ERROR
+                error: e.error
             };
         }
         if ("message" in e && "string" === typeof e.message) {
             return {
-                error: e.message,
-                [ERROR]: ERROR
+                error: e.message
             };
         }
         return {
-            error: e.toString(),
-            [ERROR]: ERROR
+            error: e.toString()
         };
     }
     return {
-        error: "Unknown error",
-        [ERROR]: ERROR
+        error: "Unknown error"
     };
 }
 exports.getDispatchError = getDispatchError;
@@ -81,12 +70,12 @@ exports.getDispatchError = getDispatchError;
  * @return True if `data' is `DispatchError`
  */
 function isDispatchError(data) {
-    return "object" === typeof data && null !== data && ERROR in data && ERROR === data[ERROR];
+    return "object" === typeof data && null !== data && "error" in data && "string" === typeof data.error;
 }
 exports.isDispatchError = isDispatchError;
 /**
  * Wraps dispatch to continuation
- * @param block
+ * @param block Dispatching code
  */
 async function dispatchToContinuation(block) {
     try {

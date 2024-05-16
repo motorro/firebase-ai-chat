@@ -1,23 +1,18 @@
 import { ChatData } from "./data/ChatState";
 import { Continuation } from "./data/Continuation";
 import { ContinuationCommand } from "./data/ContinuationCommand";
-import { Meta } from "./data/Meta";
-declare const SUCCESS: unique symbol;
-declare const ERROR: unique symbol;
 /**
  * Dispatch was successful
  */
 export interface DispatchSuccess<out DATA extends ChatData> {
     readonly data: DATA;
     readonly comment?: string;
-    readonly [SUCCESS]: typeof SUCCESS;
 }
 /**
  * Dispatch error. AI may interpret it
  */
 export interface DispatchError {
     readonly error: string;
-    readonly [ERROR]: typeof ERROR;
 }
 /**
  * Function dispatch result
@@ -35,12 +30,12 @@ export type ToolDispatcherResult<DATA extends ChatData> = DATA | DispatchResult<
  * @typedef {function} ToolsDispatcher
  * @param {string} name - The name of the tool to be executed
  * @param {Record<string, unknown>} args - The arguments to be passed to the tool
- * @param {ContinuationCommand} continuation - Command to dispatch when result is ready in case you want to suspend
+ * @param {ChatCommand} continuation - Command to dispatch when result is ready in case you want to suspend
  * @returns {PromiseLike<DispatchResult>} A promise that resolves with the result of the tool execution or suspension
- * @see {ToolsContinuation}
+ * @see ToolsContinuation
  */
-export interface ToolsDispatcher<DATA extends ChatData, M extends Meta = Meta> {
-    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<M>): ToolDispatcherResult<DATA>;
+export interface ToolsDispatcher<DATA extends ChatData> {
+    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>): ToolDispatcherResult<DATA>;
 }
 /**
  * Creates a success result
@@ -69,7 +64,6 @@ export declare function getDispatchError(e: unknown): DispatchError;
 export declare function isDispatchError(data: unknown): data is DispatchError;
 /**
  * Wraps dispatch to continuation
- * @param block
+ * @param block Dispatching code
  */
 export declare function dispatchToContinuation<DATA extends ChatData>(block: () => ToolDispatcherResult<DATA>): Promise<Continuation<DispatchResult<DATA>>>;
-export {};

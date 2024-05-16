@@ -3,7 +3,7 @@ import { OpenAiChatAction } from "../data/OpenAiChatAction";
 import { AiWrapper } from "../AiWrapper";
 import { WorkerFactory } from "./WorkerFactory";
 export declare class RunFactory extends WorkerFactory {
-    private toolsDispatchFactory;
+    private readonly toolsDispatchFactory;
     /**
      * Constructor
      * @param firestore Firestore reference
@@ -12,6 +12,6 @@ export declare class RunFactory extends WorkerFactory {
      * @param toolsDispatchFactory Tool dispatcher factory
      */
     constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, toolsDispatchFactory: ToolContinuationFactory);
-    isSupportedAction(action: unknown): action is OpenAiChatAction;
+    protected isSupportedAction(action: unknown): action is OpenAiChatAction;
     create(): ChatWorker;
 }

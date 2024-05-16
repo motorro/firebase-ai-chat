@@ -27,8 +27,8 @@ class BaseChatWorker {
     async dispatch(req, onQueueComplete) {
         if (this.isSupportedCommand(req)) {
             logging_1.logger.d("Dispatching command: ", JSON.stringify(req.data));
-            await this.dispatchWithCheck(req, onQueueComplete, async (action, data, state, control) => {
-                return await this.doDispatch(action, data, state, control);
+            await this.dispatchWithCheck(req, onQueueComplete, async (command, state, control) => {
+                return await this.doDispatch(command, state, control);
             });
             return true;
         }
@@ -98,20 +98,20 @@ class BaseChatWorker {
     async dispatchWithCheck(req, onQueueComplete, processAction) {
         return this.runner.dispatchWithCheck(req, async (soFar, chatCommand, updateState) => {
             const command = (0, ChatCommand_1.isBoundChatCommand)(chatCommand) ? chatCommand.command : chatCommand;
-            const action = command.actionData;
-            if (undefined === action) {
-                logging_1.logger.w("Empty command queue in command", JSON.stringify(command));
-                return;
-            }
-            const getContinuation = (action) => {
-                return Object.assign(Object.assign({}, command), { actionData: action });
-            };
             const control = {
                 updateChatState: updateState,
-                getContinuation: getContinuation,
-                continueQueue: async (action) => {
-                    logging_1.logger.d("Scheduling next step: ", JSON.stringify(action));
-                    await this.scheduler.schedule(req.queueName, getContinuation(action));
+                continueQueue: async (next) => {
+                    logging_1.logger.d("Scheduling next step: ", JSON.stringify(next));
+                    let command;
+                    let queueName = req.queueName;
+                    if ((0, ChatCommand_1.isBoundChatCommand)(chatCommand)) {
+                        command = chatCommand.command;
+                        queueName = chatCommand.queueName;
+                    }
+                    else {
+                        command = next;
+                    }
+                    await this.scheduler.schedule(queueName, command);
                 },
                 completeQueue: async () => {
                     logging_1.logger.d("Command queue complete");
@@ -126,7 +126,7 @@ class BaseChatWorker {
                     }
                 }
             };
-            await processAction(action, command.commonData, soFar, control);
+            await processAction(command, soFar, control);
         });
     }
 }

@@ -1,5 +1,4 @@
 import {
-    ChatCommandData,
     ChatData,
     ChatError,
     ChatState,
@@ -11,15 +10,15 @@ import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {isPostExplicitAction, OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {WorkerFactory} from "./WorkerFactory";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
+import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
 class PostExplicitWorker extends OpenAiQueueWorker {
     async doDispatch(
-        actions: OpenAiChatActions,
-        data: ChatCommandData,
+        command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
-        const postExplicit = actions[0];
+        const postExplicit = command.actionData[0];
         if (isPostExplicitAction(postExplicit)) {
             logger.d("Posting explicit messages...");
             const threadId = state.config.assistantConfig.threadId;
@@ -42,7 +41,7 @@ class PostExplicitWorker extends OpenAiQueueWorker {
                 );
             }
 
-            await this.continueQueue(control, actions.slice(1, actions.length));
+            await this.continueNextInQueue(control, command);
         } else {
             return Promise.reject(new ChatError("unknown", true, "Expected explicit post action", JSON.stringify(postExplicit)));
         }

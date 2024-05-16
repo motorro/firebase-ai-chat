@@ -1,10 +1,6 @@
 import {ChatData} from "./data/ChatState";
 import {Continuation} from "./data/Continuation";
 import {ContinuationCommand} from "./data/ContinuationCommand";
-import {Meta} from "./data/Meta";
-
-const SUCCESS: unique symbol = Symbol("DispatchSuccess");
-const ERROR: unique symbol = Symbol("DispatchError");
 
 /**
  * Dispatch was successful
@@ -12,7 +8,6 @@ const ERROR: unique symbol = Symbol("DispatchError");
 export interface DispatchSuccess<out DATA extends ChatData> {
     readonly data: DATA;
     readonly comment?: string;
-    readonly [SUCCESS]: typeof SUCCESS
 }
 
 /**
@@ -20,7 +15,6 @@ export interface DispatchSuccess<out DATA extends ChatData> {
  */
 export interface DispatchError {
     readonly error: string
-    readonly [ERROR]: typeof ERROR
 }
 
 /**
@@ -47,12 +41,12 @@ export type ToolDispatcherResult<DATA extends ChatData> = DATA
  * @typedef {function} ToolsDispatcher
  * @param {string} name - The name of the tool to be executed
  * @param {Record<string, unknown>} args - The arguments to be passed to the tool
- * @param {ContinuationCommand} continuation - Command to dispatch when result is ready in case you want to suspend
+ * @param {ChatCommand} continuation - Command to dispatch when result is ready in case you want to suspend
  * @returns {PromiseLike<DispatchResult>} A promise that resolves with the result of the tool execution or suspension
- * @see {ToolsContinuation}
+ * @see ToolsContinuation
  */
-export interface ToolsDispatcher<DATA extends ChatData, M extends Meta = Meta> {
-    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<M>): ToolDispatcherResult<DATA>
+export interface ToolsDispatcher<DATA extends ChatData> {
+    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>): ToolDispatcherResult<DATA>
 }
 
 /**
@@ -64,9 +58,8 @@ export interface ToolsDispatcher<DATA extends ChatData, M extends Meta = Meta> {
 export function getDispatchSuccess<DATA extends ChatData>(data: DATA, comment?:string): DispatchSuccess<DATA> {
     return {
         data: data,
-        comment: comment,
-        [SUCCESS]: SUCCESS
-    }
+        ...(undefined !== comment ? {comment: comment} : {})
+    };
 }
 
 /**
@@ -75,7 +68,7 @@ export function getDispatchSuccess<DATA extends ChatData>(data: DATA, comment?:s
  * @return True if `data' is `DispatchSuccess`
  */
 export function isDispatchSuccess<DATA extends ChatData>(data: unknown): data is DispatchSuccess<DATA> {
-    return "object" === typeof data && null !== data && SUCCESS in data && SUCCESS === data[SUCCESS];
+    return "object" === typeof data && null !== data && "data" in data && "object" === typeof data.data && null !== data.data;
 }
 
 /**
@@ -89,31 +82,26 @@ export function getDispatchError(e: unknown): DispatchError {
     }
     if ("string" === typeof e) {
         return {
-            error: e,
-            [ERROR]: ERROR
+            error: e
         };
     }
     if ("object" === typeof e && null !== e) {
         if ("error" in e && "string" === typeof e.error) {
             return {
-                error: e.error,
-                [ERROR]: ERROR
+                error: e.error
             };
         }
         if ("message" in e && "string" === typeof e.message) {
             return {
-                error: e.message,
-                [ERROR]: ERROR
+                error: e.message
             };
         }
         return {
-            error: e.toString(),
-            [ERROR]: ERROR
+            error: e.toString()
         };
     }
     return {
-        error: "Unknown error",
-        [ERROR]: ERROR
+        error: "Unknown error"
     };
 }
 
@@ -123,12 +111,12 @@ export function getDispatchError(e: unknown): DispatchError {
  * @return True if `data' is `DispatchError`
  */
 export function isDispatchError(data: unknown): data is DispatchError {
-    return "object" === typeof data && null !== data && ERROR in data && ERROR === data[ERROR];
+    return "object" === typeof data && null !== data && "error" in data && "string" === typeof data.error;
 }
 
 /**
  * Wraps dispatch to continuation
- * @param block
+ * @param block Dispatching code
  */
 export async function dispatchToContinuation<DATA extends ChatData>(block: () => ToolDispatcherResult<DATA>): Promise<Continuation<DispatchResult<DATA>>> {
     try {

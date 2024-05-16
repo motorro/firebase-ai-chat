@@ -1,22 +1,25 @@
 import {
-    ChatCommandData,
     ChatState,
     ChatData,
     DispatchControl,
     logger,
     ChatError,
-    TaskScheduler, ToolContinuationFactory, ChatWorker
+    TaskScheduler,
+    ToolContinuationFactory,
+    ChatWorker,
+    ToolCallRequest,
+    Continuation,
+    ToolCallsResult,
+    ContinuationRequest
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {AiWrapper} from "../AiWrapper";
 import {WorkerFactory} from "./WorkerFactory";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
-import {engineId} from "../../engineId";
-import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
+import {OpenAiChatCommand, OpenAiContinuationCommand} from "../data/OpenAiChatCommand";
 
 class RunWorker extends OpenAiQueueWorker {
-
     private readonly toolsDispatchFactory: ToolContinuationFactory;
 
     constructor(
@@ -30,35 +33,56 @@ class RunWorker extends OpenAiQueueWorker {
     }
 
     async doDispatch(
-        actions: OpenAiChatActions,
-        data: ChatCommandData,
+        command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
         logger.d("Running assistant...");
         const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
-            logger.e("Thread ID is not defined at message posting");
-            return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
+            logger.e("Thread ID is not defined at running");
+            return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at running"));
         }
+
+        const dispatcher = this.toolsDispatchFactory.getDispatcher<OpenAiChatActions, OpenAiContinuationCommand, ChatData>(
+            command.commonData.chatDocumentPath,
+            state.config.assistantConfig.dispatcherId
+        );
+
+        const dispatch = async (
+            data: ChatData,
+            toolCalls: ReadonlyArray<ToolCallRequest>,
+            runId: string
+        ): Promise<Continuation<ToolCallsResult<ChatData>>> => {
+            const getContinuationCommand = (continuationRequest: ContinuationRequest): OpenAiContinuationCommand => ({
+                // Shift following actions and add continuation run
+                ...command,
+                actionData: ["continueRun", ...command.actionData],
+                continuation: continuationRequest,
+                meta: {
+                    runId: runId
+                }
+            });
+
+            return await dispatcher.dispatch(
+                data,
+                toolCalls,
+                getContinuationCommand
+            );
+        };
 
         const continuation = await this.wrapper.run(
             threadId,
             state.config.assistantConfig.assistantId,
             state.data,
-            await this.toolsDispatchFactory.getDispatcher(data, state.config.assistantConfig.dispatcherId),
-            (runId) => ({
-                engine: engineId,
-                runId: runId,
-                next: <OpenAiChatCommand>control.getContinuation(actions.slice(1, actions.length))
-            })
+            dispatch
         );
 
         if (continuation.isResolved()) {
             await control.updateChatState({
                 data: continuation.value
             });
-            await this.continueQueue(control, actions.slice(1, actions.length));
+            await this.continueNextInQueue(control, command);
         }
     }
 }

@@ -1,5 +1,4 @@
 import { firestore } from "firebase-admin";
-import { ChatCommandData } from "../data/ChatCommandData";
 import { ChatMessage } from "../data/ChatMessage";
 import CollectionReference = firestore.CollectionReference;
 import { AssistantConfig, ChatData, ChatState } from "../data/ChatState";
@@ -36,14 +35,13 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
     protected abstract isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<A>>;
     /**
      * Dispatch template
-     * @param action Action to perform
-     * @param data Command data
+     * @param command Command to dispatch
      * @param state Current chat state
      * @param control Continuation control
      * @return Partial chat state to set after dispatched
      * @protected
      */
-    protected abstract doDispatch(action: A, data: ChatCommandData, state: ChatState<AC, DATA>, control: DispatchControl<A, AC, DATA>): Promise<void>;
+    protected abstract doDispatch(command: ChatCommand<A>, state: ChatState<AC, DATA>, control: DispatchControl<A, AC, DATA>): Promise<void>;
     /**
      * Creates message collection reference
      * @param chatDocumentPath Chat document path

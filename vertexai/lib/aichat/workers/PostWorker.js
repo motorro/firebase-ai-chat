@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PostWorker = void 0;
+exports.ExplicitPostWorker = exports.PostWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
+const VertexAiChatAction_1 = require("../data/VertexAiChatAction");
 const BaseVertexAiWorker_1 = require("./BaseVertexAiWorker");
-class PostWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
+class BasePostWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
     isSupportedAction(action) {
-        return "post" === action;
+        return "post" === action || (0, VertexAiChatAction_1.isPostExplicitAction)(action);
     }
     async doDispatch(actions, data, state, control) {
         firebase_ai_chat_core_1.logger.d("Posting messages...");
@@ -19,8 +20,7 @@ class PostWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
             firebase_ai_chat_core_1.logger.e("Requested instructions are not found:", state.config.assistantConfig.instructionsId);
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Requested instructions not found"));
         }
-        const messages = await this.getMessages(data.chatDocumentPath, data.dispatchId);
-        const response = await this.wrapper.postMessage(threadId, instructions, messages.map((it) => it.text), state.data);
+        const response = await this.wrapper.postMessage(threadId, instructions, (await this.doPost(data, actions[0])), state.data);
         const messageCollectionRef = this.getMessageCollection(data.chatDocumentPath);
         const latestInBatchId = await this.getNextBatchSortIndex(data.chatDocumentPath, data.dispatchId);
         const batch = this.db.batch();
@@ -41,5 +41,22 @@ class PostWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
         await this.continueQueue(control, actions.slice(1, actions.length));
     }
 }
+class PostWorker extends BasePostWorker {
+    isSupportedAction(action) {
+        return "post" === action;
+    }
+    async doGetMessages(data) {
+        return (await this.getMessages(data.chatDocumentPath, data.dispatchId)).map((it) => it.text);
+    }
+}
 exports.PostWorker = PostWorker;
+class ExplicitPostWorker extends BasePostWorker {
+    isSupportedAction(action) {
+        return (0, VertexAiChatAction_1.isPostExplicitAction)(action);
+    }
+    async doGetMessages(_data, action) {
+        return (0, VertexAiChatAction_1.isPostExplicitAction)(action) ? (action.messages || []) : [];
+    }
+}
+exports.ExplicitPostWorker = ExplicitPostWorker;
 //# sourceMappingURL=PostWorker.js.map

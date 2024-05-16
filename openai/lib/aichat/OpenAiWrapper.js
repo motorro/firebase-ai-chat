@@ -10,7 +10,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenAiWrapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const core_1 = require("openai/core");
-const engineId_1 = require("../engineId");
 /**
  * Wraps Open AI assistant use
  */
@@ -36,10 +35,10 @@ class OpenAiWrapper {
             return created.id;
         });
     }
-    async run(threadId, assistantId, dataSoFar, dispatcher) {
-        return await this.doRun(threadId, assistantId, dataSoFar, dispatcher);
+    async run(threadId, assistantId, dataSoFar, dispatch) {
+        return await this.doRun(threadId, assistantId, dataSoFar, dispatch);
     }
-    async doRun(threadId, assistantId, dataSoFar, dispatcher, passedRun) {
+    async doRun(threadId, assistantId, dataSoFar, dispatch, passedRun) {
         firebase_ai_chat_core_1.logger.d("Running Assistant for:", threadId);
         return this.runAi(async (ai) => {
             var _a;
@@ -51,31 +50,23 @@ class OpenAiWrapper {
                     return firebase_ai_chat_core_1.Continuation.resolve(data);
                 }
                 firebase_ai_chat_core_1.logger.d("Dispatching tools...");
-                try {
-                    const result = await dispatcher.dispatch(data, toolCalls.map((call) => ({
-                        toolCallId: call.id,
-                        toolName: call.function.name,
-                        soFar: data,
-                        args: JSON.parse(call.function.arguments)
-                    })), {
-                        engine: engineId_1.engineId,
-                        runId: run.id
+                const result = await dispatch(data, toolCalls.map((call) => ({
+                    toolCallId: call.id,
+                    toolName: call.function.name,
+                    soFar: data,
+                    args: JSON.parse(call.function.arguments)
+                })), run.id);
+                if (result.isResolved()) {
+                    firebase_ai_chat_core_1.logger.d("All tools dispatched");
+                    data = result.value.data;
+                    return this.processToolsResponse(threadId, assistantId, data, dispatch, {
+                        runId: run.id,
+                        toolsResult: result.value.responses
                     });
-                    if (result.isResolved()) {
-                        firebase_ai_chat_core_1.logger.d("All tools dispatched");
-                        return await this.processToolsResponse(threadId, assistantId, dataSoFar, dispatcher, {
-                            runId: run.id,
-                            toolsResult: result.value.responses
-                        });
-                    }
-                    else {
-                        firebase_ai_chat_core_1.logger.d("Some tools suspended...");
-                        return firebase_ai_chat_core_1.Continuation.suspend();
-                    }
                 }
-                catch (e) {
-                    firebase_ai_chat_core_1.logger.e("Tool dispatch failed:", e);
-                    throw new firebase_ai_chat_core_1.ChatError("internal", true, "Error dispatching tool calls", e);
+                else {
+                    firebase_ai_chat_core_1.logger.d("Some tools suspended...");
+                    return firebase_ai_chat_core_1.Continuation.suspend();
                 }
             };
             const isRunning = () => {
@@ -117,7 +108,7 @@ class OpenAiWrapper {
             return firebase_ai_chat_core_1.Continuation.resolve(data);
         });
     }
-    async processToolsResponse(threadId, assistantId, dataSoFar, dispatcher, request) {
+    async processToolsResponse(threadId, assistantId, dataSoFar, dispatch, request) {
         firebase_ai_chat_core_1.logger.d(`Submitting tools result: ${threadId} / ${assistantId}`);
         const dispatches = request.toolsResult.map((it) => ({
             output: JSON.stringify(it.response),
@@ -134,7 +125,7 @@ class OpenAiWrapper {
                 break;
             }
         }
-        return await this.doRun(threadId, assistantId, data, dispatcher, await this.runAi((ai) => {
+        return await this.doRun(threadId, assistantId, data, dispatch, await this.runAi((ai) => {
             return ai.beta.threads.runs.submitToolOutputs(threadId, request.runId, { tool_outputs: dispatches });
         }));
     }

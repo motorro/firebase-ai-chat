@@ -1,56 +1,110 @@
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {
     ChatCommand,
-    ChatData,
     ChatWorker,
-    DispatchControl, logger,
+    logger,
     Meta,
-    TaskScheduler
+    TaskScheduler, ToolContinuationFactory,
+    toolContinuationFactory,
+    ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
-import {VertexAiChatActions} from "./data/VertexAiChatAction";
-import {VertexAiAssistantConfig} from "./data/VertexAiAssistantConfig";
 import {CreateWorker} from "./workers/CreateWorker";
 import {CloseWorker} from "./workers/CloseWorker";
-import {ExplicitPostWorker, PostWorker} from "./workers/PostWorker";
+import {ContinuePostWorker, ExplicitPostWorker, PostWorker} from "./workers/PostWorker";
 import {SwitchToUserWorker} from "./workers/SwitchToUserWorker";
 import {AiWrapper} from "./AiWrapper";
 import {VertexAiSystemInstructions} from "./data/VertexAiSystemInstructions";
 import {HandBackCleanupWorker} from "./workers/HandBackCleanupWorker";
-
-export type OpenAiDispatchControl = DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>;
+import {isVertexAiChatReq, VertexAiChatCommand} from "./data/VertexAiChatCommand";
 
 /**
  * Chat worker that dispatches chat commands and runs AI
  */
 export class VertexAiChatWorker implements ChatWorker {
-    private workers: ReadonlyArray<ChatWorker>;
+    private readonly firestore: FirebaseFirestore.Firestore;
+    private readonly scheduler: TaskScheduler;
+    private readonly wrapper: AiWrapper;
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    private readonly instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>;
+    private readonly getContinuationFactory: () => ToolContinuationFactory;
+
+    private getWorker(command: VertexAiChatCommand): ChatWorker | undefined {
+        logger.d("Dispatching VertexAi command...");
+
+        if (ContinuePostWorker.isSupportedCommand(command)) {
+            logger.d("Action to be handled with ContinuePostWorker");
+            return new ContinuePostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+        }
+
+        const action = command.actionData[0];
+        if (CloseWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with CloseWorker");
+            return new CloseWorker(this.firestore, this.scheduler, this.wrapper);
+        }
+        if (CreateWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with CreateWorker");
+            return new CreateWorker(this.firestore, this.scheduler, this.wrapper);
+        }
+        if (HandBackCleanupWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with HandBackCleanupWorker");
+            return new HandBackCleanupWorker(this.wrapper);
+        }
+        if (PostWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with PostWorker");
+            return new PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+        }
+        if (ExplicitPostWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with ExplicitPostWorker");
+            return new ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+        }
+        if (SwitchToUserWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with ContinuePostWorker");
+            return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
+        }
+
+        logger.w("Unsupported command:", command);
+        return undefined;
+    }
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>
+        instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>,
+        getContinuationFactory?: () => ToolContinuationFactory
     ) {
-        this.workers = [
-            new CloseWorker(firestore, scheduler, wrapper, instructions),
-            new CreateWorker(firestore, scheduler, wrapper, instructions),
-            new PostWorker(firestore, scheduler, wrapper, instructions),
-            new ExplicitPostWorker(firestore, scheduler, wrapper, instructions),
-            new SwitchToUserWorker(firestore, scheduler, wrapper, instructions),
-            new HandBackCleanupWorker(wrapper)
-        ];
+        this.firestore = firestore;
+        this.scheduler = scheduler;
+        this.wrapper = wrapper;
+        this.instructions = instructions;
+        this.getContinuationFactory = getContinuationFactory || (() => {
+            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+            const dispatchers: Record<string, ToolsDispatcher<any>> = {};
+            Object.keys(this.instructions).forEach((id) => {
+                const dispatcher = this.instructions[id]?.tools?.dispatcher;
+                if (undefined !== dispatcher) {
+                    dispatchers[id] = dispatcher;
+                }
+            });
+            return toolContinuationFactory(
+                this.firestore,
+                dispatchers,
+                this.scheduler
+            );
+        });
     }
+
     async dispatch(
         req: Request<ChatCommand<unknown>>,
         onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>
     ): Promise<boolean> {
-        for (let i = 0; i < this.workers.length; ++i) {
-            if (await this.workers[i].dispatch(req, onQueueComplete)) {
-                return true;
+        if (isVertexAiChatReq(req)) {
+            const worker = this.getWorker(req.data);
+            if (undefined !== worker) {
+                return await worker.dispatch(req, onQueueComplete);
             }
         }
-        logger.d("Didn't find worker for command:", JSON.stringify(req.data));
         return false;
     }
 }

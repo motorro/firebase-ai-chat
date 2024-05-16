@@ -8,6 +8,12 @@ export interface ChatCommand<A> extends Record<string, unknown>{
     readonly actionData: A
 }
 
+export function isChatCommand(data: unknown): data is ChatCommand<unknown> {
+    return "object" === typeof data && null !== data
+        && "commonData" in data && "object" === typeof data.commonData
+        && "actionData" in data && "object" === typeof data.actionData;
+}
+
 /**
  * Chat command bound to queue
  */

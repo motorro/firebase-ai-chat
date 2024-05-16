@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VertexAICommandScheduler = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
+const VertexAiAssistantConfig_1 = require("./data/VertexAiAssistantConfig");
 /**
  * Close command delay to settle down AI runs
  */
@@ -13,6 +14,9 @@ class VertexAICommandScheduler {
     constructor(queueName, scheduler) {
         this.queueName = queueName;
         this.scheduler = scheduler;
+    }
+    isSupported(config) {
+        return (0, VertexAiAssistantConfig_1.isVertexAiAssistantConfig)(config);
     }
     async create(common) {
         firebase_ai_chat_core_1.logger.d("Scheduling create: ", JSON.stringify(common));
@@ -29,6 +33,14 @@ class VertexAICommandScheduler {
     async postAndRun(common) {
         firebase_ai_chat_core_1.logger.d("Scheduling postAndRun: ", JSON.stringify(common));
         await this.schedule(common, ["post", "switchToUserInput"]);
+    }
+    async handOver(common, handOverMessages) {
+        firebase_ai_chat_core_1.logger.d("Scheduling hand-over: ", JSON.stringify(common));
+        await this.schedule(common, ["create", { name: "postExplicit", messages: handOverMessages }, "switchToUserInput"]);
+    }
+    async handBackCleanup(common, config) {
+        firebase_ai_chat_core_1.logger.d("Scheduling hand-back cleanup: ", JSON.stringify(common));
+        await this.schedule(common, [{ name: "handBackCleanup", config: config }]);
     }
     async close(common) {
         firebase_ai_chat_core_1.logger.d("Scheduling close: ", JSON.stringify(common));

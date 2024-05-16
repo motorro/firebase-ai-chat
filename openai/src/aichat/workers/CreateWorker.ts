@@ -1,5 +1,4 @@
 import {
-    ChatCommandData,
     ChatState,
     ChatData,
     DispatchControl,
@@ -10,24 +9,24 @@ import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {WorkerFactory} from "./WorkerFactory";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
+import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
 class CreateWorker extends OpenAiQueueWorker {
     async doDispatch(
-        actions: OpenAiChatActions,
-        data: ChatCommandData,
+        command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
         logger.d("Creating thread...");
         const threadId = await this.wrapper.createThread({
-            chat: data.chatDocumentPath
+            chat: command.commonData.chatDocumentPath
         });
         await this.updateConfig(
             control,
             state,
-            (soFar) => ({threadId: threadId})
+            () => ({threadId: threadId})
         );
-        await this.continueQueue(control, actions.slice(1, actions.length));
+        await this.continueNextInQueue(control, command);
     }
 }
 

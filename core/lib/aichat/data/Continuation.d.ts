@@ -1,8 +1,10 @@
 declare const CONTINUATION_SYMBOL: unique symbol;
 export declare abstract class Continuation<out DATA> {
+    /**
+     * Stored value or an exception
+     */
     abstract get value(): DATA;
-    static [CONTINUATION_SYMBOL]: typeof CONTINUATION_SYMBOL;
-    protected constructor();
+    CONTINUATION: typeof CONTINUATION_SYMBOL;
     static isContinuation<DATA>(smth: unknown): smth is Continuation<DATA>;
     abstract isSuspended(): this is SuspendedContinuation;
     abstract isResolved(): this is ResolvedContinuation<DATA>;

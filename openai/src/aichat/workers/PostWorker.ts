@@ -1,5 +1,4 @@
 import {
-    ChatCommandData,
     ChatData,
     ChatError,
     ChatState,
@@ -11,11 +10,11 @@ import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {WorkerFactory} from "./WorkerFactory";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
+import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
 class PostWorker extends OpenAiQueueWorker {
     async doDispatch(
-        actions: OpenAiChatActions,
-        data: ChatCommandData,
+        command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
@@ -26,7 +25,7 @@ class PostWorker extends OpenAiQueueWorker {
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
 
-        const messages = await this.getMessages(data.chatDocumentPath, data.dispatchId);
+        const messages = await this.getMessages(command.commonData.chatDocumentPath, command.commonData.dispatchId);
         let latestMessageId: string | undefined = undefined;
         for (const message of messages) {
             latestMessageId = await this.wrapper.postMessage(threadId, message.text);
@@ -36,11 +35,11 @@ class PostWorker extends OpenAiQueueWorker {
             await this.updateConfig(
                 control,
                 state,
-                (soFar) => ({lastMessageId: latestMessageId})
+                () => ({lastMessageId: latestMessageId})
             );
         }
 
-        await this.continueQueue(control, actions.slice(1, actions.length));
+        await this.continueNextInQueue(control, command);
     }
 }
 

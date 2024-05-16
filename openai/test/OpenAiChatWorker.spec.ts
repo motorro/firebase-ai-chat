@@ -21,11 +21,11 @@ import {
     ChatStatus,
     ChatWorker,
     Collections,
-    Continuation,
+    Continuation, ContinuationRequest,
     Dispatch, getDispatchSuccess,
     Meta,
     Run,
-    TaskScheduler,
+    TaskScheduler, ToolCallRequest,
     ToolCallsResult,
     ToolContinuationFactory,
     ToolsContinuationDispatcher
@@ -37,7 +37,8 @@ import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
-import {RunContinuationMeta} from "../src/aichat/data/RunResponse";
+import {OpenAiChatActions} from "../lib/aichat/data/OpenAiChatAction";
+import {OpenAiContinuationCommand} from "../lib/aichat/data/OpenAiChatCommand";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -69,15 +70,6 @@ describe("Chat worker", function() {
         dispatchId: dispatchId,
         meta: meta
     };
-    const openAiMeta: RunContinuationMeta = {
-        engine: "openai",
-        runId: "runId",
-        next: {
-            engine: "openai",
-            commonData: commandData,
-            actionData: ["create"]
-        }
-    }
 
     const createCommand: OpenAiChatCommand = {
         engine: "openai",
@@ -98,6 +90,20 @@ describe("Chat worker", function() {
         engine: "openai",
         commonData: commandData,
         actionData: ["run", "retrieve"]
+    };
+    const continueRunCommand: OpenAiContinuationCommand = {
+        engine: "openai",
+        commonData: commandData,
+        actionData: ["continueRun", "retrieve"],
+        meta: {
+            runId: runId
+        },
+        continuation: {
+            continuationId: "continuationId",
+            tool: {
+                toolId: "toolId"
+            }
+        }
     };
     const retrieveCommand: OpenAiChatCommand = {
         engine: "openai",
@@ -128,13 +134,13 @@ describe("Chat worker", function() {
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
-    let toolContinuationFactory: ToolContinuationFactory
+    let toolContinuationFactory: ToolContinuationFactory;
     let worker: ChatWorker;
 
     before(async function() {
         wrapper = imock<AiWrapper>();
         scheduler = imock<TaskScheduler>();
-        toolContinuationFactory = imock<ToolContinuationFactory>()
+        toolContinuationFactory = imock<ToolContinuationFactory>();
 
         worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper), instance(toolContinuationFactory));
     });
@@ -269,28 +275,51 @@ describe("Chat worker", function() {
     it("processes run command when tools are dispatched", async function() {
         await createChat(threadId, "processing", dispatchId);
 
-        const changedState: ChatState<OpenAiAssistantConfig, Data> = {
-            ...chatState,
+        const continuationId = "continuationId";
+        const toolCallId = "toolCallId";
+        const toolCall: ToolCallRequest = {
+            toolCallId: "call1",
+            toolName: "callOne",
+            args: {a: 1}
+        };
+        const toolResponse: ToolCallsResult<Data> = {
             data: {
                 value: "Test2"
-            }
-        };
-        const toolResponse: ToolCallsResult<Data, RunContinuationMeta> = {
+            },
             responses: [{
                 toolCallId: "toolId",
                 toolName: "toolName",
                 response: getDispatchSuccess({
                     value: "Test2"
                 })
-            }],
-            meta: openAiMeta
-        }
-        const toolDispatcher: ToolsContinuationDispatcher<Data, RunContinuationMeta> = imock();
-        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenReturn(Promise.resolve(Continuation.resolve(toolResponse)));
-        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
-        when(wrapper.run(anything(), anything(), anything(), anything(), anything())).thenCall(() => {
-            return Promise.resolve(Continuation.resolve(changedState.data));
+            }]
+        };
+
+        const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
+        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenCall(async (data, calls, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
+            data.should.deep.equal(data);
+            calls[0].should.deep.equal(toolCall);
+            const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
+            command.actionData.should.deep.equal(["continueRun", ...runCommand.actionData]);
+            command.continuation.should.deep.equal({
+                continuationId: continuationId,
+                tool: {
+                    toolId: toolCallId
+                }
+            });
+            command.meta.should.deep.equal({
+                runId: runId
+            });
+            return Promise.resolve(Continuation.resolve(toolResponse));
         });
+
+        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+
+        when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _dataSoFar, dispatch) => {
+            const dispatchResult = await dispatch(data, [toolCall], runId);
+            return Continuation.resolve(dispatchResult.value.data);
+        });
+
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
         const request: Request<ChatCommand<unknown>> = {
@@ -306,20 +335,22 @@ describe("Chat worker", function() {
             throw new Error("Should have chat status");
         }
         updatedChatState.should.deep.include({
-            data: changedState.data
+            data: {
+                value: "Test2"
+            }
         });
 
-        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anything(), anything())).once();
+        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anything())).once();
         verify(scheduler.schedule(anything(), anything())).once();
     });
 
     it("processes run command when tools are suspended", async function() {
         await createChat(threadId, "processing", dispatchId);
 
-        const toolDispatcher: ToolsContinuationDispatcher<Data, RunContinuationMeta> = imock();
+        const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
         when(toolDispatcher.dispatch(anything(), anything(), anything())).thenResolve(Continuation.suspend());
         when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
-        when(wrapper.run(anything(), anything(), anything(), anything(), anything())).thenCall(() => {
+        when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(() => {
             return Promise.resolve(Continuation.suspend());
         });
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
@@ -330,7 +361,96 @@ describe("Chat worker", function() {
         };
 
         await worker.dispatch(request);
-        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anything(), anything())).once();
+        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anything())).once();
+        verify(scheduler.schedule(anything(), anything())).never();
+    });
+
+    it("processes continuation command when tools are dispatched", async function() {
+        await createChat(threadId, "processing", dispatchId);
+
+        const runId = "runId";
+        const continuationId = "continuationId";
+        const toolCallId = "toolCallId";
+        const toolCall: ToolCallRequest = {
+            toolCallId: "call1",
+            toolName: "callOne",
+            args: {a: 1}
+        };
+        const toolResponse: ToolCallsResult<Data> = {
+            data: {
+                value: "Test2"
+            },
+            responses: [{
+                toolCallId: "toolId",
+                toolName: "toolName",
+                response: getDispatchSuccess({
+                    value: "Test2"
+                })
+            }]
+        };
+
+        const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
+        when(toolDispatcher.dispatchCommand(anything(), anything())).thenCall(async () => {
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        });
+        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenCall(async (data, calls, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
+            data.should.deep.equal(data);
+            calls[0].should.deep.equal(toolCall);
+            const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
+            command.actionData.should.deep.equal(continueRunCommand.actionData);
+            command.continuation.should.deep.equal({
+                continuationId: continuationId,
+                tool: {
+                    toolId: toolCallId
+                }
+            });
+            command.meta.should.deep.equal({
+                runId: runId
+            });
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        });
+
+        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+
+        when(wrapper.processToolsResponse(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _dataSoFar, dispatch) => {
+            const dispatchResult = await dispatch(data, [toolCall], runId);
+            return Continuation.resolve(dispatchResult.value.data);
+        });
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: continueRunCommand
+        };
+
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<OpenAiAssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            data: {
+                value: "Test2"
+            }
+        });
+        verify(scheduler.schedule(anything(), anything())).once();
+    });
+
+    it("processes continuation command when tools are suspended", async function() {
+        await createChat(threadId, "processing", dispatchId);
+
+        const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
+        when(toolDispatcher.dispatchCommand(anything(), anything())).thenResolve(Continuation.suspend());
+        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: continueRunCommand
+        };
+
+        await worker.dispatch(request);
+        verify(wrapper.processToolsResponse(anything(), anything(), anything(), anything, anything())).never();
         verify(scheduler.schedule(anything(), anything())).never();
     });
 

@@ -1,9 +1,10 @@
-import { BaseChatWorker, ChatCommand, ChatData, ChatState, TaskScheduler } from "@motorro/firebase-ai-chat-core";
+import { BaseChatWorker, ChatCommand, ChatData, ChatState, DispatchControl, TaskScheduler } from "@motorro/firebase-ai-chat-core";
 import { OpenAiChatActions } from "../data/OpenAiChatAction";
 import { OpenAiAssistantConfig } from "../data/OpenAiAssistantConfig";
-import { OpenAiDispatchControl } from "../OpenAiChatWorker";
 import { AiWrapper } from "../AiWrapper";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
+import { OpenAiChatCommand } from "../data/OpenAiChatCommand";
+export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
 export declare abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
     /**
@@ -20,13 +21,14 @@ export declare abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiCha
      * @protected
      */
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<OpenAiChatActions>>;
+    protected continueNextInQueue(control: OpenAiDispatchControl, currentCommand: OpenAiChatCommand): Promise<void>;
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
      * @param control Dispatch control
-     * @param actions Action queue
+     * @param command Next command
      * @protected
      */
-    protected continueQueue(control: OpenAiDispatchControl, actions: OpenAiChatActions): Promise<void>;
+    protected continueQueue(control: OpenAiDispatchControl, command: OpenAiChatCommand): Promise<void>;
     /**
      * Switches to user input.
      * Made as a separate command as we can come here in several ways

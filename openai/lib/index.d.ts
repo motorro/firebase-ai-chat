@@ -6,8 +6,13 @@ import { firestore } from "firebase-admin";
 import Firestore = firestore.Firestore;
 import { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
 import OpenAI from "openai";
-export { ChatData, ChatState, ChatStatus, ChatMessage, Meta, Logger, setLogger, TaskScheduler, CommandScheduler, Collections } from "@motorro/firebase-ai-chat-core";
-export { AiWrapper, OpenAiChatWorker, ToolsDispatcher, AssistantChat };
+export { AssistantChat, ChatData, ChatState, ChatStatus, ChatMessage, Meta, Logger, setLogger, TaskScheduler, CommandScheduler, Collections, SystemInstructions, AiExample, AiResponseExample, AiFunctionCallExample, printAiExample } from "@motorro/firebase-ai-chat-core";
+export { DispatchSuccess, DispatchError, DispatchResult, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getDispatchSuccess, isDispatchSuccess } from "@motorro/firebase-ai-chat-core";
+export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from "@motorro/firebase-ai-chat-core";
+export { FirebaseQueueTaskScheduler } from "@motorro/firebase-ai-chat-core";
+export { Continuation, SuspendedContinuation, ResolvedContinuation } from "@motorro/firebase-ai-chat-core";
+export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "@motorro/firebase-ai-chat-core";
+export { AiWrapper, OpenAiChatWorker };
 export { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
 export { OpenAiChatCommand } from "./aichat/data/OpenAiChatCommand";
 /**

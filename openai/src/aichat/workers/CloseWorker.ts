@@ -1,13 +1,19 @@
-import {ChatCommandData, ChatState, ChatData, DispatchControl, logger, ChatWorker} from "@motorro/firebase-ai-chat-core";
+import {
+    ChatState,
+    ChatData,
+    DispatchControl,
+    logger,
+    ChatWorker
+} from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {WorkerFactory} from "./WorkerFactory";
+import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
 class CloseWorker extends OpenAiQueueWorker {
     async doDispatch(
-        actions: OpenAiChatActions,
-        data: ChatCommandData,
+        command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
@@ -20,7 +26,7 @@ class CloseWorker extends OpenAiQueueWorker {
             status: "complete"
         });
 
-        await this.continueQueue(control, actions.slice(1, actions.length));
+        await this.continueNextInQueue(control, command);
     }
 }
 

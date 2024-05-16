@@ -4,6 +4,7 @@ import {VertexAiChatActions} from "./data/VertexAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
 import {VertexAiChatCommand} from "./data/VertexAiChatCommand";
 import {isVertexAiAssistantConfig, VertexAiAssistantConfig} from "./data/VertexAiAssistantConfig";
+import {engineId} from "../engineId";
 
 /**
  * Close command delay to settle down AI runs
@@ -57,7 +58,7 @@ export class VertexAICommandScheduler implements CommandScheduler {
 
     private async schedule(common: ChatCommandData, actions: VertexAiChatActions, schedule?: DeliverySchedule): Promise<void> {
         const command: VertexAiChatCommand = {
-            engine: "vertexai",
+            engine: engineId,
             commonData: common,
             actionData: actions
         };

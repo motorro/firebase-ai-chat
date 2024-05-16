@@ -1,5 +1,4 @@
 import {firestore} from "firebase-admin";
-import {ChatCommandData} from "../data/ChatCommandData";
 import {Collections} from "../data/Collections";
 import {ChatMessage} from "../data/ChatMessage";
 import {logger} from "../../logging";
@@ -9,7 +8,7 @@ import {TaskScheduler} from "../TaskScheduler";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {Meta} from "../data/Meta";
 import Query = firestore.Query;
-import {ChatCommand, isBoundChatCommand} from "../data/ChatCommand";
+import {BoundChatCommand, ChatCommand, isBoundChatCommand} from "../data/ChatCommand";
 import {ChatWorker, DispatchControl} from "./ChatWorker";
 import {DispatchRunner} from "./DispatchRunner";
 
@@ -43,8 +42,8 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
     ): Promise<boolean> {
         if (this.isSupportedCommand(req)) {
             logger.d("Dispatching command: ", JSON.stringify(req.data));
-            await this.dispatchWithCheck(req, onQueueComplete, async (action, data, state, control) => {
-                return await this.doDispatch(action, data, state, control);
+            await this.dispatchWithCheck(req, onQueueComplete, async (command, state, control) => {
+                return await this.doDispatch(command, state, control);
             });
             return true;
         }
@@ -61,16 +60,14 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
 
     /**
      * Dispatch template
-     * @param action Action to perform
-     * @param data Command data
+     * @param command Command to dispatch
      * @param state Current chat state
      * @param control Continuation control
      * @return Partial chat state to set after dispatched
      * @protected
      */
     protected abstract doDispatch(
-        action: A,
-        data: ChatCommandData,
+        command: ChatCommand<A>,
         state: ChatState<AC, DATA>,
         control: DispatchControl<A, AC, DATA>
     ): Promise<void>
@@ -143,8 +140,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         req: Request<ChatCommand<A>>,
         onQueueComplete: ((chatDocumentPath: string, meta: Meta | null) => void | Promise<void>) | undefined,
         processAction: (
-            action: A,
-            data: ChatCommandData,
+            command: ChatCommand<A>,
             state: ChatState<AC, DATA>,
             control: DispatchControl<A, AC, DATA>
         ) => Promise<void>
@@ -153,20 +149,19 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
             req,
             async (soFar, chatCommand, updateState) => {
                 const command = isBoundChatCommand(chatCommand) ? chatCommand.command : chatCommand;
-                const action = command.actionData;
-                if (undefined === action) {
-                    logger.w("Empty command queue in command", JSON.stringify(command));
-                    return;
-                }
-                const getContinuation = (action: A) => {
-                    return {...command, actionData: action};
-                };
                 const control: DispatchControl<A, AC, DATA> = {
                     updateChatState: updateState,
-                    getContinuation: getContinuation,
-                    continueQueue: async (action: A) => {
-                        logger.d("Scheduling next step: ", JSON.stringify(action));
-                        await this.scheduler.schedule(req.queueName, getContinuation(action));
+                    continueQueue: async (next: ChatCommand<A> | BoundChatCommand<A>) => {
+                        logger.d("Scheduling next step: ", JSON.stringify(next));
+                        let command: ChatCommand<A>;
+                        let queueName = req.queueName;
+                        if (isBoundChatCommand(chatCommand)) {
+                            command = chatCommand.command;
+                            queueName = chatCommand.queueName;
+                        } else {
+                            command = <ChatCommand<A>>next;
+                        }
+                        await this.scheduler.schedule(queueName, command);
                     },
                     completeQueue: async () => {
                         logger.d("Command queue complete");
@@ -180,8 +175,8 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
                         }
                     }
                 };
-                await processAction(action, command.commonData, soFar, control);
+                await processAction(command, soFar, control);
             }
-        )
+        );
     }
 }

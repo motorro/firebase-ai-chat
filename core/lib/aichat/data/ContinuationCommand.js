@@ -1,42 +1,35 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = void 0;
+const ChatCommand_1 = require("./ChatCommand");
 /**
  * Checks if data is a ContinuationRequest
  * @param data Data to check
- * @param isMeta Checks if continuation meta is of type M
  * @return True if data is ContinuationRequest
  */
-function isContinuationRequest(data, isMeta) {
+function isContinuationRequest(data) {
     return "object" === typeof data && null != data
         && "continuationId" in data && "string" === typeof data.continuationId
-        && "responseId" in data && "string" === typeof data.responseId
-        && "response" in data
-        && "continuationMeta" in data && "object" == data.continuationMeta && isMeta(data.continuationMeta);
+        && "tool" in data && "object" === typeof data.tool && null !== data.tool
+        && "toolId" in data.tool && "string" === typeof data.tool.toolId;
 }
 exports.isContinuationRequest = isContinuationRequest;
 /**
  * Checks if data is a ContinuationCommand
  * @param data Data to check
- * @param isMeta Checks if continuation meta is of type M
  * @return True if data is ContinuationCommand
  */
-function isContinuationCommand(data, isMeta) {
-    return "object" === typeof data && null !== data
-        && "commonData" in data
-        && "actionData" in data && isContinuationRequest(data.actionData, isMeta);
+function isContinuationCommand(data) {
+    return (0, ChatCommand_1.isChatCommand)(data) && "continuation" in data && isContinuationRequest(data.continuation);
 }
 exports.isContinuationCommand = isContinuationCommand;
 /**
  * Checks if data is a ContinuationCommand
  * @param req Queue request to check
- * @param isMeta Checks if continuation meta is of type M
- * @return True if data is BoundContinuationCommand request
+ * @return True if data is ContinuationCommand request
  */
-function isContinuationCommandRequest(req, isMeta) {
-    return "object" === typeof req.data && null !== req.data
-        && "queueName" in req.data && "string" === typeof req.data.queueName
-        && "command" in req.data && isContinuationCommand(req.data.command, isMeta);
+function isContinuationCommandRequest(req) {
+    return isContinuationCommand(req.data);
 }
 exports.isContinuationCommandRequest = isContinuationCommandRequest;
 //# sourceMappingURL=ContinuationCommand.js.map

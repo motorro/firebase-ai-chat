@@ -6,6 +6,7 @@ const CreateWorker_1 = require("./workers/CreateWorker");
 const CloseWorker_1 = require("./workers/CloseWorker");
 const PostWorker_1 = require("./workers/PostWorker");
 const SwitchToUserWorker_1 = require("./workers/SwitchToUserWorker");
+const HandBackCleanupWorker_1 = require("./workers/HandBackCleanupWorker");
 /**
  * Chat worker that dispatches chat commands and runs AI
  */
@@ -17,7 +18,9 @@ class VertexAiChatWorker {
             new CloseWorker_1.CloseWorker(firestore, scheduler, wrapper, instructions),
             new CreateWorker_1.CreateWorker(firestore, scheduler, wrapper, instructions),
             new PostWorker_1.PostWorker(firestore, scheduler, wrapper, instructions),
-            new SwitchToUserWorker_1.SwitchToUserWorker(firestore, scheduler, wrapper, instructions)
+            new PostWorker_1.ExplicitPostWorker(firestore, scheduler, wrapper, instructions),
+            new SwitchToUserWorker_1.SwitchToUserWorker(firestore, scheduler, wrapper, instructions),
+            new HandBackCleanupWorker_1.HandBackCleanupWorker(wrapper)
         ];
     }
     async dispatch(req, onQueueComplete) {

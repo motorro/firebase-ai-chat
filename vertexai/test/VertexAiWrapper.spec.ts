@@ -1,6 +1,11 @@
 import {anything, deepEqual, imock, instance, mock, reset, verify, when} from "@johanblumenberg/ts-mockito";
 import {ChatSession, Content, GenerativeModel} from "@google-cloud/vertexai";
-import {ToolsDispatcher} from "@motorro/firebase-ai-chat-core";
+import {
+    Continuation,
+    getDispatchSuccess,
+    ToolCallRequest,
+    ToolCallsResult
+} from "@motorro/firebase-ai-chat-core";
 import {Data, data, data2, instructions1, toolsDefinition} from "./mock";
 import {VertexAiSystemInstructions} from "../src";
 import {db} from "./functionsTest";
@@ -28,22 +33,21 @@ describe("VertexAI wrapper", function() {
     const threads = db.collection("threads") as CollectionReference<Thread>;
     let session: ChatSession;
     let wrapper: VertexAiWrapper;
-    let instructions: VertexAiSystemInstructions<Data>;
+    let dispatcher: (data: Data, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>;
 
-    function createDispatcher(success = true) {
-        let dispatcher: ToolsDispatcher<Data>;
-        if (success) {
-            dispatcher = () => Promise.resolve(data2);
-        } else {
-            dispatcher = () => Promise.reject(new Error("Error"));
-        }
-        instructions = {
-            instructions: instructions1,
+    const instructions: VertexAiSystemInstructions<Data> = {
+        instructions: instructions1,
             tools: {
-                dispatcher: dispatcher,
+            dispatcher: () => ({error: "Unexpected instructions dispatch"}),
                 definition: toolsDefinition
-            }
-        };
+        }
+    };
+
+    function createDispatcher() {
+        dispatcher = () => Promise.resolve(Continuation.resolve({
+            data: data,
+            responses: []
+        }));
     }
 
     function createWrapper(response: ReadonlyArray<Content> = [{role: "model", parts: []}]) {
@@ -87,7 +91,8 @@ describe("VertexAI wrapper", function() {
             thread,
             instructions,
             ["M1"],
-            data
+            data,
+            dispatcher
         );
 
         const threadMessages = await wrapper.getThreadMessages(thread);
@@ -107,8 +112,21 @@ describe("VertexAI wrapper", function() {
             }]
         });
 
-        result.data.should.deep.equal(data);
-        const resultMessages = result.messages;
+        if (result.isResolved()) {
+            result.value.should.deep.include({
+                data: data
+            });
+            result.value.messages.should.have.lengthOf(1);
+            result.value.messages[0].should.include({
+                author: "ai",
+                text: "Message 1"
+            });
+        } else {
+            throw new Error("Expecting resolved continuation");
+        }
+
+        result.value.data.should.deep.equal(data);
+        const resultMessages = result.value.messages;
         resultMessages.length.should.deep.equal(1);
         const m1 = resultMessages[0];
         m1.should.deep.include({
@@ -122,13 +140,33 @@ describe("VertexAI wrapper", function() {
 
     it("posts message and runs tools", async function() {
         createWrapper([toolCalls, messages]);
-        createDispatcher();
         const thread = await wrapper.createThread({a: "b"});
+
+        const toolResponse: ToolCallsResult<Data> = {
+            data: data2,
+            responses: [{
+                toolCallId: "someFun",
+                toolName: "someFun",
+                response: getDispatchSuccess(data2)
+            }]
+        };
+        dispatcher = (d, tc) => {
+            d.should.deep.equal(data);
+            tc.should.deep.equal([{
+                toolCallId: "someFun",
+                soFar: data,
+                toolName: "someFun",
+                args: {a: "b"}
+            }]);
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        };
+
         const result = await wrapper.postMessage(
             thread,
             instructions,
             ["M1"],
-            data
+            data,
+            dispatcher
         );
 
         const threadMessages = await wrapper.getThreadMessages(thread);
@@ -162,8 +200,16 @@ describe("VertexAI wrapper", function() {
             }]
         });
 
-        result.data.should.deep.equal(data2);
-        const resultMessages = result.messages;
+        if (result.isResolved()) {
+            result.value.should.deep.include({
+                data: data2
+            });
+        } else {
+            throw new Error("Expecting resolved continuation");
+        }
+
+        result.value.data.should.deep.equal(data2);
+        const resultMessages = result.value.messages;
         resultMessages.length.should.deep.equal(1);
         const m1 = resultMessages[0];
         m1.should.deep.include({
@@ -176,15 +222,60 @@ describe("VertexAI wrapper", function() {
         verify(session.sendMessage(deepEqual([{functionResponse: {name: "someFun", response: {data: data2}}}]))).once();
     });
 
-    it("runs tools and returns dispatch error", async function() {
+    it("posts message and suspends tools", async function() {
         createWrapper([toolCalls, messages]);
-        createDispatcher(false);
+        const thread = await wrapper.createThread({a: "b"});
+
+        dispatcher = () => {
+            return Promise.resolve(Continuation.suspend());
+        };
+
+        const result = await wrapper.postMessage(
+            thread,
+            instructions,
+            ["M1"],
+            data,
+            dispatcher
+        );
+
+        const threadMessages = await wrapper.getThreadMessages(thread);
+        threadMessages.length.should.equal(2);
+        const tm1 = threadMessages[0][1];
+        tm1.content.should.deep.equal({
+            role: "user",
+            parts: [{
+                text: "M1"
+            }]
+        });
+        const tm2 = threadMessages[1][1];
+        tm2.content.should.deep.equal({
+            role: "model",
+            parts: [{
+                functionCall: {name: "someFun", args: {a: "b"}}
+            }]
+        });
+
+        result.isSuspended().should.be.true;
+    });
+
+    it("runs tools with gemini error", async function() {
+        const toolCalls: Content = {
+            role: "model",
+            parts: [{
+                // @ts-expect-error Gemini creates a call with empty name from time to time
+                functionCall: {args: {a: "b"}}
+            }]
+        };
+
+        createWrapper([toolCalls, messages]);
+        createDispatcher();
         const thread = await wrapper.createThread({a: "b"});
         const result = await wrapper.postMessage(
             thread,
             instructions,
             ["M1"],
-            data
+            data,
+            dispatcher
         );
 
         const threadMessages = await wrapper.getThreadMessages(thread);
@@ -200,14 +291,19 @@ describe("VertexAI wrapper", function() {
         tm2.content.should.deep.equal({
             role: "model",
             parts: [{
-                functionCall: {name: "someFun", args: {a: "b"}}
+                functionCall: {args: {a: "b"}}
             }]
         });
         const tm3 = threadMessages[2][1];
         tm3.content.should.deep.equal({
             role: "user",
             parts: [{
-                functionResponse: {name: "someFun", response: {error: "Error"}}
+                functionResponse: {
+                    name: "function name was not provided",
+                    response: {
+                        error: "You didn't supply a function name. Check tools definition and supply a function name!"
+                    }
+                }
             }]
         });
         const tm4 = threadMessages[3][1];
@@ -218,8 +314,16 @@ describe("VertexAI wrapper", function() {
             }]
         });
 
-        result.data.should.deep.equal(data);
-        const resultMessages = result.messages;
+        if (result.isResolved()) {
+            result.value.should.deep.include({
+                data: data
+            });
+        } else {
+            throw new Error("Expecting resolved continuation");
+        }
+
+        result.value.data.should.deep.equal(data);
+        const resultMessages = result.value.messages;
         resultMessages.length.should.deep.equal(1);
         const m1 = resultMessages[0];
         m1.should.deep.include({
@@ -229,7 +333,16 @@ describe("VertexAI wrapper", function() {
         });
 
         verify(session.sendMessage(deepEqual([{text: "M1"}]))).once();
-        verify(session.sendMessage(deepEqual([{functionResponse: {name: "someFun", response: {error: "Error"}}}]))).once();
+        verify(session.sendMessage(deepEqual([
+            {
+                functionResponse: {
+                    name: "function name was not provided",
+                    response: {
+                        error: "You didn't supply a function name. Check tools definition and supply a function name!"
+                    }
+                }
+            }
+        ]))).once();
     });
 
     it("closes thread", async function() {

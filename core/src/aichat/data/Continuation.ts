@@ -2,14 +2,15 @@
 const CONTINUATION_SYMBOL: unique symbol = Symbol("continuation");
 
 export abstract class Continuation<out DATA> {
+    /**
+     * Stored value or an exception
+     */
     abstract get value(): DATA;
 
-    static [CONTINUATION_SYMBOL]: typeof CONTINUATION_SYMBOL = CONTINUATION_SYMBOL;
-
-    protected constructor() { }
+    CONTINUATION: typeof CONTINUATION_SYMBOL = CONTINUATION_SYMBOL;
 
     static isContinuation<DATA>(smth: unknown): smth is Continuation<DATA> {
-        return "object" === typeof smth && null !== smth && CONTINUATION_SYMBOL in smth;
+        return "object" === typeof smth && null !== smth && "CONTINUATION" in smth && CONTINUATION_SYMBOL == smth.CONTINUATION;
     }
     abstract isSuspended(): this is SuspendedContinuation
     abstract isResolved(): this is ResolvedContinuation<DATA>
@@ -22,7 +23,7 @@ export abstract class Continuation<out DATA> {
     }
 
     toString(): string {
-        return `Continuation: resolved: ${this.isResolved()}, value: ${this.value}`
+        return `Continuation: resolved: ${this.isResolved()}, value: ${this.value}`;
     }
 }
 

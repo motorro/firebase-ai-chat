@@ -1,20 +1,20 @@
 import {
     BaseChatWorker, ChatCommand,
     ChatData,
-    ChatState,
+    ChatState, DispatchControl,
     logger,
     TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiChatActions} from "../data/OpenAiChatAction";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {OpenAiDispatchControl} from "../OpenAiChatWorker";
 import {AiWrapper} from "../AiWrapper";
 import {ChatConfig} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatConfig";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
+import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
-export type OpenAiQueueWorker = BaseWorker<OpenAiChatActions>;
+export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
 
-export abstract class BaseWorker<A> extends BaseChatWorker<A, OpenAiAssistantConfig, ChatData> {
+export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
 
     /**
@@ -38,31 +38,37 @@ export abstract class BaseWorker<A> extends BaseChatWorker<A, OpenAiAssistantCon
      * @returns true if request is supported
      * @protected
      */
-    protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<A>> {
+    protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<OpenAiChatActions>> {
         // Handled in common worker and factory
         return true;
     }
 
+    protected async continueNextInQueue(control: OpenAiDispatchControl, currentCommand: OpenAiChatCommand): Promise<void> {
+        await this.continueQueue(control, {
+            ...currentCommand,
+            actionData: currentCommand.actionData.slice(1, currentCommand.actionData.length)
+        });
+    }
 
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
      * @param control Dispatch control
-     * @param actions Action queue
+     * @param command Next command
      * @protected
      */
-    protected async continueQueue(control: OpenAiDispatchControl, actions: OpenAiChatActions): Promise<void> {
-        if (0 === actions.length) {
+    protected async continueQueue(control: OpenAiDispatchControl, command: OpenAiChatCommand): Promise<void> {
+        if (0 === command.actionData.length) {
             logger.d("Queue complete");
             await control.completeQueue();
             return;
         }
-        if ("switchToUserInput" === actions[0]) {
+        if ("switchToUserInput" === command.actionData[0]) {
             await this.runSwitchToUser(control);
-            await this.continueQueue(control, actions.slice(1, actions.length));
+            await this.continueNextInQueue(control, command);
             return;
         }
-        logger.d("Scheduling next in queue:", JSON.stringify(actions));
-        await control.continueQueue(actions);
+        logger.d("Scheduling next in queue:", JSON.stringify(command));
+        await control.continueQueue(command);
     }
 
     /**

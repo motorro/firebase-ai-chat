@@ -25,7 +25,7 @@ export function isHandBackCleanupAction(data: unknown): data is HandBackCleanup 
 /**
  * VertexAI Assistant chat actions
  */
-export type VertexAiChatAction = "create" | "post" | PostExplicit | "switchToUserInput" | "close" | HandBackCleanup;
+export type VertexAiChatAction = "create" | "post" | "continuePost" | PostExplicit | "switchToUserInput" | "close" | HandBackCleanup;
 
 /**
  * VertexAI Assistant chat actions

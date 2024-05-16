@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toolContinuationFactory = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isDispatchSuccess = exports.getDispatchSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
+exports.toolContinuationFactory = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isDispatchSuccess = exports.getDispatchSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
 const ToolContinuationFactory_1 = require("./aichat/workers/ToolContinuationFactory");
 var AiData_1 = require("./aichat/data/AiData");
 Object.defineProperty(exports, "isPermanentError", { enumerable: true, get: function () { return AiData_1.isPermanentError; } });
@@ -23,6 +23,7 @@ Object.defineProperty(exports, "BaseChatWorker", { enumerable: true, get: functi
 var DispatchRunner_1 = require("./aichat/workers/DispatchRunner");
 Object.defineProperty(exports, "DispatchRunner", { enumerable: true, get: function () { return DispatchRunner_1.DispatchRunner; } });
 var ChatCommand_1 = require("./aichat/data/ChatCommand");
+Object.defineProperty(exports, "isChatCommand", { enumerable: true, get: function () { return ChatCommand_1.isChatCommand; } });
 Object.defineProperty(exports, "isBoundChatCommand", { enumerable: true, get: function () { return ChatCommand_1.isBoundChatCommand; } });
 var FirebaseQueueTaskScheduler_1 = require("./aichat/FirebaseQueueTaskScheduler");
 Object.defineProperty(exports, "FirebaseQueueTaskScheduler", { enumerable: true, get: function () { return FirebaseQueueTaskScheduler_1.FirebaseQueueTaskScheduler; } });
@@ -43,8 +44,9 @@ Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: tru
  * @param taskScheduler Task scheduler that puts tasks to queue
  * @return Continuation tools factory
  */
+function toolContinuationFactory(db, 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-function toolContinuationFactory(db, dispatchers, taskScheduler) {
+dispatchers, taskScheduler) {
     return new ToolContinuationFactory_1.ToolContinuationFactoryImpl(db, dispatchers, taskScheduler);
 }
 exports.toolContinuationFactory = toolContinuationFactory;

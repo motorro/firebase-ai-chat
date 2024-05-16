@@ -1,5 +1,5 @@
 import { OpenAiChatAction } from "../data/OpenAiChatAction";
-import { ChatWorker, TaskScheduler } from "@motorro/firebase-ai-chat-core";
+import { ChatCommand, ChatWorker, TaskScheduler } from "@motorro/firebase-ai-chat-core";
 import { AiWrapper } from "../AiWrapper";
 export declare abstract class WorkerFactory {
     protected readonly firestore: FirebaseFirestore.Firestore;
@@ -13,14 +13,21 @@ export declare abstract class WorkerFactory {
      */
     constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper);
     /**
+     * Checks if command is supported
+     * @param command Command to check
+     * @return True if command is supported
+     */
+    isSupportedCommand(command: ChatCommand<unknown>): boolean;
+    /**
      * Is supported Open AI action
      * @param action Command to check
      * @returns true if worker supports the command
      * @protected
      */
-    abstract isSupportedAction(action: unknown): action is OpenAiChatAction;
+    protected isSupportedAction(action: unknown): action is OpenAiChatAction;
     /**
      * Creates chat worker
+     * @param queueName Current queue name
      */
-    abstract create(): ChatWorker;
+    abstract create(queueName: string): ChatWorker;
 }

@@ -1,5 +1,4 @@
-import {VertexAiChatAction} from "../data/VertexAiChatAction";
-
+import { VertexAiChatAction } from "../data/VertexAiChatAction";
 export interface ActionWorker {
     /**
      * Is supported Vertex AI action
@@ -7,5 +6,5 @@ export interface ActionWorker {
      * @returns true if worker supports the command
      * @protected
      */
-    isSupportedAction(action: unknown): action is VertexAiChatAction
+    isSupportedAction(action: unknown): action is VertexAiChatAction;
 }

@@ -9,22 +9,22 @@ import {
     ToolCallData,
     ToolsContinuationData
 } from "../data/ContinuationCommand";
-import {Meta} from "../data/Meta";
 import {TaskScheduler} from "../TaskScheduler";
 import DocumentReference = firestore.DocumentReference;
 import CollectionReference = firestore.CollectionReference;
+import FieldValue = firestore.FieldValue;
 
 /**
  * Registers tool result and launches continuation command for the next dispatch
  */
-export interface ToolsContinuation<DATA extends ChatData, M extends Meta = Meta> {
+export interface ToolsContinuationScheduler<in DATA extends ChatData> {
     /**
      * Continues with next result launching continuation command
      * @param command Continuation command
      * @param response Dispatch response to continue
      */
     continue(
-        command: ContinuationCommand<M>,
+        command: ContinuationCommand<unknown>,
         response: DispatchResult<DATA>
     ): Promise<void>
 }
@@ -32,7 +32,7 @@ export interface ToolsContinuation<DATA extends ChatData, M extends Meta = Meta>
 /**
  * Continuation implementation
  */
-export class ToolContinuationImpl<DATA extends ChatData, M extends Meta = Meta> implements ToolsContinuation<DATA, M> {
+export class ToolContinuationSchedulerImpl<in DATA extends ChatData> implements ToolsContinuationScheduler<DATA> {
     private readonly queueName: string;
     private readonly db: FirebaseFirestore.Firestore;
     private readonly scheduler: TaskScheduler;
@@ -44,11 +44,12 @@ export class ToolContinuationImpl<DATA extends ChatData, M extends Meta = Meta> 
     }
 
     async continue(
-        command: ContinuationCommand<M>,
+        command: ContinuationCommand<unknown>,
         response: DispatchResult<DATA>
     ): Promise<void> {
         logger.d("Dispatching continuation command:", JSON.stringify(command), JSON.stringify(response));
-        const continuationDocument = this.db.doc(command.commonData.chatDocumentPath).collection(Collections.continuations).doc(command.actionData.continuationId) as DocumentReference<ToolsContinuationData<DATA, M>>;
+        // eslint-disable-next-line max-len
+        const continuationDocument = this.db.doc(command.commonData.chatDocumentPath).collection(Collections.continuations).doc(command.continuation.continuationId) as DocumentReference<ToolsContinuationData<DATA>>;
         const toolCallsCollection = continuationDocument.collection(Collections.toolCalls) as CollectionReference<ToolCallData<DATA>>;
 
         const continuation = (await continuationDocument.get()).data();
@@ -57,7 +58,7 @@ export class ToolContinuationImpl<DATA extends ChatData, M extends Meta = Meta> 
             return Promise.reject(new ChatError("not-found", true, "Continuation data not found"));
         }
 
-        const toolCallDoc = toolCallsCollection.doc(command.actionData.responseId);
+        const toolCallDoc = toolCallsCollection.doc(command.continuation.tool.toolId);
         await this.db.runTransaction(async (tx): Promise<void> => {
             const toolCallData = (await tx.get(toolCallDoc)).data();
             if (undefined === toolCallData) {
@@ -70,7 +71,7 @@ export class ToolContinuationImpl<DATA extends ChatData, M extends Meta = Meta> 
             }
             tx.set(toolCallDoc, {...toolCallData, call: {...toolCallData.call, response: response}});
             if (isDispatchSuccess(response)) {
-                tx.set(continuationDocument, {data: response.data}, {merge: true});
+                tx.set(continuationDocument, {data: response.data, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
             }
         });
         await this.scheduler.schedule(this.queueName, command);

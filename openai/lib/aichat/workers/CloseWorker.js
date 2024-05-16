@@ -5,7 +5,7 @@ const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 const WorkerFactory_1 = require("./WorkerFactory");
 class CloseWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
-    async doDispatch(actions, data, state, control) {
+    async doDispatch(command, state, control) {
         firebase_ai_chat_core_1.logger.d("Closing chat...");
         const threadId = state.config.assistantConfig.threadId;
         if (undefined !== threadId) {
@@ -14,7 +14,7 @@ class CloseWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         await control.updateChatState({
             status: "complete"
         });
-        await this.continueQueue(control, actions.slice(1, actions.length));
+        await this.continueNextInQueue(control, command);
     }
 }
 class CloseFactory extends WorkerFactory_1.WorkerFactory {

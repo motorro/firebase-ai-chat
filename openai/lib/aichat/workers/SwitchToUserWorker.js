@@ -4,8 +4,8 @@ exports.SwitchToUserFactory = void 0;
 const WorkerFactory_1 = require("./WorkerFactory");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 class SwitchToUserWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
-    async doDispatch(actions, _data, _state, control) {
-        await this.continueQueue(control, actions);
+    async doDispatch(command, _state, control) {
+        await this.continueQueue(control, command);
     }
 }
 class SwitchToUserFactory extends WorkerFactory_1.WorkerFactory {

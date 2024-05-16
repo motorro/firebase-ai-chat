@@ -1,13 +1,15 @@
 import {ChatData} from "../data/ChatState";
 import {
+    DispatchError,
     DispatchResult,
-    dispatchToContinuation,
+    dispatchToContinuation, isDispatchError,
     isDispatchSuccess,
     ToolsDispatcher
 } from "../ToolsDispatcher";
 import {
     ContinuationCommand,
-    ToolCallData,
+    ContinuationRequestToolData,
+    ToolCallData, ToolCallRequest,
     ToolsContinuationData
 } from "../data/ContinuationCommand";
 import {logger} from "../../logging";
@@ -15,35 +17,89 @@ import {Continuation} from "../data/Continuation";
 import {ChatError} from "../data/ChatError";
 import {firestore} from "firebase-admin";
 import DocumentReference = firestore.DocumentReference;
-import {ChatCommandData} from "../data/ChatCommandData";
 
+/**
+ * Dispatch data
+ */
 export interface DispatchData<DATA extends ChatData> {
+    /**
+     * Dispatch was suspended if true - otherwise resolved
+     */
+    readonly suspended: boolean
+    /**
+     * Data state after dispatch
+     */
     readonly data: DATA
+    /**
+     * Tools state after dispatch
+     */
     readonly tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>
 }
 
-export class ToolsContinuationDispatchRunner<DATA extends ChatData> {
+/**
+ * Runs passed tools and manages continuation and call status
+ */
+export interface ToolsContinuationDispatchRunner<DATA extends ChatData> {
+    /**
+     * Dispatches calls
+     * @param continuationData Current continuation data
+     * @param tools Tool calls
+     * @param getContinuationCommand Continuation command factory
+     * @returns Updated continuation state
+     */
+    dispatch(
+        continuationData: ToolsContinuationData<DATA>,
+        tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>,
+        getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>
+    ): Promise<DispatchData<DATA>>
+}
+
+/**
+ * Runs passed tools sequentially suspending continuation if suspended
+ * If any call fails - also fails other subsequent calls
+ */
+export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData> implements ToolsContinuationDispatchRunner<DATA> {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
+    private readonly formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError;
 
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    constructor(dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>) {
+    constructor(
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>,
+        formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError
+    ) {
         this.dispatchers = dispatchers;
+        this.formatContinuationError = formatContinuationError;
     }
 
     async dispatch(
-        commonData: ChatCommandData,
-        continuation: [DocumentReference<ToolsContinuationData<DATA>>, ToolsContinuationData<DATA>],
-        tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>
+        continuationData: ToolsContinuationData<DATA>,
+        tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>,
+        getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>
     ): Promise<DispatchData<DATA>> {
-        let [continuationDoc, continuationData] = continuation
         let suspended = false;
+        let failed: [ToolCallRequest, DispatchError] | null = null;
         let currentData = continuationData.data;
         const dispatchedTools: Array<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]> = [];
 
+        function pushResult(id: DocumentReference<ToolCallData<DATA>>, call: ToolCallData<DATA>, response: DispatchResult<DATA> | null) {
+            dispatchedTools.push([id, {...call, call: {...call.call, response: response}}]);
+            if (null != response && isDispatchSuccess(response)) {
+                currentData = response.data;
+            }
+        }
+
         for (const [callId, callData] of tools) {
-            if (suspended || null != callData.call.response) {
-                pushResult(callId, callData);
+            if (suspended || null !== callData.call.response) {
+                pushResult(callId, callData, callData.call.response);
+                if (isDispatchError(callData.call.response)) {
+                    failed = [callData.call.request, callData.call.response];
+                }
+                continue;
+            }
+
+            if (null != failed) {
+                pushResult(callId, callData, this.formatContinuationError(...failed));
                 continue;
             }
 
@@ -51,16 +107,9 @@ export class ToolsContinuationDispatchRunner<DATA extends ChatData> {
             logger.d("Data so far:", currentData);
             logger.d("Arguments:", JSON.stringify(callData.call.request.args));
 
-            const continuationCommand: ContinuationCommand = {
-                commonData: commonData,
-                actionData: {
-                    continuationId: continuationDoc.id,
-                    responseId: callId.id,
-                    continuationMeta: continuationData.meta
-                }
-            }
+            const continuationCommand: ContinuationCommand<unknown> = getContinuationCommand({toolId: callId.id});
 
-            let result: Continuation<DispatchResult<DATA>> = await dispatchToContinuation(async () => {
+            const result: Continuation<DispatchResult<DATA>> = await dispatchToContinuation(async () => {
                 return this.getDispatcher(continuationData.dispatcherId)(
                     currentData,
                     callData.call.request.toolName,
@@ -69,29 +118,26 @@ export class ToolsContinuationDispatchRunner<DATA extends ChatData> {
                 );
             });
 
-            // Remove if running parallel
-            if (result.isSuspended()) {
+            let response: DispatchResult<DATA> | null = null;
+            if (result.isResolved()) {
+                logger.d("Resolved.");
+                response = result.value;
+                if (isDispatchError(response)) {
+                    logger.w("Dispatch error. Failing calls:", response.error);
+                    failed = [callData.call.request, response];
+                }
+            } else {
                 logger.d("Suspended...");
                 suspended = true;
-                break;
             }
-            pushResult(callId, {...callData, call: {...callData.call, response: result.value}});
-
-            function pushResult(id: DocumentReference<ToolCallData<DATA>>, call: ToolCallData<DATA>) {
-                dispatchedTools.push([callId, callData]);
-
-                const response = callData.call.response;
-                if (null != response && isDispatchSuccess(response)) {
-                    currentData = response.data;
-                }
-            }
+            pushResult(callId, callData, response);
         }
 
-        return {data: currentData, tools: dispatchedTools};
+        return {suspended: suspended, data: currentData, tools: dispatchedTools};
     }
 
     private getDispatcher(dispatcherId: string): ToolsDispatcher<DATA> {
-        let dispatcher = this.dispatchers[dispatcherId] as ToolsDispatcher<DATA>;
+        const dispatcher = this.dispatchers[dispatcherId] as ToolsDispatcher<DATA>;
         if (undefined === dispatcher) {
             logger.w("Dispatcher not found:", dispatcherId);
             throw new ChatError("unimplemented", true, "Dispatcher not found:", dispatcherId);
@@ -99,3 +145,8 @@ export class ToolsContinuationDispatchRunner<DATA extends ChatData> {
         return dispatcher;
     }
 }
+
+export function commonFormatContinuationError(toolCall: ToolCallRequest): DispatchError {
+    return {error: `Error had occurred while calling function: ${toolCall.toolName} before. Thus this function was not processed`};
+}
+

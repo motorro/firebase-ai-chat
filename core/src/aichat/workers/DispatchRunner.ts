@@ -29,7 +29,11 @@ export class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData
 
     async dispatchWithCheck(
         req: Request<ChatCommand<A>> | Request<BoundChatCommand<A>>,
-        run: (soFar: ChatState<AC, DATA>, command: ChatCommand<A> | BoundChatCommand<A>, updateState: (update: Partial<ChatState<AC, DATA>>) => Promise<boolean>) => Promise<void>,
+        run: (
+            soFar: ChatState<AC, DATA>,
+            command: ChatCommand<A> | BoundChatCommand<A>,
+            updateState: (update: Partial<ChatState<AC, DATA>>) => Promise<boolean>
+        ) => Promise<void>,
     ): Promise<void> {
         const db = this.db;
         const command = isBoundChatCommand(req.data) ? req.data.command : req.data;
@@ -93,7 +97,7 @@ export class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData
                 lastError: String(e)
             });
             await updateRun("complete");
-        }
+        };
 
         try {
             await run(stateToDispatch, command, updateState);

@@ -6,6 +6,7 @@ export interface ChatCommand<A> extends Record<string, unknown> {
     readonly commonData: ChatCommandData;
     readonly actionData: A;
 }
+export declare function isChatCommand(data: unknown): data is ChatCommand<unknown>;
 /**
  * Chat command bound to queue
  */

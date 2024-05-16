@@ -7,21 +7,21 @@ var FieldValue = firebase_admin_1.firestore.FieldValue;
 const WorkerFactory_1 = require("./WorkerFactory");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 class RetrieveWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
-    async doDispatch(actions, data, state, control) {
+    async doDispatch(command, state, control) {
         firebase_ai_chat_core_1.logger.d("Retrieving messages...");
         const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             firebase_ai_chat_core_1.logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
-        const messageCollectionRef = this.getMessageCollection(data.chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(data.chatDocumentPath, data.dispatchId);
+        const messageCollectionRef = this.getMessageCollection(command.commonData.chatDocumentPath);
+        const latestInBatchId = await this.getNextBatchSortIndex(command.commonData.chatDocumentPath, command.commonData.dispatchId);
         const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         const batch = this.db.batch();
         newMessages.messages.forEach((message, index) => {
             batch.set(messageCollectionRef.doc(), {
-                userId: data.ownerId,
-                dispatchId: data.dispatchId,
+                userId: command.commonData.ownerId,
+                dispatchId: command.commonData.dispatchId,
                 author: "ai",
                 text: message[1],
                 inBatchSortIndex: latestInBatchId + index,
@@ -29,8 +29,8 @@ class RetrieveWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
             });
         });
         await batch.commit();
-        await this.updateConfig(control, state, (soFar) => ({ lastMessageId: newMessages.latestMessageId }));
-        await this.continueQueue(control, actions.slice(1, actions.length));
+        await this.updateConfig(control, state, () => ({ lastMessageId: newMessages.latestMessageId }));
+        await this.continueNextInQueue(control, command);
     }
 }
 class RetrieveFactory extends WorkerFactory_1.WorkerFactory {

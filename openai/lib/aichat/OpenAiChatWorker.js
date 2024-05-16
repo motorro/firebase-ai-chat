@@ -9,7 +9,7 @@ const RunWorker_1 = require("./workers/RunWorker");
 const SwitchToUserWorker_1 = require("./workers/SwitchToUserWorker");
 const PostExplicitWorker_1 = require("./workers/PostExplicitWorker");
 const HandBackCleanupWorker_1 = require("./workers/HandBackCleanupWorker");
-const engineId_1 = require("../engineId");
+const RunContinuationWorker_1 = require("./workers/RunContinuationWorker");
 /**
  * Chat worker that dispatches chat commands and runs AI
  */
@@ -23,25 +23,17 @@ class OpenAiChatWorker {
             new RetrieveWorker_1.RetrieveFactory(firestore, scheduler, wrapper),
             new RunWorker_1.RunFactory(firestore, scheduler, wrapper, toolsDispatchFactory),
             new SwitchToUserWorker_1.SwitchToUserFactory(firestore, scheduler, wrapper),
-            new HandBackCleanupWorker_1.HandBackCleanupFactory(firestore, scheduler, wrapper)
+            new HandBackCleanupWorker_1.HandBackCleanupFactory(firestore, scheduler, wrapper),
+            new RunContinuationWorker_1.RunContinuationFactory(firestore, scheduler, wrapper, toolsDispatchFactory)
         ];
     }
-    /**
-     * Checks if command passed in `req` is supported by this dispatcher
-     * @param req Dispatch request
-     * @returns true if request is supported
-     * @protected
-     */
     getFactory(req) {
-        return "engine" in req.data && engineId_1.engineId === req.data.engine
-            && Array.isArray(req.data.actionData)
-            && undefined !== req.data.actionData[0]
-            && this.workers.find((w) => w.isSupportedAction(req.data.actionData[0]));
+        return this.workers.find((w) => w.isSupportedCommand(req.data));
     }
     async dispatch(req, onQueueComplete) {
         const factory = this.getFactory(req);
         if (factory) {
-            return await factory.create().dispatch(req, onQueueComplete);
+            return await factory.create(req.queueName).dispatch(req, onQueueComplete);
         }
         else {
             return false;

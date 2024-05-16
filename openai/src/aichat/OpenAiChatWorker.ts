@@ -1,14 +1,5 @@
 import {Request} from "firebase-functions/lib/common/providers/tasks";
-import {
-    ChatCommand,
-    ChatData,
-    ChatWorker,
-    DispatchControl,
-    Meta,
-    TaskScheduler, ToolContinuationFactory
-} from "@motorro/firebase-ai-chat-core";
-import {OpenAiChatActions} from "./data/OpenAiChatAction";
-import {OpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
+import {ChatCommand, ChatWorker, Meta, TaskScheduler, ToolContinuationFactory} from "@motorro/firebase-ai-chat-core";
 import {CreateFactory} from "./workers/CreateWorker";
 import {CloseFactory} from "./workers/CloseWorker";
 import {PostFactory} from "./workers/PostWorker";
@@ -19,9 +10,7 @@ import {AiWrapper} from "./AiWrapper";
 import {PostExplicitFactory} from "./workers/PostExplicitWorker";
 import {HandBackCleanupFactory} from "./workers/HandBackCleanupWorker";
 import {WorkerFactory} from "./workers/WorkerFactory";
-import {ContinuationFactory} from "./workers/ToolContinuationWorker";
-
-export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
+import {RunContinuationFactory} from "./workers/RunContinuationWorker";
 
 /**
  * Chat worker that dispatches chat commands and runs AI
@@ -44,7 +33,7 @@ export class OpenAiChatWorker implements ChatWorker {
             new RunFactory(firestore, scheduler, wrapper, toolsDispatchFactory),
             new SwitchToUserFactory(firestore, scheduler, wrapper),
             new HandBackCleanupFactory(firestore, scheduler, wrapper),
-            new ContinuationFactory(firestore, scheduler, wrapper, toolsDispatchFactory)
+            new RunContinuationFactory(firestore, scheduler, wrapper, toolsDispatchFactory)
         ];
     }
 

@@ -16,3 +16,4 @@ export interface VertexAiAssistantConfig extends AssistantConfig {
      */
     readonly threadId?: string;
 }
+export declare function isVertexAiAssistantConfig(config: unknown): config is VertexAiAssistantConfig;

@@ -1,4 +1,5 @@
 import {isOpenAiAssistantConfig, OpenAiAssistantConfig} from "./OpenAiAssistantConfig";
+import {OpenAiChatCommand} from "./OpenAiChatCommand";
 
 export interface PostExplicit {
     name: "postExplicit",
@@ -22,11 +23,17 @@ export function isHandBackCleanupAction(data: unknown): data is HandBackCleanup 
         && "config" in data && isOpenAiAssistantConfig(data.config);
 }
 
+export interface ToolContinuation {
+    name: "toolContinuation",
+    readonly runId: string
+    readonly next: OpenAiChatCommand
+}
+
 
 /**
  * OpenAI Assistant chat actions
  */
-export type OpenAiChatAction = "create" | "post" | PostExplicit | "run" | "retrieve" | "switchToUserInput" | "close" | HandBackCleanup;
+export type OpenAiChatAction = "create" | "post" | PostExplicit | "run" | "continueRun" | "retrieve" | "switchToUserInput" | "close" | HandBackCleanup;
 
 /**
  * OpenAI Assistant chat actions

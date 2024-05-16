@@ -23,25 +23,28 @@ class OpenAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
         // Handled in common worker and factory
         return true;
     }
+    async continueNextInQueue(control, currentCommand) {
+        await this.continueQueue(control, Object.assign(Object.assign({}, currentCommand), { actionData: currentCommand.actionData.slice(1, currentCommand.actionData.length) }));
+    }
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
      * @param control Dispatch control
-     * @param actions Action queue
+     * @param command Next command
      * @protected
      */
-    async continueQueue(control, actions) {
-        if (0 === actions.length) {
+    async continueQueue(control, command) {
+        if (0 === command.actionData.length) {
             firebase_ai_chat_core_1.logger.d("Queue complete");
             await control.completeQueue();
             return;
         }
-        if ("switchToUserInput" === actions[0]) {
+        if ("switchToUserInput" === command.actionData[0]) {
             await this.runSwitchToUser(control);
-            await this.continueQueue(control, actions.slice(1, actions.length));
+            await this.continueNextInQueue(control, command);
             return;
         }
-        firebase_ai_chat_core_1.logger.d("Scheduling next in queue:", JSON.stringify(actions));
-        await control.continueQueue(actions);
+        firebase_ai_chat_core_1.logger.d("Scheduling next in queue:", JSON.stringify(command));
+        await control.continueQueue(command);
     }
     /**
      * Switches to user input.

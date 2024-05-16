@@ -105,8 +105,7 @@ describe("Base chat worker", function() {
         await createChat("processing", dispatchId);
 
         let passedReq: Request<ChatCommand<unknown>> | null = null;
-        let passedAction: DispatchAction | null = null;
-        let passedData: ChatCommandData | null = null;
+        let passedCommand: ChatCommand<DispatchAction> | null = null;
         let passedState: ChatState<AiConfig, Data> | null = null;
 
         const worker = new TestWorker(
@@ -119,13 +118,11 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (
-                action: DispatchAction,
-                data: ChatCommandData,
+                command: ChatCommand<DispatchAction>,
                 state: ChatState<AiConfig, Data>,
                 control: DispatchControl<DispatchAction, AiConfig, Data>
             ): Promise<void> => {
-                passedAction = action;
-                passedData = data;
+                passedCommand = command;
                 passedState = state;
                 await control.updateChatState({status: "complete"});
                 return Promise.resolve();
@@ -150,10 +147,7 @@ describe("Base chat worker", function() {
         });
 
         expect(passedReq).to.be.equal(request);
-        expect(passedAction).to.be.equal("close");
-        expect(passedData).to.deep.include({
-            ...commandData
-        });
+        expect(passedCommand).to.be.deep.equal(closeCommand);
         expect(passedState).to.deep.equal({
             ...chatState,
             status: "processing",
@@ -238,7 +232,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (_command, _state, control): Promise<void> => {
                 await control.updateChatState({
                     status: "userInput"
                 });
@@ -340,7 +334,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (_command, _state, control): Promise<void> => {
                 await control.updateChatState({
                     status: "userInput"
                 });
@@ -377,7 +371,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (_command, _state, control): Promise<void> => {
                 await control.updateChatState({
                     status: "userInput"
                 });
@@ -430,11 +424,11 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (command, _state, control): Promise<void> => {
                 await control.updateChatState({
                     status: "userInput"
                 });
-                await control.continueQueue("close");
+                await control.continueQueue({...command, actionData: "close"});
             }
         );
 
@@ -468,7 +462,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (_command, _state, control): Promise<void> => {
                 await control.completeQueue();
                 await control.updateChatState({
                     status: "userInput"
@@ -497,8 +491,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     private readonly isSupportedCommandImpl: (req: Request<ChatCommand<unknown>>) => req is Request<ChatCommand<DispatchAction>>;
     // eslint-disable-next-line max-len
     private readonly doDispatchImpl: (
-        action: DispatchAction,
-        data: ChatCommandData,
+        command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
         control: DispatchControl<DispatchAction, AiConfig, Data>
     ) => Promise<void>;
@@ -510,8 +503,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
         isSupportedCommand: (req: Request<ChatCommand<unknown>>) => req is Request<ChatCommand<DispatchAction>>,
         // eslint-disable-next-line max-len
         doDispatch: (
-            action: DispatchAction,
-            data: ChatCommandData,
+            command: ChatCommand<DispatchAction>,
             state: ChatState<AiConfig, Data>,
             control: DispatchControl<DispatchAction, AiConfig, Data>
         ) => Promise<void>
@@ -526,11 +518,10 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     }
 
     protected doDispatch(
-        action: DispatchAction,
-        data: ChatCommandData,
+        command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
         control: DispatchControl<DispatchAction, AiConfig, Data>
     ): Promise<void> {
-        return this.doDispatchImpl(action, data, state, control);
+        return this.doDispatchImpl(command, state, control);
     }
 }

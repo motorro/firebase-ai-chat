@@ -6,69 +6,116 @@ const logging_1 = require("../../logging");
 const Collections_1 = require("../data/Collections");
 const firebase_admin_1 = require("firebase-admin");
 var Timestamp = firebase_admin_1.firestore.Timestamp;
+const ChatError_1 = require("../data/ChatError");
+var FieldValue = firebase_admin_1.firestore.FieldValue;
+/**
+ * Continuation dispatcher implementation
+ */
 class ToolsContinuationDispatcherImpl {
     /**
      * Constructor
-     * @param commonData Common command data
+     * @param chatDocumentPath Chat document path
      * @param dispatcherId Dispatcher to use
      * @param db Firestore reference
      * @param dispatchRunner Dispatch runner
-     * @return Tool calls continuation with at-once processed data or suspended
+     * and thus fails continuation
      */
-    constructor(commonData, dispatcherId, db, dispatchRunner) {
-        this.commonData = commonData;
+    constructor(chatDocumentPath, dispatcherId, db, dispatchRunner) {
         this.dispatcherId = dispatcherId;
-        this.chatDocument = db.doc(commonData.chatDocumentPath);
+        this.chatDocument = db.doc(chatDocumentPath);
         this.db = db;
         this.dispatchRunner = dispatchRunner;
     }
-    async dispatch(soFar, toolCalls, meta) {
-        logging_1.logger.d("Dispatching tool calls:", JSON.stringify(toolCalls));
+    async dispatch(soFar, toolCalls, getContinuationCommand) {
+        logging_1.logger.d("Dispatching tool calls");
         const continuationDocument = this.chatDocument.collection(Collections_1.Collections.continuations).doc();
         const toolCallsCollection = continuationDocument.collection(Collections_1.Collections.toolCalls);
-        let continuation = {
+        const continuation = {
             dispatcherId: this.dispatcherId,
+            state: "suspended",
             data: soFar,
             createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-            meta: meta
+            updatedAt: Timestamp.now()
         };
-        const dispatched = await this.dispatchRunner.dispatch(this.commonData, [continuationDocument, continuation], toolCalls.map((it, index) => [
-            toolCallsCollection.doc(),
-            { index: index, call: { request: it, response: null } }
-        ]));
-        continuation = Object.assign(Object.assign({}, continuation), { data: dispatched.data });
-        // If all processed without suspension - return at once
+        const tools = [];
+        const batch = this.db.batch();
+        // Pre-set data as doDispatch merges updates
+        batch.set(continuationDocument, continuation);
+        toolCalls.forEach((it, index) => {
+            const doc = toolCallsCollection.doc();
+            const tool = { index: index, call: { request: it, response: null } };
+            tools.push([doc, tool]);
+            batch.set(doc, tool);
+        });
+        const result = await this.doDispatch(batch, continuationDocument, continuation, tools, getContinuationCommand);
+        // Save only if suspended
+        if (result.isSuspended()) {
+            logging_1.logger.d("Saving continuation to:", continuationDocument.path);
+            await batch.commit();
+        }
+        return result;
+    }
+    async dispatchCommand(command, getContinuationCommand) {
+        logging_1.logger.d("Continuation processing. Moving forward:", JSON.stringify(command));
+        // eslint-disable-next-line max-len
+        const continuationDocument = this.chatDocument.collection(Collections_1.Collections.continuations).doc(command.continuation.continuationId);
+        const toolCallsCollection = continuationDocument.collection(Collections_1.Collections.toolCalls);
+        const continuation = (await continuationDocument.get()).data();
+        if (undefined === continuation) {
+            logging_1.logger.w("Continuation data not found");
+            return Promise.reject(new ChatError_1.ChatError("not-found", true, "Continuation data not found"));
+        }
+        const toolCallData = (await toolCallsCollection.orderBy("index").get()).docs;
+        const toolCalls = [];
+        toolCallData.forEach((it) => {
+            const data = it.data();
+            if (undefined !== data) {
+                toolCalls.push([it.ref, data]);
+            }
+        });
+        const batch = this.db.batch();
+        const result = await this.doDispatch(batch, continuationDocument, continuation, toolCalls, getContinuationCommand);
+        logging_1.logger.d("Saving continuation to:", continuationDocument.path);
+        await batch.commit();
+        return result;
+    }
+    async doDispatch(batch, continuationDoc, continuation, toolCalls, getContinuationCommand) {
+        const dispatched = await this.dispatchRunner.dispatch(continuation, toolCalls, (continuationToolCall) => getContinuationCommand({
+            continuationId: continuationDoc.id,
+            tool: continuationToolCall
+        }));
         const result = [];
-        let suspended = false;
-        for (const [_id, call] of dispatched.tools) {
-            if (null != call.call.response) {
+        for (let i = 0; i < dispatched.tools.length; i++) {
+            const [id, call] = dispatched.tools[i];
+            const response = call.call.response;
+            if (null !== response) {
                 result.push({
                     toolCallId: call.call.request.toolCallId,
                     toolName: call.call.request.toolName,
-                    response: call.call.response
+                    response: response
                 });
-            }
-            else {
-                suspended = true;
-                break;
+                // Update if processed
+                if (null === toolCalls[i][1].call.response) {
+                    batch.set(id, { call: { response: response } }, { merge: true });
+                }
             }
         }
-        if (false === suspended) {
-            logging_1.logger.d("All tools resolved. Returning...");
+        batch.set(continuationDoc, {
+            state: dispatched.suspended ? "suspended" : "resolved",
+            data: dispatched.data,
+            updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+        if (dispatched.suspended) {
+            logging_1.logger.d("Dispatch suspened");
+            return Continuation_1.Continuation.suspend();
+        }
+        else {
+            logging_1.logger.d("Dispatch resolved");
             return Continuation_1.Continuation.resolve({
                 data: dispatched.data,
-                responses: result,
-                meta: continuation.meta
+                responses: result
             });
         }
-        const batch = this.db.batch();
-        batch.set(continuationDocument, { data: dispatched.data }, { merge: true });
-        dispatched.tools.forEach(([ref, call]) => {
-            batch.set(ref, call);
-        });
-        await batch.commit();
-        return Continuation_1.Continuation.suspend();
     }
 }
 exports.ToolsContinuationDispatcherImpl = ToolsContinuationDispatcherImpl;

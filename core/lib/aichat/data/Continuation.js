@@ -1,12 +1,13 @@
 "use strict";
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = void 0;
 const CONTINUATION_SYMBOL = Symbol("continuation");
 class Continuation {
-    constructor() { }
+    constructor() {
+        this.CONTINUATION = CONTINUATION_SYMBOL;
+    }
     static isContinuation(smth) {
-        return "object" === typeof smth && null !== smth && CONTINUATION_SYMBOL in smth;
+        return "object" === typeof smth && null !== smth && "CONTINUATION" in smth && CONTINUATION_SYMBOL == smth.CONTINUATION;
     }
     static suspend() {
         return SuspendedContinuation.getInstance();
@@ -19,8 +20,6 @@ class Continuation {
     }
 }
 exports.Continuation = Continuation;
-_a = CONTINUATION_SYMBOL;
-Continuation[_a] = CONTINUATION_SYMBOL;
 class SuspendedContinuation extends Continuation {
     get value() {
         throw new Error("Trying to get value from suspended continuation");

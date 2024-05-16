@@ -15,15 +15,15 @@ export { DispatchControl, ChatWorker } from "./aichat/workers/ChatWorker";
 export { BaseChatWorker } from "./aichat/workers/BaseChatWorker";
 export { DispatchRunner } from "./aichat/workers/DispatchRunner";
 export { ToolContinuationFactory } from "./aichat/workers/ToolContinuationFactory";
-export { ToolsContinuation } from "./aichat/workers/ToolsContinuation";
+export { ToolsContinuationScheduler } from "./aichat/workers/ToolsContinuationScheduler";
 export { ToolsContinuationDispatcher } from "./aichat/workers/ToolsContinuationDispatcher";
 export { CommandScheduler } from "./aichat/CommandScheduler";
 export { TaskScheduler } from "./aichat/TaskScheduler";
-export { ChatCommand, BoundChatCommand, isBoundChatCommand } from "./aichat/data/ChatCommand";
+export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from "./aichat/data/ChatCommand";
 export { FirebaseQueueTaskScheduler } from "./aichat/FirebaseQueueTaskScheduler";
 export { Collections } from "./aichat/data/Collections";
 export { Continuation, SuspendedContinuation, ResolvedContinuation } from "./aichat/data/Continuation";
-export { ContinuationRequest, ContinuationCommand, BoundContinuationCommand, ToolCall, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "./aichat/data/ContinuationCommand";
+export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "./aichat/data/ContinuationCommand";
 /**
  * Tools continuation components factory
  * @param db Firestore

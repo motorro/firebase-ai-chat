@@ -1,0 +1,66 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RunContinuationFactory = void 0;
+const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
+const WorkerFactory_1 = require("./WorkerFactory");
+const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
+const OpenAiChatCommand_1 = require("../data/OpenAiChatCommand");
+class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
+    constructor(firestore, scheduler, wrapper, toolsDispatchFactory) {
+        super(firestore, scheduler, wrapper);
+        this.toolsDispatchFactory = toolsDispatchFactory;
+    }
+    async doDispatch(command, state, control) {
+        firebase_ai_chat_core_1.logger.d("Running continuation...");
+        const threadId = state.config.assistantConfig.threadId;
+        if (undefined === threadId) {
+            firebase_ai_chat_core_1.logger.e("Thread ID is not defined at continuation running");
+            return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at continuation running"));
+        }
+        const dispatcher = this.toolsDispatchFactory.getDispatcher(command.commonData.chatDocumentPath, state.config.assistantConfig.dispatcherId);
+        const dc = await dispatcher.dispatchCommand(command, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
+        if (dc.isResolved()) {
+            const dispatch = async (data, toolCalls, runId) => {
+                return await dispatcher.dispatch(data, toolCalls, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest, meta: {
+                        runId: runId
+                    } })));
+            };
+            const rc = await this.wrapper.processToolsResponse(threadId, state.config.assistantConfig.assistantId, dc.value.data, dispatch, {
+                runId: command.meta.runId,
+                toolsResult: dc.value.responses
+            });
+            if (rc.isResolved()) {
+                await control.updateChatState({
+                    data: rc.value
+                });
+                await this.continueNextInQueue(control, command);
+            }
+        }
+    }
+}
+class RunContinuationFactory extends WorkerFactory_1.WorkerFactory {
+    /**
+     * Constructor
+     * @param firestore Firestore reference
+     * @param scheduler Task scheduler
+     * @param wrapper AI wrapper
+     * @param toolsDispatchFactory Tool dispatcher factory
+     */
+    constructor(firestore, scheduler, wrapper, toolsDispatchFactory) {
+        super(firestore, scheduler, wrapper);
+        this.toolsDispatchFactory = toolsDispatchFactory;
+    }
+    /**
+     * Checks if command is supported
+     * @param command Command to check
+     * @return True if command is supported
+     */
+    isSupportedCommand(command) {
+        return (0, OpenAiChatCommand_1.isOpenAiContinuationCommand)(command);
+    }
+    create() {
+        return new RunContinuationWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory);
+    }
+}
+exports.RunContinuationFactory = RunContinuationFactory;
+//# sourceMappingURL=RunContinuationWorker.js.map

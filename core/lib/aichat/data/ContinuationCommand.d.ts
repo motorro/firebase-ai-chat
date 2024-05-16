@@ -1,59 +1,51 @@
 import { ChatData } from "./ChatState";
 import { DispatchResult } from "../ToolsDispatcher";
-import { BoundChatCommand, ChatCommand } from "./ChatCommand";
-import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { firestore } from "firebase-admin";
 import Timestamp = firestore.Timestamp;
-import { Meta } from "./Meta";
+import { ChatCommand } from "./ChatCommand";
+import { Request } from "firebase-functions/lib/common/providers/tasks";
 /**
  * Continuation request
  */
-export interface ContinuationRequest<M extends Meta = Meta> {
+export interface ContinuationRequest {
     readonly continuationId: string;
-    readonly responseId: string;
-    readonly continuationMeta: M;
+    readonly tool: ContinuationRequestToolData;
+}
+/**
+ * Dispatched tool data
+ */
+export interface ContinuationRequestToolData {
+    readonly toolId: string;
+}
+export interface ContinuationCommand<A> extends ChatCommand<A> {
+    continuation: ContinuationRequest;
 }
 /**
  * Checks if data is a ContinuationRequest
  * @param data Data to check
- * @param isMeta Checks if continuation meta is of type M
  * @return True if data is ContinuationRequest
  */
-export declare function isContinuationRequest<M extends Meta = Meta>(data: unknown, isMeta: (meta: Meta) => meta is M): data is ContinuationRequest<M>;
-/**
- * Continuation command
- */
-export type ContinuationCommand<M extends Meta = Meta> = ChatCommand<ContinuationRequest<M>>;
-/**
- * Bound continuation command
- */
-export type BoundContinuationCommand<M extends Meta = Meta> = BoundChatCommand<ContinuationRequest<M>>;
+export declare function isContinuationRequest(data: unknown): data is ContinuationRequest;
 /**
  * Checks if data is a ContinuationCommand
  * @param data Data to check
- * @param isMeta Checks if continuation meta is of type M
  * @return True if data is ContinuationCommand
  */
-export declare function isContinuationCommand<M extends Meta = Meta>(data: unknown, isMeta: (meta: Meta) => meta is M): data is ContinuationCommand<M>;
+export declare function isContinuationCommand(data: unknown): data is ContinuationCommand<unknown>;
 /**
  * Checks if data is a ContinuationCommand
  * @param req Queue request to check
- * @param isMeta Checks if continuation meta is of type M
- * @return True if data is BoundContinuationCommand request
+ * @return True if data is ContinuationCommand request
  */
-export declare function isContinuationCommandRequest<M extends Meta = Meta>(req: Request<unknown>, isMeta: (meta: Meta) => meta is M): req is Request<BoundContinuationCommand<M>>;
+export declare function isContinuationCommandRequest(req: Request<unknown>): req is Request<ContinuationCommand<unknown>>;
 /**
  * Tool call request
  */
-export interface ToolCallRequest<DATA extends ChatData> {
+export interface ToolCallRequest {
     /**
      * Tool call ID
      */
     toolCallId: string;
-    /**
-     * Data so far
-     */
-    soFar: DATA;
     /**
      * Tool (function) name
      */
@@ -80,21 +72,20 @@ export interface ToolCallResponse<DATA extends ChatData> {
      */
     readonly response: DispatchResult<DATA>;
 }
-export interface ToolCallsResult<DATA extends ChatData, M extends Meta = Meta> {
+export interface ToolCallsResult<DATA extends ChatData> {
     readonly data: DATA;
     readonly responses: ReadonlyArray<ToolCallResponse<DATA>>;
-    readonly meta: M;
 }
 export interface ToolCall<DATA extends ChatData> {
-    readonly request: ToolCallRequest<DATA>;
+    readonly request: ToolCallRequest;
     readonly response: DispatchResult<DATA> | null;
 }
-export interface ToolsContinuationData<DATA extends ChatData, M extends Meta = Meta> {
+export interface ToolsContinuationData<DATA extends ChatData> {
     readonly dispatcherId: string;
+    readonly state: "suspended" | "resolved";
     readonly data: DATA;
     readonly createdAt: Timestamp;
     readonly updatedAt: Timestamp;
-    readonly meta: M;
 }
 export interface ToolCallData<DATA extends ChatData> {
     readonly index: number;

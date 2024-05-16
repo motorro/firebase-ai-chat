@@ -4,7 +4,6 @@ import {
     DispatchControl,
     logger,
     ChatError,
-    ChatCommandData,
     ChatWorker
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
@@ -13,11 +12,11 @@ import {firestore} from "firebase-admin";
 import FieldValue = firestore.FieldValue;
 import {WorkerFactory} from "./WorkerFactory";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
+import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
 class RetrieveWorker extends OpenAiQueueWorker {
     async doDispatch(
-        actions: OpenAiChatActions,
-        data: ChatCommandData,
+        command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
@@ -28,8 +27,8 @@ class RetrieveWorker extends OpenAiQueueWorker {
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
 
-        const messageCollectionRef = this.getMessageCollection(data.chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(data.chatDocumentPath, data.dispatchId);
+        const messageCollectionRef = this.getMessageCollection(command.commonData.chatDocumentPath);
+        const latestInBatchId = await this.getNextBatchSortIndex(command.commonData.chatDocumentPath, command.commonData.dispatchId);
 
         const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         const batch = this.db.batch();
@@ -37,8 +36,8 @@ class RetrieveWorker extends OpenAiQueueWorker {
             batch.set(
                 messageCollectionRef.doc(),
                 {
-                    userId: data.ownerId,
-                    dispatchId: data.dispatchId,
+                    userId: command.commonData.ownerId,
+                    dispatchId: command.commonData.dispatchId,
                     author: "ai",
                     text: message[1],
                     inBatchSortIndex: latestInBatchId + index,
@@ -50,10 +49,10 @@ class RetrieveWorker extends OpenAiQueueWorker {
         await this.updateConfig(
             control,
             state,
-            (soFar) => ({lastMessageId: newMessages.latestMessageId})
+            () => ({lastMessageId: newMessages.latestMessageId})
         );
 
-        await this.continueQueue(control, actions.slice(1, actions.length));
+        await this.continueNextInQueue(control, command);
     }
 }
 
