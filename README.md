@@ -433,35 +433,31 @@ In the sample project you can find the script to create a [sample assistant](htt
 to be a calculator. Take a look at the prompt and function definitions there for an example.
 
 The library supports function tool calling by providing a map of function dispatchers to `VertexAiChatWorker`.
-The dispatcher is a [simple state reducer function](core/src/aichat/ToolsDispatcher.ts):
+The [dispatcher](core/src/aichat/ToolsDispatcher.ts) is the following function:
 
 ```typescript
 export interface ToolsDispatcher<DATA extends ChatData> {
-  (data: DATA, name: string, args: Record<string, unknown>): DATA | Promise<DATA>
+  (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>): ToolDispatcherReturnValue<DATA>
 }
 ```
+The parameters are the following:
 
-The [AiWrapper](openai/src/aichat/AiWrapper.ts) will run your dispatcher and re-run the Assistant with 
+- `data` - Chat state data so far
+- `name` - Name of function called
+- `args` - Function arguments
+- `continuation` - Continuation command (see below)
+
+The function returns [ToolDispatcherReturnValue](core/src/aichat/ToolsDispatcher.ts) value which may be:
+
+- Some data - it will be submitted to AI as `{result: "Response from your tool"}`
+- Reduction result of `data` state passed to dispatcher. Return `{data: "Your data state"}` from the dispatcher and it 
+  will go to AI like this
+- Some error describing the problem to AI: `{error: "You have passed the wrong argument}`
+- Continuation of above (see continuation below)
+- Promise of the above
+
+The [AiWrapper](openai/src/aichat/AiWrapper.ts) will run your dispatcher and re-run the Assistant with
 dispatcher output.
-
-If dispatcher succeeds, the AI will get [DispatchSuccess](core/src/aichat/ToolsDispatcher.ts#6) value:
-```typescript
-export interface DispatchSuccess<DATA extends ChatData> {
-  data: DATA
-}
-```
-
-If dispatcher throws an error, the AI will get [DispatchError](core/src/aichat/ToolsDispatcher.ts#13) value:
-```typescript
-export interface DispatchError {
-    error: string // Error::message or some other text. See VertexAiWrapper implementation
-}
-```
-
-The function has the following parameters:
-- `data` - current data state
-- `name` - name of the function tool called by AI
-- `args` - an object of function parameters that AI supplied
 
 For our simple project we define the dispatcher like this:
 
@@ -472,7 +468,7 @@ const dispatcher: ToolsDispatcher<CalculateChatData> = function(
         data: CalculateChatData,
         name: string,
         args: Record<string, unknown>
-): CalculateChatData | Promise<CalculateChatData> {
+): ToolDispatcherReturnValue<CalculateChatData> {
   switch (name) {
     case "getSum":
       logger.d("Getting current state...");
@@ -503,6 +499,42 @@ const dispatchers: Record<string, ToolsDispatcher<any>> = {
 We pass the dispatchers object to our worker. As mentioned before the single Cloud Task function with a worker
 is enough to handle all AI runs from different chats. That is why we pass a map of dispatchers here. The worker selects
 a correct dispatcher getting a command and reading the appropriate chat state from Firebase.
+
+## Tool continuation
+Sometimes your dispatcher can't get a response promptly (within the dispatch promise). For example, you may need to launch
+another queue task to get the response. The dispatching function receives the `continuation` parameter. If you need to 
+suspend tool processing, save this continuation somewhere and when your response is ready, use [ToolsContinuationScheduler](core/src/aichat/workers/ToolsContinuationScheduler.ts)
+which you could get from the factory to respawn the tools processing:
+
+```typescript
+const taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
+const continuationSchedulerFactory = toolContinuationSchedulerFactory(firestore, taskScheduler);
+
+// Create the instance of continuation scheduler for our queue name
+const continuationScheduler: ToolsContinuationScheduler<string> = continuationSchedulerFactory.getContinuationScheduler("calculator");
+
+let savedContinuation: ContinuationCommand<unknown> | undefined = undefined;
+
+const myDispatcher = (data: ChatData, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>) => {
+  // Getting the result requires some data not available promptly
+  // Save passed continuation elswhere
+  savedContinuation = continuation;
+  // Run your offline tool
+  // ...
+  // Suspend tool processing
+  return Continuation.suspend();
+}
+
+// Later when result is ready
+const whenResultIsReady = async (data: string) => {
+  // Resume tools processing using saved continuation
+  const continuation = savedContinuation;
+  if (undefined !== continuation) {
+      await continuationScheduler.continue(continuation, {result: {answer: data}});
+  }
+}
+
+```
 
 ## Client application
 The sample project includes a sample KMP [Android application](https://github.com/motorro/firebase-openai-chat-project/tree/master/Client)

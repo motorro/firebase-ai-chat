@@ -1,4 +1,4 @@
-import { AssistantChat, ChatData, ChatWorker, CommandScheduler, TaskScheduler } from "@motorro/firebase-ai-chat-core";
+import { AssistantChat, ChatData, ChatWorker, CommandScheduler, TaskScheduler, ToolsContinuationScheduler } from "@motorro/firebase-ai-chat-core";
 import { Functions } from "firebase-admin/lib/functions";
 import { firestore } from "firebase-admin";
 import { AiWrapper } from "./aichat/AiWrapper";
@@ -6,7 +6,7 @@ import { VertexAiSystemInstructions } from "./aichat/data/VertexAiSystemInstruct
 import { GenerativeModel } from "@google-cloud/vertexai";
 import Firestore = firestore.Firestore;
 export { AssistantChat, ChatData, ChatState, ChatStatus, ChatMessage, Meta, Logger, setLogger, TaskScheduler, CommandScheduler, Collections, SystemInstructions, AiExample, AiResponseExample, AiFunctionCallExample, printAiExample } from "@motorro/firebase-ai-chat-core";
-export { FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess } from "@motorro/firebase-ai-chat-core";
+export { FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolDispatcherReturnValue, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess } from "@motorro/firebase-ai-chat-core";
 export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from "@motorro/firebase-ai-chat-core";
 export { FirebaseQueueTaskScheduler } from "@motorro/firebase-ai-chat-core";
 export { Continuation, SuspendedContinuation, ResolvedContinuation } from "@motorro/firebase-ai-chat-core";
@@ -42,6 +42,12 @@ export interface AiChat {
      * @return Worker interface
      */
     worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>): ChatWorker;
+    /**
+     * Creates a tool continuation scheduler to continue tools dispatch
+     * @param queueName The name of the queue the dispatch will be continued on
+     * @returns Continuation scheduler to resume tools dispatch
+     */
+    continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA>;
 }
 /**
  * Chat tools factory

@@ -8,7 +8,7 @@ import {
     DispatchControl,
     logger,
     TaskScheduler, ToolCallRequest, ToolCallsResult,
-    ToolContinuationFactory
+    ToolContinuationDispatcherFactory
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatActions} from "../data/OpenAiChatAction";
@@ -21,13 +21,13 @@ export class RunContinuationWorker extends OpenAiQueueWorker {
         return isOpenAiContinuationCommand(command);
     }
 
-    private readonly toolsDispatchFactory: ToolContinuationFactory;
+    private readonly toolsDispatchFactory: ToolContinuationDispatcherFactory;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
-        toolsDispatchFactory: ToolContinuationFactory
+        toolsDispatchFactory: ToolContinuationDispatcherFactory
     ) {
         super(firestore, scheduler, wrapper);
         this.toolsDispatchFactory = toolsDispatchFactory;

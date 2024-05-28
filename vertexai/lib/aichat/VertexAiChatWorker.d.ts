@@ -1,5 +1,5 @@
 import { Request } from "firebase-functions/lib/common/providers/tasks";
-import { ChatCommand, ChatWorker, Meta, TaskScheduler, ToolContinuationFactory } from "@motorro/firebase-ai-chat-core";
+import { ChatCommand, ChatWorker, Meta, TaskScheduler, ToolContinuationDispatcherFactory } from "@motorro/firebase-ai-chat-core";
 import { AiWrapper } from "./AiWrapper";
 import { VertexAiSystemInstructions } from "./data/VertexAiSystemInstructions";
 /**
@@ -12,6 +12,6 @@ export declare class VertexAiChatWorker implements ChatWorker {
     private readonly instructions;
     private readonly getContinuationFactory;
     private getWorker;
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>, getContinuationFactory?: () => ToolContinuationFactory);
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>, getContinuationFactory?: () => ToolContinuationDispatcherFactory);
     dispatch(req: Request<ChatCommand<unknown>>, onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>): Promise<boolean>;
 }

@@ -5,7 +5,7 @@ import {
     logger,
     ChatError,
     TaskScheduler,
-    ToolContinuationFactory,
+    ToolContinuationDispatcherFactory,
     ToolCallRequest,
     Continuation,
     ToolCallsResult,
@@ -22,13 +22,13 @@ export class RunWorker extends OpenAiQueueWorker {
         return "run" === action;
     }
 
-    private readonly toolsDispatchFactory: ToolContinuationFactory;
+    private readonly toolsDispatchFactory: ToolContinuationDispatcherFactory;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
-        toolsDispatchFactory: ToolContinuationFactory
+        toolsDispatchFactory: ToolContinuationDispatcherFactory
     ) {
         super(firestore, scheduler, wrapper);
         this.toolsDispatchFactory = toolsDispatchFactory;

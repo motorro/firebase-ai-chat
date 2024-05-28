@@ -27,7 +27,7 @@ import {
     Run,
     TaskScheduler, ToolCallRequest,
     ToolCallsResult,
-    ToolContinuationFactory,
+    ToolContinuationDispatcherFactory,
     ToolsContinuationDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
@@ -134,15 +134,15 @@ describe("Chat worker", function() {
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
-    let toolContinuationFactory: ToolContinuationFactory;
+    let ToolContinuationDispatcherFactory: ToolContinuationDispatcherFactory;
     let worker: ChatWorker;
 
     before(async function() {
         wrapper = imock<AiWrapper>();
         scheduler = imock<TaskScheduler>();
-        toolContinuationFactory = imock<ToolContinuationFactory>();
+        ToolContinuationDispatcherFactory = imock<ToolContinuationDispatcherFactory>();
 
-        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper), instance(toolContinuationFactory));
+        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper), instance(ToolContinuationDispatcherFactory));
     });
 
     after(async function() {
@@ -153,7 +153,7 @@ describe("Chat worker", function() {
         await db.recursiveDelete(chats);
         reset(wrapper);
         reset(scheduler);
-        reset(toolContinuationFactory);
+        reset(ToolContinuationDispatcherFactory);
     });
 
     async function createChat(thread?: string, status?: ChatStatus, dispatch?: string) {
@@ -313,7 +313,7 @@ describe("Chat worker", function() {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
 
-        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
         when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _dataSoFar, dispatch) => {
             const dispatchResult = await dispatch(data, [toolCall], runId);
@@ -349,7 +349,7 @@ describe("Chat worker", function() {
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
         when(toolDispatcher.dispatch(anything(), anything(), anything())).thenResolve(Continuation.suspend());
-        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
         when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(() => {
             return Promise.resolve(Continuation.suspend());
         });
@@ -410,7 +410,7 @@ describe("Chat worker", function() {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
 
-        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
         when(wrapper.processToolsResponse(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _dataSoFar, dispatch) => {
             const dispatchResult = await dispatch(data, [toolCall], runId);
@@ -442,7 +442,7 @@ describe("Chat worker", function() {
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
         when(toolDispatcher.dispatchCommand(anything(), anything())).thenResolve(Continuation.suspend());
-        when(toolContinuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
         const request: Request<ChatCommand<unknown>> = {
             ...context,

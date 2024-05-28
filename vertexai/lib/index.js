@@ -43,6 +43,7 @@ function factory(firestore, functions, location,
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 taskScheduler) {
     const _taskScheduler = taskScheduler || new firebase_ai_chat_core_1.FirebaseQueueTaskScheduler(functions, location);
+    const _continuationSchedulerFactory = (0, firebase_ai_chat_core_1.toolContinuationSchedulerFactory)(firestore, _taskScheduler);
     function defaultSchedulers(queueName, taskScheduler) {
         return [new VertexAICommandScheduler_1.VertexAICommandScheduler(queueName, taskScheduler)];
     }
@@ -54,6 +55,9 @@ taskScheduler) {
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         worker: function (model, threadsPath, instructions) {
             return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath), instructions);
+        },
+        continuationScheduler(queueName) {
+            return _continuationSchedulerFactory.create(queueName);
         }
     };
 }

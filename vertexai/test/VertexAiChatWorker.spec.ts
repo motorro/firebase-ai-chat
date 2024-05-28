@@ -26,7 +26,7 @@ import {
     TaskScheduler,
     ToolCallRequest,
     ToolCallsResult,
-    ToolContinuationFactory,
+    ToolContinuationDispatcherFactory,
     ToolsContinuationDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
@@ -139,12 +139,12 @@ describe("Chat worker", function() {
         when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
     });
 
-    function createWorker(toolContinuationFactory?: ToolContinuationFactory) {
-        let factory: ToolContinuationFactory;
-        if (undefined !== toolContinuationFactory) {
-            factory = toolContinuationFactory
+    function createWorker(ToolContinuationDispatcherFactory?: ToolContinuationDispatcherFactory) {
+        let factory: ToolContinuationDispatcherFactory;
+        if (undefined !== ToolContinuationDispatcherFactory) {
+            factory = ToolContinuationDispatcherFactory
         } else {
-            const f: ToolContinuationFactory = imock()
+            const f: ToolContinuationDispatcherFactory = imock()
             const dispatcher: ToolsContinuationDispatcher<VertexAiChatActions, VertexAiContinuationCommand, Data> = imock();
             when(f.getDispatcher(anything(), anything())).thenReturn(dispatcher);
             factory = instance(f);
@@ -327,7 +327,7 @@ describe("Chat worker", function() {
             });
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
-        const continuationFactory: ToolContinuationFactory = imock()
+        const continuationFactory: ToolContinuationDispatcherFactory = imock()
         when(continuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
         when(wrapper.postMessage<Data>(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _messages, _dataSoFar, dispatch) => {
@@ -480,7 +480,7 @@ describe("Chat worker", function() {
             });
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
-        const continuationFactory: ToolContinuationFactory = imock()
+        const continuationFactory: ToolContinuationDispatcherFactory = imock()
         when(continuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
         when(wrapper.processToolsResponse(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _instructions, _request, _dataSoFar, dispatch) => {

@@ -10,7 +10,7 @@ import {
     TaskScheduler,
     ToolCallRequest,
     ToolCallsResult,
-    ToolContinuationFactory
+    ToolContinuationDispatcherFactory
 } from "@motorro/firebase-ai-chat-core";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
 import {isPostExplicitAction, PostExplicit, VertexAiChatActions} from "../data/VertexAiChatAction";
@@ -26,7 +26,7 @@ import {
 abstract class BasePostWorker extends VertexAiQueueWorker {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private readonly instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>;
-    protected readonly getDispatcherFactory: () => ToolContinuationFactory;
+    protected readonly getDispatcherFactory: () => ToolContinuationDispatcherFactory;
 
     /**
      * Constructor
@@ -42,7 +42,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
         wrapper: AiWrapper,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>,
-        getDispatcherFactory: () => ToolContinuationFactory
+        getDispatcherFactory: () => ToolContinuationDispatcherFactory
     ) {
         super(firestore, scheduler, wrapper);
         this.instructions = instructions;

@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toolContinuationFactory = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
-const ToolContinuationFactory_1 = require("./aichat/workers/ToolContinuationFactory");
+exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
+const ToolContinuationDispatcherFactory_1 = require("./aichat/workers/ToolContinuationDispatcherFactory");
+const ToolsContinuationScheduler_1 = require("./aichat/workers/ToolsContinuationScheduler");
 var AiData_1 = require("./aichat/data/AiData");
 Object.defineProperty(exports, "isPermanentError", { enumerable: true, get: function () { return AiData_1.isPermanentError; } });
 Object.defineProperty(exports, "printAiExample", { enumerable: true, get: function () { return AiData_1.printAiExample; } });
@@ -40,16 +41,26 @@ Object.defineProperty(exports, "isContinuationRequest", { enumerable: true, get:
 Object.defineProperty(exports, "isContinuationCommand", { enumerable: true, get: function () { return ContinuationCommand_1.isContinuationCommand; } });
 Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: true, get: function () { return ContinuationCommand_1.isContinuationCommandRequest; } });
 /**
- * Tools continuation components factory
+ * Tools continuation dispatcher factory
  * @param db Firestore
  * @param dispatchers Tool dispatchers
  * @param taskScheduler Task scheduler that puts tasks to queue
  * @return Continuation tools factory
  */
-function toolContinuationFactory(db, 
+function toolContinuationDispatcherFactory(db, 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
 dispatchers, taskScheduler) {
-    return new ToolContinuationFactory_1.ToolContinuationFactoryImpl(db, dispatchers, taskScheduler);
+    return new ToolContinuationDispatcherFactory_1.ToolContinuationDispatcherFactoryImpl(db, dispatchers, taskScheduler);
 }
-exports.toolContinuationFactory = toolContinuationFactory;
+exports.toolContinuationDispatcherFactory = toolContinuationDispatcherFactory;
+/**
+ * Tools continuation scheduler factory
+ * @param db Firestore
+ * @param taskScheduler Task scheduler that puts tasks to queue
+ * @return Continuation scheduler factory
+ */
+function toolContinuationSchedulerFactory(db, taskScheduler) {
+    return new ToolsContinuationScheduler_1.ToolsContinuationSchedulerFactoryImpl(db, taskScheduler);
+}
+exports.toolContinuationSchedulerFactory = toolContinuationSchedulerFactory;
 //# sourceMappingURL=index.js.map

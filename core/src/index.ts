@@ -1,6 +1,10 @@
-import {ToolContinuationFactory, ToolContinuationFactoryImpl} from "./aichat/workers/ToolContinuationFactory";
+import {ToolContinuationDispatcherFactory, ToolContinuationDispatcherFactoryImpl} from "./aichat/workers/ToolContinuationDispatcherFactory";
 import {ToolsDispatcher} from "./aichat/ToolsDispatcher";
 import {TaskScheduler} from "./aichat/TaskScheduler";
+import {
+    ToolsContinuationSchedulerFactory,
+    ToolsContinuationSchedulerFactoryImpl
+} from "./aichat/workers/ToolsContinuationScheduler";
 
 export {
     Messages,
@@ -24,6 +28,7 @@ export {
     ReducerSuccess,
     DispatchError,
     DispatchResult,
+    ToolDispatcherReturnValue,
     ToolsDispatcher,
     isDispatchResult,
     getDispatchError,
@@ -37,7 +42,7 @@ export {AssistantChat} from "./aichat/AssistantChat";
 export {DispatchControl, ChatWorker} from "./aichat/workers/ChatWorker";
 export {BaseChatWorker} from "./aichat/workers/BaseChatWorker";
 export {DispatchRunner} from "./aichat/workers/DispatchRunner";
-export {ToolContinuationFactory} from "./aichat/workers/ToolContinuationFactory";
+export {ToolContinuationDispatcherFactory} from "./aichat/workers/ToolContinuationDispatcherFactory";
 export {ToolsContinuationScheduler} from "./aichat/workers/ToolsContinuationScheduler";
 export {ToolsContinuationDispatcher} from "./aichat/workers/ToolsContinuationDispatcher";
 export {CommandScheduler} from "./aichat/CommandScheduler";
@@ -60,17 +65,30 @@ export {
 } from "./aichat/data/ContinuationCommand";
 
 /**
- * Tools continuation components factory
+ * Tools continuation dispatcher factory
  * @param db Firestore
  * @param dispatchers Tool dispatchers
  * @param taskScheduler Task scheduler that puts tasks to queue
  * @return Continuation tools factory
  */
-export function toolContinuationFactory(
+export function toolContinuationDispatcherFactory(
     db: FirebaseFirestore.Firestore,
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>,
     taskScheduler: TaskScheduler,
-): ToolContinuationFactory {
-    return new ToolContinuationFactoryImpl(db, dispatchers, taskScheduler);
+): ToolContinuationDispatcherFactory {
+    return new ToolContinuationDispatcherFactoryImpl(db, dispatchers, taskScheduler);
+}
+
+/**
+ * Tools continuation scheduler factory
+ * @param db Firestore
+ * @param taskScheduler Task scheduler that puts tasks to queue
+ * @return Continuation scheduler factory
+ */
+export function toolContinuationSchedulerFactory(
+    db: FirebaseFirestore.Firestore,
+    taskScheduler: TaskScheduler
+): ToolsContinuationSchedulerFactory {
+    return new ToolsContinuationSchedulerFactoryImpl(db, taskScheduler);
 }

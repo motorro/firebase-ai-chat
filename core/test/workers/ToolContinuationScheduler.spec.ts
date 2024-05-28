@@ -27,7 +27,7 @@ import {
 import {ToolCallData, ToolsContinuationData} from "../../src/aichat/data/ContinuationCommand";
 import {anything, imock, instance, reset, verify, when} from "@johanblumenberg/ts-mockito";
 import {
-    ToolContinuationSchedulerImpl,
+    ToolsContinuationSchedulerImpl,
     ToolsContinuationScheduler
 } from "../../src/aichat/workers/ToolsContinuationScheduler";
 import {beforeEach} from "mocha";
@@ -51,7 +51,7 @@ describe("Tool continuation scheduler", function() {
     });
 
     beforeEach(function () {
-        cScheduler = new ToolContinuationSchedulerImpl(queueName, firestore(), instance(tScheduler));
+        cScheduler = new ToolsContinuationSchedulerImpl(queueName, firestore(), instance(tScheduler));
     });
 
     after(async function() {

@@ -4,7 +4,9 @@ import {
     ChatWorker,
     CommandScheduler,
     FirebaseQueueTaskScheduler,
-    TaskScheduler
+    TaskScheduler,
+    ToolsContinuationScheduler,
+    toolContinuationSchedulerFactory
 } from "@motorro/firebase-ai-chat-core";
 import {Functions} from "firebase-admin/lib/functions";
 import {firestore} from "firebase-admin";
@@ -39,6 +41,7 @@ export {
     ReducerSuccess,
     DispatchError,
     DispatchResult,
+    ToolDispatcherReturnValue,
     ToolsDispatcher,
     isDispatchResult,
     getDispatchError,
@@ -102,6 +105,13 @@ export interface AiChat {
      */
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>): ChatWorker
+
+    /**
+     * Creates a tool continuation scheduler to continue tools dispatch
+     * @param queueName The name of the queue the dispatch will be continued on
+     * @returns Continuation scheduler to resume tools dispatch
+     */
+    continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA>
 }
 
 /**
@@ -120,6 +130,7 @@ export function factory(
     taskScheduler?: TaskScheduler
 ): AiChat {
     const _taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
+    const _continuationSchedulerFactory = toolContinuationSchedulerFactory(firestore, _taskScheduler);
 
     function defaultSchedulers(queueName: string, taskScheduler: TaskScheduler): ReadonlyArray<CommandScheduler> {
         return [new VertexAICommandScheduler(queueName, taskScheduler)];
@@ -138,6 +149,9 @@ export function factory(
                 new VertexAiWrapper(model, firestore, threadsPath),
                 instructions
             );
+        },
+        continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {
+            return _continuationSchedulerFactory.create(queueName);
         }
     };
 }

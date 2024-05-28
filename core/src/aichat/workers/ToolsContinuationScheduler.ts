@@ -30,9 +30,35 @@ export interface ToolsContinuationScheduler<in DATA extends ChatData> {
 }
 
 /**
+ * Creates tool continuation scheduler
+ */
+export interface ToolsContinuationSchedulerFactory {
+    /**
+     * Creates tool continuation scheduler
+     * @param queueName Queue name to schedule continuation to
+     * @returns Tools continuation scheduler
+     */
+    create<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA>
+}
+
+export class ToolsContinuationSchedulerFactoryImpl implements ToolsContinuationSchedulerFactory {
+    private readonly firebase: FirebaseFirestore.Firestore;
+    private readonly scheduler: TaskScheduler;
+
+    constructor(firebase: FirebaseFirestore.Firestore, scheduler: TaskScheduler) {
+        this.firebase = firebase;
+        this.scheduler = scheduler;
+    }
+
+    create<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {
+        return new ToolsContinuationSchedulerImpl(queueName, this.firebase, this.scheduler);
+    }
+}
+
+/**
  * Continuation implementation
  */
-export class ToolContinuationSchedulerImpl<in DATA extends ChatData> implements ToolsContinuationScheduler<DATA> {
+export class ToolsContinuationSchedulerImpl<in DATA extends ChatData> implements ToolsContinuationScheduler<DATA> {
     private readonly queueName: string;
     private readonly db: FirebaseFirestore.Firestore;
     private readonly scheduler: TaskScheduler;

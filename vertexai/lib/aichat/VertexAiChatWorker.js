@@ -63,7 +63,7 @@ class VertexAiChatWorker {
                     dispatchers[id] = dispatcher;
                 }
             });
-            return (0, firebase_ai_chat_core_1.toolContinuationFactory)(this.firestore, dispatchers, this.scheduler);
+            return (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(this.firestore, dispatchers, this.scheduler);
         });
     }
     async dispatch(req, onQueueComplete) {

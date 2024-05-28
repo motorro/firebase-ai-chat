@@ -42,6 +42,7 @@ Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: tru
  */
 function factory(firestore, functions, location, taskScheduler) {
     const _taskScheduler = taskScheduler || new firebase_ai_chat_core_1.FirebaseQueueTaskScheduler(functions, location);
+    const _continuationSchedulerFactory = (0, firebase_ai_chat_core_1.toolContinuationSchedulerFactory)(firestore, _taskScheduler);
     function defaultSchedulers(queueName, taskScheduler) {
         return [new OpenAICommandScheduler_1.OpenAICommandScheduler(queueName, taskScheduler)];
     }
@@ -52,7 +53,10 @@ function factory(firestore, functions, location, taskScheduler) {
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         worker(openAi, dispatchers) {
-            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi), (0, firebase_ai_chat_core_1.toolContinuationFactory)(firestore, dispatchers, _taskScheduler));
+            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler));
+        },
+        continuationScheduler(queueName) {
+            return _continuationSchedulerFactory.create(queueName);
         }
     };
 }

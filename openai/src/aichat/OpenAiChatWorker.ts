@@ -5,7 +5,7 @@ import {
     logger,
     Meta,
     TaskScheduler,
-    ToolContinuationFactory
+    ToolContinuationDispatcherFactory
 } from "@motorro/firebase-ai-chat-core";
 import {CreateWorker} from "./workers/CreateWorker";
 import {CloseWorker} from "./workers/CloseWorker";
@@ -26,13 +26,13 @@ export class OpenAiChatWorker implements ChatWorker {
     private firestore: FirebaseFirestore.Firestore;
     private scheduler: TaskScheduler;
     private wrapper: AiWrapper;
-    private toolsDispatchFactory: ToolContinuationFactory;
+    private toolsDispatchFactory: ToolContinuationDispatcherFactory;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
-        toolsDispatchFactory: ToolContinuationFactory
+        toolsDispatchFactory: ToolContinuationDispatcherFactory
     ) {
         this.firestore = firestore;
         this.firestore = firestore;

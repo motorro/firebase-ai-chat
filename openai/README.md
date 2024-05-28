@@ -49,11 +49,9 @@ export const calculator = onTaskDispatched(
       region: region
     },
     async (req) => {
-      // Create OpenAI API instance and OpenAI adapter
-      const ai = new OpenAiWrapper(new OpenAI({apiKey: openAiApiKey.value()}));
       // Create and run a worker
       // See the `dispatchers` definitions below
-      await chatFactory.worker(ai, dispatchers).dispatch(
+      await chatFactory.worker(new OpenAI({apiKey: openAiApiKey.value()}), dispatchers).dispatch(
           req,
           (chatDocumentPath: string, meta: Meta) => {
              // Optional task completion handler

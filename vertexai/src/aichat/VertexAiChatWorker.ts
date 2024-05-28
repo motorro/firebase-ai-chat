@@ -4,8 +4,9 @@ import {
     ChatWorker,
     logger,
     Meta,
-    TaskScheduler, ToolContinuationFactory,
-    toolContinuationFactory,
+    TaskScheduler,
+    ToolContinuationDispatcherFactory,
+    toolContinuationDispatcherFactory,
     ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {CreateWorker} from "./workers/CreateWorker";
@@ -26,7 +27,7 @@ export class VertexAiChatWorker implements ChatWorker {
     private readonly wrapper: AiWrapper;
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     private readonly instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>;
-    private readonly getContinuationFactory: () => ToolContinuationFactory;
+    private readonly getContinuationFactory: () => ToolContinuationDispatcherFactory;
 
     private getWorker(command: VertexAiChatCommand): ChatWorker | undefined {
         logger.d("Dispatching VertexAi command...");
@@ -72,7 +73,7 @@ export class VertexAiChatWorker implements ChatWorker {
         wrapper: AiWrapper,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>,
-        getContinuationFactory?: () => ToolContinuationFactory
+        getContinuationFactory?: () => ToolContinuationDispatcherFactory
     ) {
         this.firestore = firestore;
         this.scheduler = scheduler;
@@ -87,7 +88,7 @@ export class VertexAiChatWorker implements ChatWorker {
                     dispatchers[id] = dispatcher;
                 }
             });
-            return toolContinuationFactory(
+            return toolContinuationDispatcherFactory(
                 this.firestore,
                 dispatchers,
                 this.scheduler

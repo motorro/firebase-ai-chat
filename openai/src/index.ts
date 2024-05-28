@@ -5,7 +5,9 @@ import {
     ChatData,
     ChatState,
     TaskScheduler,
-    CommandScheduler, toolContinuationFactory
+    CommandScheduler,
+    ToolsContinuationScheduler,
+    toolContinuationSchedulerFactory, toolContinuationDispatcherFactory
 } from "@motorro/firebase-ai-chat-core";
 import {AiWrapper} from "./aichat/AiWrapper";
 import {OpenAiChatWorker} from "./aichat/OpenAiChatWorker";
@@ -40,6 +42,7 @@ export {
     ReducerSuccess,
     DispatchError,
     DispatchResult,
+    ToolDispatcherReturnValue,
     ToolsDispatcher,
     isDispatchResult,
     getDispatchError,
@@ -105,6 +108,13 @@ export interface AiChat {
      */
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker
+
+    /**
+     * Creates a tool continuation scheduler to continue tools dispatch
+     * @param queueName The name of the queue the dispatch will be continued on
+     * @returns Continuation scheduler to resume tools dispatch
+     */
+    continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA>
 }
 
 /**
@@ -122,6 +132,7 @@ export function factory(
     taskScheduler?: TaskScheduler
 ): AiChat {
     const _taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
+    const _continuationSchedulerFactory = toolContinuationSchedulerFactory(firestore, _taskScheduler);
 
     function defaultSchedulers(queueName: string, taskScheduler: TaskScheduler): ReadonlyArray<CommandScheduler> {
         return [new OpenAICommandScheduler(queueName, taskScheduler)];
@@ -141,8 +152,11 @@ export function factory(
                 firestore,
                 _taskScheduler,
                 new OpenAiWrapper(openAi),
-                toolContinuationFactory(firestore, dispatchers, _taskScheduler)
+                toolContinuationDispatcherFactory(firestore, dispatchers, _taskScheduler)
             );
+        },
+        continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {
+            return _continuationSchedulerFactory.create(queueName);
         }
     };
 }

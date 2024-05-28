@@ -1,16 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToolContinuationSchedulerImpl = void 0;
+exports.ToolsContinuationSchedulerImpl = exports.ToolsContinuationSchedulerFactoryImpl = void 0;
 const ToolsDispatcher_1 = require("../ToolsDispatcher");
 const firebase_admin_1 = require("firebase-admin");
 const logging_1 = require("../../logging");
 const Collections_1 = require("../data/Collections");
 const ChatError_1 = require("../data/ChatError");
 var FieldValue = firebase_admin_1.firestore.FieldValue;
+class ToolsContinuationSchedulerFactoryImpl {
+    constructor(firebase, scheduler) {
+        this.firebase = firebase;
+        this.scheduler = scheduler;
+    }
+    create(queueName) {
+        return new ToolsContinuationSchedulerImpl(queueName, this.firebase, this.scheduler);
+    }
+}
+exports.ToolsContinuationSchedulerFactoryImpl = ToolsContinuationSchedulerFactoryImpl;
 /**
  * Continuation implementation
  */
-class ToolContinuationSchedulerImpl {
+class ToolsContinuationSchedulerImpl {
     constructor(queueName, db, scheduler) {
         this.queueName = queueName;
         this.db = db;
@@ -45,5 +55,5 @@ class ToolContinuationSchedulerImpl {
         await this.scheduler.schedule(this.queueName, command);
     }
 }
-exports.ToolContinuationSchedulerImpl = ToolContinuationSchedulerImpl;
+exports.ToolsContinuationSchedulerImpl = ToolsContinuationSchedulerImpl;
 //# sourceMappingURL=ToolsContinuationScheduler.js.map

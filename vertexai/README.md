@@ -87,10 +87,9 @@ export const calculator = onTaskDispatched(
               timeout: 30 * 1000
           }
       );
-      const ai = chatFactory.ai(model, VERTEXAI_THREADS)
 
       // Dispatch request  
-      await chatFactory.worker(ai, instructions).dispatch(
+      await chatFactory.worker(model, VERTEXAI_THREADS, instructions).dispatch(
           req,
           (chatDocumentPath: string, meta: Meta) => {
              // Optional task completion handler
