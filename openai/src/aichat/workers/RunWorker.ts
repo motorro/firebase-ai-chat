@@ -6,7 +6,6 @@ import {
     ChatError,
     TaskScheduler,
     ToolContinuationFactory,
-    ChatWorker,
     ToolCallRequest,
     Continuation,
     ToolCallsResult,
@@ -15,11 +14,14 @@ import {
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {AiWrapper} from "../AiWrapper";
-import {WorkerFactory} from "./WorkerFactory";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand, OpenAiContinuationCommand} from "../data/OpenAiChatCommand";
 
-class RunWorker extends OpenAiQueueWorker {
+export class RunWorker extends OpenAiQueueWorker {
+    static isSupportedAction(action: unknown): action is OpenAiChatAction {
+        return "run" === action;
+    }
+
     private readonly toolsDispatchFactory: ToolContinuationFactory;
 
     constructor(
@@ -84,32 +86,5 @@ class RunWorker extends OpenAiQueueWorker {
             });
             await this.continueNextInQueue(control, command);
         }
-    }
-}
-
-export class RunFactory extends WorkerFactory {
-    private readonly toolsDispatchFactory: ToolContinuationFactory;
-    /**
-     * Constructor
-     * @param firestore Firestore reference
-     * @param scheduler Task scheduler
-     * @param wrapper AI wrapper
-     * @param toolsDispatchFactory Tool dispatcher factory
-     */
-    constructor(
-        firestore: FirebaseFirestore.Firestore,
-        scheduler: TaskScheduler,
-        wrapper: AiWrapper,
-        toolsDispatchFactory: ToolContinuationFactory
-    ) {
-        super(firestore, scheduler, wrapper);
-        this.toolsDispatchFactory = toolsDispatchFactory;
-    }
-
-    protected isSupportedAction(action: unknown): action is OpenAiChatAction {
-        return "run" === action;
-    }
-    create(): ChatWorker {
-        return new RunWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory);
     }
 }

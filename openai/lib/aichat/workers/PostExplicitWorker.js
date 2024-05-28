@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PostExplicitFactory = void 0;
+exports.PostExplicitWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiChatAction_1 = require("../data/OpenAiChatAction");
-const WorkerFactory_1 = require("./WorkerFactory");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 class PostExplicitWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
+    static isSupportedAction(action) {
+        return (0, OpenAiChatAction_1.isPostExplicitAction)(action);
+    }
     async doDispatch(command, state, control) {
         const postExplicit = command.actionData[0];
         if ((0, OpenAiChatAction_1.isPostExplicitAction)(postExplicit)) {
@@ -30,13 +32,5 @@ class PostExplicitWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         }
     }
 }
-class PostExplicitFactory extends WorkerFactory_1.WorkerFactory {
-    isSupportedAction(action) {
-        return (0, OpenAiChatAction_1.isPostExplicitAction)(action);
-    }
-    create() {
-        return new PostExplicitWorker(this.firestore, this.scheduler, this.wrapper);
-    }
-}
-exports.PostExplicitFactory = PostExplicitFactory;
+exports.PostExplicitWorker = PostExplicitWorker;
 //# sourceMappingURL=PostExplicitWorker.js.map

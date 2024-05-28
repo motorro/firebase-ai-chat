@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CloseFactory = void 0;
+exports.CloseWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
-const WorkerFactory_1 = require("./WorkerFactory");
 class CloseWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
+    static isSupportedAction(action) {
+        return "close" === action;
+    }
     async doDispatch(command, state, control) {
         firebase_ai_chat_core_1.logger.d("Closing chat...");
         const threadId = state.config.assistantConfig.threadId;
@@ -17,13 +19,5 @@ class CloseWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         await this.continueNextInQueue(control, command);
     }
 }
-class CloseFactory extends WorkerFactory_1.WorkerFactory {
-    isSupportedAction(action) {
-        return "close" === action;
-    }
-    create() {
-        return new CloseWorker(this.firestore, this.scheduler, this.wrapper);
-    }
-}
-exports.CloseFactory = CloseFactory;
+exports.CloseWorker = CloseWorker;
 //# sourceMappingURL=CloseWorker.js.map

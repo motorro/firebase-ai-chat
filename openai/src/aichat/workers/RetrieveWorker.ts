@@ -4,17 +4,19 @@ import {
     DispatchControl,
     logger,
     ChatError,
-    ChatWorker
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {firestore} from "firebase-admin";
 import FieldValue = firestore.FieldValue;
-import {WorkerFactory} from "./WorkerFactory";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
-class RetrieveWorker extends OpenAiQueueWorker {
+export class RetrieveWorker extends OpenAiQueueWorker {
+    static isSupportedAction(action: unknown): action is OpenAiChatAction {
+        return "retrieve" === action;
+    }
+
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
@@ -53,14 +55,5 @@ class RetrieveWorker extends OpenAiQueueWorker {
         );
 
         await this.continueNextInQueue(control, command);
-    }
-}
-
-export class RetrieveFactory extends WorkerFactory {
-    protected isSupportedAction(action: unknown): action is OpenAiChatAction {
-        return "retrieve" === action;
-    }
-    create(): ChatWorker {
-        return new RetrieveWorker(this.firestore, this.scheduler, this.wrapper);
     }
 }

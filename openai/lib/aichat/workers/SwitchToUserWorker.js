@@ -1,20 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SwitchToUserFactory = void 0;
-const WorkerFactory_1 = require("./WorkerFactory");
+exports.SwitchToUserWorker = void 0;
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 class SwitchToUserWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
+    static isSupportedAction(action) {
+        return "switchToUserInput" === action;
+    }
     async doDispatch(command, _state, control) {
         await this.continueQueue(control, command);
     }
 }
-class SwitchToUserFactory extends WorkerFactory_1.WorkerFactory {
-    isSupportedAction(action) {
-        return "switchToUserInput" === action;
-    }
-    create() {
-        return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
-    }
-}
-exports.SwitchToUserFactory = SwitchToUserFactory;
+exports.SwitchToUserWorker = SwitchToUserWorker;
 //# sourceMappingURL=SwitchToUserWorker.js.map

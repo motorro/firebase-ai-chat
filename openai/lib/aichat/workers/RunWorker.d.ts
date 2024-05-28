@@ -1,17 +1,12 @@
-import { TaskScheduler, ToolContinuationFactory, ChatWorker } from "@motorro/firebase-ai-chat-core";
-import { OpenAiChatAction } from "../data/OpenAiChatAction";
+import { ChatState, ChatData, DispatchControl, TaskScheduler, ToolContinuationFactory } from "@motorro/firebase-ai-chat-core";
+import { OpenAiAssistantConfig } from "../data/OpenAiAssistantConfig";
+import { OpenAiChatAction, OpenAiChatActions } from "../data/OpenAiChatAction";
 import { AiWrapper } from "../AiWrapper";
-import { WorkerFactory } from "./WorkerFactory";
-export declare class RunFactory extends WorkerFactory {
+import { OpenAiQueueWorker } from "./OpenAiQueueWorker";
+import { OpenAiChatCommand } from "../data/OpenAiChatCommand";
+export declare class RunWorker extends OpenAiQueueWorker {
+    static isSupportedAction(action: unknown): action is OpenAiChatAction;
     private readonly toolsDispatchFactory;
-    /**
-     * Constructor
-     * @param firestore Firestore reference
-     * @param scheduler Task scheduler
-     * @param wrapper AI wrapper
-     * @param toolsDispatchFactory Tool dispatcher factory
-     */
     constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, toolsDispatchFactory: ToolContinuationFactory);
-    protected isSupportedAction(action: unknown): action is OpenAiChatAction;
-    create(): ChatWorker;
+    doDispatch(command: OpenAiChatCommand, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
 }

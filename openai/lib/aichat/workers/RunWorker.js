@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RunFactory = void 0;
+exports.RunWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
-const WorkerFactory_1 = require("./WorkerFactory");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
+    static isSupportedAction(action) {
+        return "run" === action;
+    }
     constructor(firestore, scheduler, wrapper, toolsDispatchFactory) {
         super(firestore, scheduler, wrapper);
         this.toolsDispatchFactory = toolsDispatchFactory;
@@ -32,24 +34,5 @@ class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         }
     }
 }
-class RunFactory extends WorkerFactory_1.WorkerFactory {
-    /**
-     * Constructor
-     * @param firestore Firestore reference
-     * @param scheduler Task scheduler
-     * @param wrapper AI wrapper
-     * @param toolsDispatchFactory Tool dispatcher factory
-     */
-    constructor(firestore, scheduler, wrapper, toolsDispatchFactory) {
-        super(firestore, scheduler, wrapper);
-        this.toolsDispatchFactory = toolsDispatchFactory;
-    }
-    isSupportedAction(action) {
-        return "run" === action;
-    }
-    create() {
-        return new RunWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory);
-    }
-}
-exports.RunFactory = RunFactory;
+exports.RunWorker = RunWorker;
 //# sourceMappingURL=RunWorker.js.map

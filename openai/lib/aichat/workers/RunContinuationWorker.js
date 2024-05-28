@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RunContinuationFactory = void 0;
+exports.RunContinuationWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
-const WorkerFactory_1 = require("./WorkerFactory");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 const OpenAiChatCommand_1 = require("../data/OpenAiChatCommand");
 class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
+    static isSupportedCommand(command) {
+        return (0, OpenAiChatCommand_1.isOpenAiContinuationCommand)(command);
+    }
     constructor(firestore, scheduler, wrapper, toolsDispatchFactory) {
         super(firestore, scheduler, wrapper);
         this.toolsDispatchFactory = toolsDispatchFactory;
@@ -38,29 +40,5 @@ class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         }
     }
 }
-class RunContinuationFactory extends WorkerFactory_1.WorkerFactory {
-    /**
-     * Constructor
-     * @param firestore Firestore reference
-     * @param scheduler Task scheduler
-     * @param wrapper AI wrapper
-     * @param toolsDispatchFactory Tool dispatcher factory
-     */
-    constructor(firestore, scheduler, wrapper, toolsDispatchFactory) {
-        super(firestore, scheduler, wrapper);
-        this.toolsDispatchFactory = toolsDispatchFactory;
-    }
-    /**
-     * Checks if command is supported
-     * @param command Command to check
-     * @return True if command is supported
-     */
-    isSupportedCommand(command) {
-        return (0, OpenAiChatCommand_1.isOpenAiContinuationCommand)(command);
-    }
-    create() {
-        return new RunContinuationWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory);
-    }
-}
-exports.RunContinuationFactory = RunContinuationFactory;
+exports.RunContinuationWorker = RunContinuationWorker;
 //# sourceMappingURL=RunContinuationWorker.js.map

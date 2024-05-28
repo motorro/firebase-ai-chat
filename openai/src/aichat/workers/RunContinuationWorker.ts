@@ -3,7 +3,7 @@ import {
     ChatData,
     ChatError,
     ChatState,
-    ChatWorker, Continuation,
+    Continuation,
     ContinuationRequest,
     DispatchControl,
     logger,
@@ -13,11 +13,14 @@ import {
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatActions} from "../data/OpenAiChatAction";
 import {AiWrapper} from "../AiWrapper";
-import {WorkerFactory} from "./WorkerFactory";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {isOpenAiContinuationCommand, OpenAiContinuationCommand} from "../data/OpenAiChatCommand";
 
-class RunContinuationWorker extends OpenAiQueueWorker {
+export class RunContinuationWorker extends OpenAiQueueWorker {
+    static isSupportedCommand(command: ChatCommand<unknown>): boolean {
+        return isOpenAiContinuationCommand(command);
+    }
+
     private readonly toolsDispatchFactory: ToolContinuationFactory;
 
     constructor(
@@ -96,37 +99,5 @@ class RunContinuationWorker extends OpenAiQueueWorker {
                 await this.continueNextInQueue(control, command);
             }
         }
-    }
-}
-
-export class RunContinuationFactory extends WorkerFactory {
-    private readonly toolsDispatchFactory: ToolContinuationFactory;
-    /**
-     * Constructor
-     * @param firestore Firestore reference
-     * @param scheduler Task scheduler
-     * @param wrapper AI wrapper
-     * @param toolsDispatchFactory Tool dispatcher factory
-     */
-    constructor(
-        firestore: FirebaseFirestore.Firestore,
-        scheduler: TaskScheduler,
-        wrapper: AiWrapper,
-        toolsDispatchFactory: ToolContinuationFactory
-    ) {
-        super(firestore, scheduler, wrapper);
-        this.toolsDispatchFactory = toolsDispatchFactory;
-    }
-
-    /**
-     * Checks if command is supported
-     * @param command Command to check
-     * @return True if command is supported
-     */
-    isSupportedCommand(command: ChatCommand<unknown>): boolean {
-        return isOpenAiContinuationCommand(command);
-    }
-    create(): ChatWorker {
-        return new RunContinuationWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory);
     }
 }

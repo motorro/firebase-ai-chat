@@ -1,21 +1,12 @@
-import { ChatCommand, ChatWorker, TaskScheduler, ToolContinuationFactory } from "@motorro/firebase-ai-chat-core";
+import { ChatCommand, ChatData, ChatState, DispatchControl, TaskScheduler, ToolContinuationFactory } from "@motorro/firebase-ai-chat-core";
+import { OpenAiAssistantConfig } from "../data/OpenAiAssistantConfig";
+import { OpenAiChatActions } from "../data/OpenAiChatAction";
 import { AiWrapper } from "../AiWrapper";
-import { WorkerFactory } from "./WorkerFactory";
-export declare class RunContinuationFactory extends WorkerFactory {
+import { OpenAiQueueWorker } from "./OpenAiQueueWorker";
+import { OpenAiContinuationCommand } from "../data/OpenAiChatCommand";
+export declare class RunContinuationWorker extends OpenAiQueueWorker {
+    static isSupportedCommand(command: ChatCommand<unknown>): boolean;
     private readonly toolsDispatchFactory;
-    /**
-     * Constructor
-     * @param firestore Firestore reference
-     * @param scheduler Task scheduler
-     * @param wrapper AI wrapper
-     * @param toolsDispatchFactory Tool dispatcher factory
-     */
     constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, toolsDispatchFactory: ToolContinuationFactory);
-    /**
-     * Checks if command is supported
-     * @param command Command to check
-     * @return True if command is supported
-     */
-    isSupportedCommand(command: ChatCommand<unknown>): boolean;
-    create(): ChatWorker;
+    doDispatch(command: OpenAiContinuationCommand, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
 }

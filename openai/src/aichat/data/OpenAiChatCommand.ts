@@ -4,6 +4,7 @@ import {
     isChatCommand, isContinuationCommand
 } from "@motorro/firebase-ai-chat-core";
 import {engineId} from "../../engineId";
+import {Request} from "firebase-functions/lib/common/providers/tasks";
 
 export interface OpenAiChatCommand extends ChatCommand<OpenAiChatActions> {
     readonly engine: typeof engineId
@@ -11,6 +12,10 @@ export interface OpenAiChatCommand extends ChatCommand<OpenAiChatActions> {
 
 export function isOpenAiChatCommand(data: unknown): data is OpenAiChatCommand {
     return isChatCommand(data) && "engine" in data && engineId === data.engine;
+}
+
+export function isOpenAiChatReq(req: Request<unknown>): req is Request<OpenAiChatCommand> {
+    return isOpenAiChatCommand(req.data);
 }
 
 export interface OpenAiContinuationMeta {

@@ -1,13 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.HandBackCleanupFactory = void 0;
+exports.HandBackCleanupWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiChatAction_1 = require("../data/OpenAiChatAction");
-const WorkerFactory_1 = require("./WorkerFactory");
 /**
  * Cleans-up OpenAI thread on hand-back
  */
 class HandBackCleanupWorker {
+    static isSupportedAction(action) {
+        return (0, OpenAiChatAction_1.isHandBackCleanupAction)(action);
+    }
     /**
      * Constructor
      * @param wrapper AI wrapper
@@ -37,13 +39,5 @@ class HandBackCleanupWorker {
         return false;
     }
 }
-class HandBackCleanupFactory extends WorkerFactory_1.WorkerFactory {
-    isSupportedAction(action) {
-        return (0, OpenAiChatAction_1.isHandBackCleanupAction)(action);
-    }
-    create() {
-        return new HandBackCleanupWorker(this.wrapper);
-    }
-}
-exports.HandBackCleanupFactory = HandBackCleanupFactory;
+exports.HandBackCleanupWorker = HandBackCleanupWorker;
 //# sourceMappingURL=HandBackCleanupWorker.js.map

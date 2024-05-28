@@ -2,17 +2,18 @@ import {
     ChatData,
     ChatError,
     ChatState,
-    ChatWorker,
     DispatchControl,
     logger
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {isPostExplicitAction, OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
-import {WorkerFactory} from "./WorkerFactory";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
-class PostExplicitWorker extends OpenAiQueueWorker {
+export class PostExplicitWorker extends OpenAiQueueWorker {
+    static isSupportedAction(action: unknown): action is OpenAiChatAction {
+        return isPostExplicitAction(action);
+    }
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
@@ -45,15 +46,6 @@ class PostExplicitWorker extends OpenAiQueueWorker {
         } else {
             return Promise.reject(new ChatError("unknown", true, "Expected explicit post action", JSON.stringify(postExplicit)));
         }
-    }
-}
-
-export class PostExplicitFactory extends WorkerFactory {
-    protected isSupportedAction(action: unknown): action is OpenAiChatAction {
-        return isPostExplicitAction(action);
-    }
-    create(): ChatWorker {
-        return new PostExplicitWorker(this.firestore, this.scheduler, this.wrapper);
     }
 }
 
