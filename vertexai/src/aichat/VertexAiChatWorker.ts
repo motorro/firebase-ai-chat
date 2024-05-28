@@ -59,7 +59,7 @@ export class VertexAiChatWorker implements ChatWorker {
             return new ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
         }
         if (SwitchToUserWorker.isSupportedAction(action)) {
-            logger.d("Action to be handled with ContinuePostWorker");
+            logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
         }
 

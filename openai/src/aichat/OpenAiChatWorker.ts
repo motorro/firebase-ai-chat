@@ -67,19 +67,19 @@ export class OpenAiChatWorker implements ChatWorker {
             return new PostWorker(this.firestore, this.scheduler, this.wrapper);
         }
         if (PostExplicitWorker.isSupportedAction(action)) {
-            logger.d("Action to be handled with ExplicitPostWorker");
+            logger.d("Action to be handled with PostExplicitWorker");
             return new PostExplicitWorker(this.firestore, this.scheduler, this.wrapper);
         }
         if (RetrieveWorker.isSupportedAction(action)) {
-            logger.d("Action to be handled with ExplicitPostWorker");
+            logger.d("Action to be handled with RetrieveWorker");
             return new RetrieveWorker(this.firestore, this.scheduler, this.wrapper);
         }
         if (RunWorker.isSupportedAction(action)) {
-            logger.d("Action to be handled with ExplicitPostWorker");
+            logger.d("Action to be handled with RunWorker");
             return new RunWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory);
         }
         if (SwitchToUserWorker.isSupportedAction(action)) {
-            logger.d("Action to be handled with ContinuePostWorker");
+            logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
         }
 

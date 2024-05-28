@@ -40,7 +40,7 @@ class VertexAiChatWorker {
             return new PostWorker_1.ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
         }
         if (SwitchToUserWorker_1.SwitchToUserWorker.isSupportedAction(action)) {
-            firebase_ai_chat_core_1.logger.d("Action to be handled with ContinuePostWorker");
+            firebase_ai_chat_core_1.logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker_1.SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
         }
         firebase_ai_chat_core_1.logger.w("Unsupported command:", command);
