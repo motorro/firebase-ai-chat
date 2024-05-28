@@ -37,7 +37,7 @@ describe("VertexAI wrapper", function() {
 
     const instructions: VertexAiSystemInstructions<Data> = {
         instructions: instructions1,
-            tools: {
+        tools: {
             dispatcher: () => ({error: "Unexpected instructions dispatch"}),
                 definition: toolsDefinition
         }
