@@ -38,9 +38,9 @@ class ToolContinuationSchedulerImpl {
                 return Promise.reject(new ChatError_1.ChatError("already-exists", true, "Inconsistent tool calls. Tool call already fulfilled"));
             }
             tx.set(toolCallDoc, Object.assign(Object.assign({}, toolCallData), { call: Object.assign(Object.assign({}, toolCallData.call), { response: response }) }));
-            if ((0, ToolsDispatcher_1.isDispatchSuccess)(response)) {
-                tx.set(continuationDocument, { data: response.data, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+            if ((0, ToolsDispatcher_1.isReducerSuccess)(response)) {
             }
+            tx.set(continuationDocument, Object.assign(Object.assign({}, ((0, ToolsDispatcher_1.isReducerSuccess)(response) ? { data: response.data } : {})), { updatedAt: FieldValue.serverTimestamp() }), { merge: true });
         });
         await this.scheduler.schedule(this.queueName, command);
     }

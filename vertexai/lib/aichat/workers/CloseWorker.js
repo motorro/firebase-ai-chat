@@ -2,12 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CloseWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
-const BaseVertexAiWorker_1 = require("./BaseVertexAiWorker");
-class CloseWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
-    isSupportedAction(action) {
+const VertexAiQueueWorker_1 = require("./VertexAiQueueWorker");
+class CloseWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
+    static isSupportedAction(action) {
         return "close" === action;
     }
-    async doDispatch(actions, data, state, control) {
+    async doDispatch(command, state, control) {
         firebase_ai_chat_core_1.logger.d("Closing chat...");
         const threadId = state.config.assistantConfig.threadId;
         if (undefined !== threadId) {
@@ -16,7 +16,7 @@ class CloseWorker extends BaseVertexAiWorker_1.BaseVertexAiWorker {
         await control.updateChatState({
             status: "complete"
         });
-        await this.continueQueue(control, actions.slice(1, actions.length));
+        await this.continueNextInQueue(control, command);
     }
 }
 exports.CloseWorker = CloseWorker;

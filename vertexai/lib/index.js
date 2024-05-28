@@ -1,11 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.factory = exports.VertexAiChatWorker = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isDispatchSuccess = exports.getDispatchSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.setLogger = exports.AssistantChat = void 0;
+exports.factory = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.setLogger = exports.AssistantChat = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
-const VertexAiChatWorker_1 = require("./aichat/VertexAiChatWorker");
-Object.defineProperty(exports, "VertexAiChatWorker", { enumerable: true, get: function () { return VertexAiChatWorker_1.VertexAiChatWorker; } });
 const VertexAICommandScheduler_1 = require("./aichat/VertexAICommandScheduler");
 const VertexAiWrapper_1 = require("./aichat/VertexAiWrapper");
+const VertexAiChatWorker_1 = require("./aichat/VertexAiChatWorker");
 var firebase_ai_chat_core_2 = require("@motorro/firebase-ai-chat-core");
 Object.defineProperty(exports, "AssistantChat", { enumerable: true, get: function () { return firebase_ai_chat_core_2.AssistantChat; } });
 Object.defineProperty(exports, "setLogger", { enumerable: true, get: function () { return firebase_ai_chat_core_2.setLogger; } });
@@ -15,8 +14,10 @@ var firebase_ai_chat_core_3 = require("@motorro/firebase-ai-chat-core");
 Object.defineProperty(exports, "isDispatchResult", { enumerable: true, get: function () { return firebase_ai_chat_core_3.isDispatchResult; } });
 Object.defineProperty(exports, "getDispatchError", { enumerable: true, get: function () { return firebase_ai_chat_core_3.getDispatchError; } });
 Object.defineProperty(exports, "isDispatchError", { enumerable: true, get: function () { return firebase_ai_chat_core_3.isDispatchError; } });
-Object.defineProperty(exports, "getDispatchSuccess", { enumerable: true, get: function () { return firebase_ai_chat_core_3.getDispatchSuccess; } });
-Object.defineProperty(exports, "isDispatchSuccess", { enumerable: true, get: function () { return firebase_ai_chat_core_3.isDispatchSuccess; } });
+Object.defineProperty(exports, "getFunctionSuccess", { enumerable: true, get: function () { return firebase_ai_chat_core_3.getFunctionSuccess; } });
+Object.defineProperty(exports, "getReducerSuccess", { enumerable: true, get: function () { return firebase_ai_chat_core_3.getReducerSuccess; } });
+Object.defineProperty(exports, "isFunctionSuccess", { enumerable: true, get: function () { return firebase_ai_chat_core_3.isFunctionSuccess; } });
+Object.defineProperty(exports, "isReducerSuccess", { enumerable: true, get: function () { return firebase_ai_chat_core_3.isReducerSuccess; } });
 var firebase_ai_chat_core_4 = require("@motorro/firebase-ai-chat-core");
 Object.defineProperty(exports, "isChatCommand", { enumerable: true, get: function () { return firebase_ai_chat_core_4.isChatCommand; } });
 Object.defineProperty(exports, "isBoundChatCommand", { enumerable: true, get: function () { return firebase_ai_chat_core_4.isBoundChatCommand; } });
@@ -38,7 +39,9 @@ Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: tru
  * @param taskScheduler Task scheduler that puts tasks to queue
  * @return Chat tools interface
  */
-function factory(firestore, functions, location, taskScheduler) {
+function factory(firestore, functions, location, 
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
+taskScheduler) {
     const _taskScheduler = taskScheduler || new firebase_ai_chat_core_1.FirebaseQueueTaskScheduler(functions, location);
     function defaultSchedulers(queueName, taskScheduler) {
         return [new VertexAICommandScheduler_1.VertexAICommandScheduler(queueName, taskScheduler)];
@@ -48,12 +51,9 @@ function factory(firestore, functions, location, taskScheduler) {
         chat: function (queueName) {
             return new firebase_ai_chat_core_1.AssistantChat(firestore, new VertexAICommandScheduler_1.VertexAICommandScheduler(queueName, _taskScheduler));
         },
-        ai(model, threadsPath) {
-            return new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath);
-        },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        worker: function (aiWrapper, instructions) {
-            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, aiWrapper, instructions);
+        worker: function (model, threadsPath, instructions) {
+            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath), instructions);
         }
     };
 }

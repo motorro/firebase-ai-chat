@@ -21,9 +21,9 @@ import {
     ContinuationCommand,
     ContinuationRequest,
     DispatchResult,
-    DispatchSuccess,
-    getDispatchSuccess,
-    isDispatchSuccess,
+    ReducerSuccess,
+    getReducerSuccess,
+    isReducerSuccess,
     ToolCallsResult,
     ToolsDispatcher
 } from "../../src";
@@ -63,7 +63,7 @@ describe("Tool continuation dispatcher", function() {
     describe("dispatch", function() {
         it("processes all tool calls", async function() {
             const results = [
-                data2,
+                {data: data2},
                 data3
             ];
             let resultIndex = 0;
@@ -96,7 +96,7 @@ describe("Tool continuation dispatcher", function() {
             }
 
             resolvedData.should.deep.equal({
-                data: data3,
+                data: data2,
                 responses: [
                     {
                         toolCallId: toolCall1.call.request.toolCallId,
@@ -106,7 +106,7 @@ describe("Tool continuation dispatcher", function() {
                     {
                         toolCallId: toolCall2.call.request.toolCallId,
                         toolName: toolCall2.call.request.toolName,
-                        response: {data: data3}
+                        response: {result: data3}
                     }
                 ]
             });
@@ -119,18 +119,18 @@ describe("Tool continuation dispatcher", function() {
 
         it("saves continuation if tools are suspended", async function() {
             const results: ReadonlyArray<Continuation<DispatchResult<Data>>> = [
-                Continuation.resolve(getDispatchSuccess(data2)),
+                Continuation.resolve(getReducerSuccess(data2)),
                 Continuation.suspend()
             ];
             let resultIndex = 0;
 
             const passedRequests: Array<ContinuationRequest> = [];
 
-            const runner = createDispatcher(() => {
+            const dispatcher = createDispatcher(() => {
                 return results[resultIndex++];
             });
 
-            const result = await runner.dispatch(
+            const result = await dispatcher.dispatch(
                 data,
                 [toolCall1.call.request, toolCall2.call.request],
                 (request) => {
@@ -218,10 +218,10 @@ describe("Tool continuation dispatcher", function() {
             }
 
             // Latest continuation data is set via scheduler
-            let latestSuccess: DispatchSuccess<Data> | null = null;
+            let latestSuccess: ReducerSuccess<Data> | null = null;
             for (let i = results.length - 1; i >= 0; --i) {
                 const r = results[i];
-                if (isDispatchSuccess(r)) {
+                if (isReducerSuccess(r)) {
                     latestSuccess = r;
                     break;
                 }
@@ -244,18 +244,18 @@ describe("Tool continuation dispatcher", function() {
         it("processes all tool calls", async function() {
             const command = await createCommand();
             const results = [
-                data2,
+                {data: data2},
                 data3
             ];
             let resultIndex = 0;
 
             const passedRequests: Array<ContinuationRequest> = [];
 
-            const runner = createDispatcher(() => {
+            const dispatcher = createDispatcher(() => {
                 return results[resultIndex++];
             });
 
-            const result = await runner.dispatchCommand(
+            const result = await dispatcher.dispatchCommand(
                 command,
                 (request) => {
                     passedRequests.push(request);
@@ -276,7 +276,7 @@ describe("Tool continuation dispatcher", function() {
             }
 
             resolvedData.should.deep.equal({
-                data: data3,
+                data: data2,
                 responses: [
                     {
                         toolCallId: toolCall1.call.request.toolCallId,
@@ -286,7 +286,7 @@ describe("Tool continuation dispatcher", function() {
                     {
                         toolCallId: toolCall2.call.request.toolCallId,
                         toolName: toolCall2.call.request.toolName,
-                        response: {data: data3}
+                        response: {result: data3}
                     }
                 ]
             });
@@ -298,7 +298,7 @@ describe("Tool continuation dispatcher", function() {
 
             continuation.dispatcherId.should.be.deep.equal(dispatcherId);
             continuation.state.should.be.equal("resolved");
-            continuation.data.should.be.deep.equal(data3);
+            continuation.data.should.be.deep.equal(data2);
 
             const savedTools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
             const tool1 = (await savedTools.doc(passedRequests[0].tool.toolId).get()).data();
@@ -331,7 +331,7 @@ describe("Tool continuation dispatcher", function() {
                         args: {a: 2}
                     },
                     response: {
-                        data: data3
+                        result: data3
                     }
                 }
             });
@@ -340,7 +340,7 @@ describe("Tool continuation dispatcher", function() {
         it("saves next tools when suspended", async function() {
             const command = await createCommand();
             const results: ReadonlyArray<Continuation<DispatchResult<Data>>> = [
-                Continuation.resolve(getDispatchSuccess(data2)),
+                Continuation.resolve(getReducerSuccess(data2)),
                 Continuation.suspend()
             ];
             let resultIndex = 0;
@@ -416,7 +416,7 @@ describe("Tool continuation dispatcher", function() {
                 }
             ]);
             const results: ReadonlyArray<Continuation<DispatchResult<Data>>> = [
-                Continuation.resolve(getDispatchSuccess(data3))
+                Continuation.resolve(getReducerSuccess(data3))
             ];
             let resultIndex = 0;
 

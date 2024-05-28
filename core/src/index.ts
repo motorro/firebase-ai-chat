@@ -20,15 +20,18 @@ export {Dispatch, Run, RunStatus} from "./aichat/data/Dispatch";
 export {Meta} from "./aichat/data/Meta";
 export {Logger, logger, setLogger} from "./logging";
 export {
-    DispatchSuccess,
+    FunctionSuccess,
+    ReducerSuccess,
     DispatchError,
     DispatchResult,
     ToolsDispatcher,
     isDispatchResult,
     getDispatchError,
     isDispatchError,
-    getDispatchSuccess,
-    isDispatchSuccess
+    getFunctionSuccess,
+    getReducerSuccess,
+    isFunctionSuccess,
+    isReducerSuccess
 } from "./aichat/ToolsDispatcher";
 export {AssistantChat} from "./aichat/AssistantChat";
 export {DispatchControl, ChatWorker} from "./aichat/workers/ChatWorker";

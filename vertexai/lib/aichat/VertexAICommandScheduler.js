@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VertexAICommandScheduler = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const VertexAiAssistantConfig_1 = require("./data/VertexAiAssistantConfig");
+const engineId_1 = require("../engineId");
 /**
  * Close command delay to settle down AI runs
  */
@@ -48,7 +49,7 @@ class VertexAICommandScheduler {
     }
     async schedule(common, actions, schedule) {
         const command = {
-            engine: "vertexai",
+            engine: engineId_1.engineId,
             commonData: common,
             actionData: actions
         };

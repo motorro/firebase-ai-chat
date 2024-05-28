@@ -2,9 +2,16 @@ import { ChatData } from "./data/ChatState";
 import { Continuation } from "./data/Continuation";
 import { ContinuationCommand } from "./data/ContinuationCommand";
 /**
- * Dispatch was successful
+ * Function Dispatch was successful. Contains function result
  */
-export interface DispatchSuccess<out DATA extends ChatData> {
+export interface FunctionSuccess {
+    readonly result: Record<string, unknown>;
+    readonly comment?: string;
+}
+/**
+ * Reducer Dispatch was successful. Contains changed data state
+ */
+export interface ReducerSuccess<out DATA extends ChatData> {
     readonly data: DATA;
     readonly comment?: string;
 }
@@ -17,14 +24,21 @@ export interface DispatchError {
 /**
  * Function dispatch result
  */
-export type DispatchResult<DATA extends ChatData> = DispatchSuccess<DATA> | DispatchError;
+export type DispatchResult<DATA extends ChatData> = FunctionSuccess | ReducerSuccess<DATA> | DispatchError;
 /**
  * Checks if `data` is `DispatchResult`
  * @param data Data to check
  * @return True if `data' is `DispatchResult`
  */
 export declare function isDispatchResult<DATA extends ChatData>(data: unknown): data is DispatchResult<DATA>;
-export type ToolDispatcherResult<DATA extends ChatData> = DATA | DispatchResult<DATA> | Continuation<DATA | DispatchResult<DATA>> | PromiseLike<DATA | DispatchResult<DATA> | Continuation<DATA | DispatchResult<DATA>>>;
+/**
+ * Tool dispatcher return value. May be:
+ * - Some value. Wrapped to `FunctionSuccess` and returned to AI
+ * - `DispatchResult` (`FunctionSuccess`, `ReducerSuccess`, `DispatchError' - this will be returned to AI tool
+ * - Continuation of above
+ * - Promise of above
+ */
+export type ToolDispatcherReturnValue<DATA extends ChatData> = DATA | DispatchResult<DATA> | Continuation<DATA | DispatchResult<DATA>> | PromiseLike<DATA | DispatchResult<DATA> | Continuation<DATA | DispatchResult<DATA>>>;
 /**
  * Represents a functions tools dispatcher that can execute different tools based on their names
  * @typedef {function} ToolsDispatcher
@@ -35,21 +49,34 @@ export type ToolDispatcherResult<DATA extends ChatData> = DATA | DispatchResult<
  * @see ToolsContinuation
  */
 export interface ToolsDispatcher<DATA extends ChatData> {
-    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>): ToolDispatcherResult<DATA>;
+    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>): ToolDispatcherReturnValue<DATA>;
 }
 /**
- * Creates a success result
+ * Creates a function success result
+ * @param result Function return value
+ * @param comment Comment to supplement evaluated data
+ * @returns Reducer success result
+ */
+export declare function getFunctionSuccess(result: Record<string, unknown>, comment?: string): FunctionSuccess;
+/**
+ * Creates a reducer success result
  * @param data Result data
  * @param comment Comment to supplement evaluated data
- * @returns Success result
+ * @returns Reducer success result
  */
-export declare function getDispatchSuccess<DATA extends ChatData>(data: DATA, comment?: string): DispatchSuccess<DATA>;
+export declare function getReducerSuccess<DATA extends ChatData>(data: DATA, comment?: string): ReducerSuccess<DATA>;
 /**
- * Checks if `data` is `DispatchSuccess`
+ * Checks if `data` is `ReducerSuccess`
  * @param data Data to check
- * @return True if `data' is `DispatchSuccess`
+ * @return True if `data' is `ReducerSuccess`
  */
-export declare function isDispatchSuccess<DATA extends ChatData>(data: unknown): data is DispatchSuccess<DATA>;
+export declare function isReducerSuccess<DATA extends ChatData>(data: unknown): data is ReducerSuccess<DATA>;
+/**
+ * Checks if `data` is `FunctionSuccess`
+ * @param data Data to check
+ * @return True if `data' is `FunctionSuccess`
+ */
+export declare function isFunctionSuccess(data: unknown): data is FunctionSuccess;
 /**
  * Evaluates the error message from tools dispatcher
  * @param e {unknown} Error to analyze
@@ -66,4 +93,4 @@ export declare function isDispatchError(data: unknown): data is DispatchError;
  * Wraps dispatch to continuation
  * @param block Dispatching code
  */
-export declare function dispatchToContinuation<DATA extends ChatData>(block: () => ToolDispatcherResult<DATA>): Promise<Continuation<DispatchResult<DATA>>>;
+export declare function dispatchToContinuation<DATA extends ChatData>(block: () => ToolDispatcherReturnValue<DATA>): Promise<Continuation<DispatchResult<DATA>>>;

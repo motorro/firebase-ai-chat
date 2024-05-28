@@ -7,7 +7,7 @@ import Firestore = firestore.Firestore;
 import { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
 import OpenAI from "openai";
 export { AssistantChat, ChatData, ChatState, ChatStatus, ChatMessage, Meta, Logger, setLogger, TaskScheduler, CommandScheduler, Collections, SystemInstructions, AiExample, AiResponseExample, AiFunctionCallExample, printAiExample } from "@motorro/firebase-ai-chat-core";
-export { DispatchSuccess, DispatchError, DispatchResult, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getDispatchSuccess, isDispatchSuccess } from "@motorro/firebase-ai-chat-core";
+export { FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess } from "@motorro/firebase-ai-chat-core";
 export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from "@motorro/firebase-ai-chat-core";
 export { FirebaseQueueTaskScheduler } from "@motorro/firebase-ai-chat-core";
 export { Continuation, SuspendedContinuation, ResolvedContinuation } from "@motorro/firebase-ai-chat-core";
@@ -38,27 +38,19 @@ export interface AiChat {
      */
     chat<DATA extends ChatData>(queueName: string): AssistantChat<DATA>;
     /**
-     * Creates AI wrapper that runs AI requests
+     * Chat worker to use in Firebase tasks
      * @param openAi OpenAI instance
      * @param dispatchers Tools dispatchers
-     * @return Instance of AI wrapper
-     * @see worker
-     */
-    ai(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): AiWrapper;
-    /**
-     * Chat worker to use in Firebase tasks
-     * @param aiWrapper AI API wrapper
      * @return Worker interface
      */
-    worker(aiWrapper: AiWrapper): OpenAiChatWorker;
+    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker;
 }
 /**
  * Chat tools factory
  * @param firestore Firestore instance
  * @param functions Functions instance
  * @param location Function location
- * @param dispatchers Tools dispatchers
  * @param taskScheduler Task scheduler that puts tasks to queue
  * @return Chat tools interface
  */
-export declare function factory(firestore: Firestore, functions: Functions, location: string, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>, taskScheduler?: TaskScheduler): AiChat;
+export declare function factory(firestore: Firestore, functions: Functions, location: string, taskScheduler?: TaskScheduler): AiChat;

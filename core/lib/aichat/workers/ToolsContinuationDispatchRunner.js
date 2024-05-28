@@ -22,7 +22,7 @@ class SequentialToolsContinuationDispatchRunner {
         const dispatchedTools = [];
         function pushResult(id, call, response) {
             dispatchedTools.push([id, Object.assign(Object.assign({}, call), { call: Object.assign(Object.assign({}, call.call), { response: response }) })]);
-            if (null != response && (0, ToolsDispatcher_1.isDispatchSuccess)(response)) {
+            if (null != response && (0, ToolsDispatcher_1.isReducerSuccess)(response)) {
                 currentData = response.data;
             }
         }

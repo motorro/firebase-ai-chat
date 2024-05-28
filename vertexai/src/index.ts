@@ -35,15 +35,18 @@ export {
     printAiExample
 } from "@motorro/firebase-ai-chat-core";
 export {
-    DispatchSuccess,
+    FunctionSuccess,
+    ReducerSuccess,
     DispatchError,
     DispatchResult,
     ToolsDispatcher,
     isDispatchResult,
     getDispatchError,
     isDispatchError,
-    getDispatchSuccess,
-    isDispatchSuccess
+    getFunctionSuccess,
+    getReducerSuccess,
+    isFunctionSuccess,
+    isReducerSuccess
 } from "@motorro/firebase-ai-chat-core";
 export {ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand} from "@motorro/firebase-ai-chat-core";
 export {FirebaseQueueTaskScheduler} from "@motorro/firebase-ai-chat-core";

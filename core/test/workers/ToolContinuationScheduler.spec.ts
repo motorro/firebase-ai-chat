@@ -19,9 +19,9 @@ import {
     ContinuationCommand,
     ContinuationRequest,
     DispatchResult,
-    DispatchSuccess,
-    getDispatchSuccess,
-    isDispatchSuccess,
+    ReducerSuccess,
+    getReducerSuccess,
+    isReducerSuccess,
     TaskScheduler
 } from "../../src";
 import {ToolCallData, ToolsContinuationData} from "../../src/aichat/data/ContinuationCommand";
@@ -83,10 +83,10 @@ describe("Tool continuation scheduler", function() {
         }
 
         // Latest continuation data is set via scheduler
-        let latestSuccess: DispatchSuccess<Data> | null = null;
+        let latestSuccess: ReducerSuccess<Data> | null = null;
         for (let i = results.length - 1; i >= 0; --i) {
             const r = results[i];
-            if (isDispatchSuccess(r)) {
+            if (isReducerSuccess(r)) {
                 latestSuccess = r;
                 break;
             }
@@ -112,10 +112,10 @@ describe("Tool continuation scheduler", function() {
     }
 
     it("updates tool call", async function() {
-        const command = await createCommand([getDispatchSuccess(data2)]);
+        const command = await createCommand([getReducerSuccess(data2)]);
         when(tScheduler.schedule(anything(), anything(), anything())).thenResolve();
 
-        await cScheduler.continue(command, getDispatchSuccess(data3));
+        await cScheduler.continue(command, getReducerSuccess(data3));
 
         const continuation = (await continuationDoc.get()).data();
         if (undefined === continuation) {
@@ -165,10 +165,10 @@ describe("Tool continuation scheduler", function() {
     });
 
     it("fails if tool call already updated", async function() {
-        const command = await createCommand([getDispatchSuccess(data2), getDispatchSuccess(data3)]);
+        const command = await createCommand([getReducerSuccess(data2), getReducerSuccess(data3)]);
         when(tScheduler.schedule(anything(), anything(), anything())).thenResolve();
 
-        return cScheduler.continue(command, getDispatchSuccess(data))
+        return cScheduler.continue(command, getReducerSuccess(data))
             .should
             .eventually
             .be.rejectedWith("Inconsistent tool calls. Tool call already fulfilled");

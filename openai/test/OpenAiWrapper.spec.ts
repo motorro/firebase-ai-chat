@@ -11,8 +11,7 @@ import {
 } from "@johanblumenberg/ts-mockito";
 import OpenAI from "openai";
 import {
-    Continuation,
-    getDispatchSuccess,
+    Continuation, getReducerSuccess,
     ToolCallRequest,
     ToolCallsResult
 } from "@motorro/firebase-ai-chat-core";
@@ -197,7 +196,7 @@ describe("OpenAI wrapper", function() {
             responses: [{
                 toolCallId: toolCallId,
                 toolName: "multiply",
-                response: getDispatchSuccess({
+                response: getReducerSuccess({
                     value: "4"
                 })
             }]
@@ -264,7 +263,7 @@ describe("OpenAI wrapper", function() {
                 toolsResult: [{
                     toolCallId: toolCallId,
                     toolName: "multiply",
-                    response: getDispatchSuccess({
+                    response: getReducerSuccess({
                         value: "4"
                     })
                 }]

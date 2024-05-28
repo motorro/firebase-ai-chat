@@ -3,7 +3,7 @@ import {
     DispatchError,
     DispatchResult,
     dispatchToContinuation, isDispatchError,
-    isDispatchSuccess,
+    isReducerSuccess,
     ToolsDispatcher
 } from "../ToolsDispatcher";
 import {
@@ -84,7 +84,7 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData> im
 
         function pushResult(id: DocumentReference<ToolCallData<DATA>>, call: ToolCallData<DATA>, response: DispatchResult<DATA> | null) {
             dispatchedTools.push([id, {...call, call: {...call.call, response: response}}]);
-            if (null != response && isDispatchSuccess(response)) {
+            if (null != response && isReducerSuccess(response)) {
                 currentData = response.data;
             }
         }

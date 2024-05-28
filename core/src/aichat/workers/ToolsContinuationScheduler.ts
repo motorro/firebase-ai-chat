@@ -1,4 +1,4 @@
-import {DispatchResult, isDispatchSuccess} from "../ToolsDispatcher";
+import {DispatchResult, isReducerSuccess} from "../ToolsDispatcher";
 import {ChatData} from "../data/ChatState";
 import {firestore} from "firebase-admin";
 import {logger} from "../../logging";
@@ -70,9 +70,17 @@ export class ToolContinuationSchedulerImpl<in DATA extends ChatData> implements 
                 return Promise.reject(new ChatError("already-exists", true, "Inconsistent tool calls. Tool call already fulfilled"));
             }
             tx.set(toolCallDoc, {...toolCallData, call: {...toolCallData.call, response: response}});
-            if (isDispatchSuccess(response)) {
-                tx.set(continuationDocument, {data: response.data, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+            if (isReducerSuccess(response)) {
+
             }
+            tx.set(
+                continuationDocument,
+                {
+                    ...(isReducerSuccess(response) ? {data: response.data} : {}),
+                    updatedAt: FieldValue.serverTimestamp()
+                },
+                {merge: true}
+            );
         });
         await this.scheduler.schedule(this.queueName, command);
     }

@@ -16,7 +16,7 @@ import {
     Continuation,
     ContinuationCommand, ContinuationRequestToolData,
     DispatchResult,
-    getDispatchSuccess,
+    getReducerSuccess,
     ToolsDispatcher
 } from "../../src";
 import {
@@ -75,11 +75,11 @@ describe("Tool continuation dispatch runner", function() {
         );
         result.should.deep.equal({
             suspended: false,
-            data: data2,
+            data: data,
             tools: [
                 [
                     toolCall1Id,
-                    {...toolCall1, call: {...toolCall1.call, response: {data: data2}}}
+                    {...toolCall1, call: {...toolCall1.call, response: {result: data2}}}
                 ]
             ]
         });
@@ -87,7 +87,7 @@ describe("Tool continuation dispatch runner", function() {
 
     it("processes tool calls returning DispatchResult", async function() {
         const runner = createRunner(() => {
-            return getDispatchSuccess(data2, "comment");
+            return getReducerSuccess(data2, "comment");
         });
         const result = await runner.dispatch(
             continuationData,
@@ -117,11 +117,11 @@ describe("Tool continuation dispatch runner", function() {
         );
         result.should.deep.equal({
             suspended: false,
-            data: data2,
+            data: data,
             tools: [
                 [
                     toolCall1Id,
-                    {...toolCall1, call: {...toolCall1.call, response: {data: data2}}}
+                    {...toolCall1, call: {...toolCall1.call, response: {result: data2}}}
                 ]
             ]
         });
@@ -129,7 +129,7 @@ describe("Tool continuation dispatch runner", function() {
 
     it("processes tool calls returning Continuation of dispatch result", async function() {
         const runner = createRunner(() => {
-            return Continuation.resolve(getDispatchSuccess(data2, "comment"));
+            return Continuation.resolve(getReducerSuccess(data2, "comment"));
         });
         const result = await runner.dispatch(
             continuationData,
@@ -171,7 +171,7 @@ describe("Tool continuation dispatch runner", function() {
 
     it("processes all tool calls", async function() {
         const results = [
-            data2,
+            {data: data2},
             data3
         ];
         let resultIndex = 0;
@@ -205,7 +205,7 @@ describe("Tool continuation dispatch runner", function() {
         );
         result.should.deep.equal({
             suspended: false,
-            data: data3,
+            data: data2,
             tools: [
                 [
                     toolCall1Id,
@@ -213,7 +213,7 @@ describe("Tool continuation dispatch runner", function() {
                 ],
                 [
                     toolCall2Id,
-                    {...toolCall2, call: {...toolCall2.call, response: {data: data3}}}
+                    {...toolCall2, call: {...toolCall2.call, response: {result: data3}}}
                 ]
             ]
         });
@@ -252,7 +252,7 @@ describe("Tool continuation dispatch runner", function() {
     it("suspends further tool calls if suspended", async function() {
         const results: ReadonlyArray<Continuation<DispatchResult<Data>>> = [
             Continuation.suspend(),
-            Continuation.resolve(getDispatchSuccess(data2))
+            Continuation.resolve(getReducerSuccess(data2))
         ];
         let resultIndex = 0;
 
@@ -290,7 +290,7 @@ describe("Tool continuation dispatch runner", function() {
 
     it("suspends tool calls if suspended", async function() {
         const results: ReadonlyArray<Continuation<DispatchResult<Data>>> = [
-            Continuation.resolve(getDispatchSuccess(data2)),
+            Continuation.resolve(getReducerSuccess(data2)),
             Continuation.suspend()
         ];
         let resultIndex = 0;

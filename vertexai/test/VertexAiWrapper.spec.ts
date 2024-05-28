@@ -2,7 +2,7 @@ import {anything, deepEqual, imock, instance, mock, reset, verify, when} from "@
 import {ChatSession, Content, GenerativeModel} from "@google-cloud/vertexai";
 import {
     Continuation,
-    getDispatchSuccess,
+    getReducerSuccess,
     ToolCallRequest,
     ToolCallsResult
 } from "@motorro/firebase-ai-chat-core";
@@ -147,7 +147,7 @@ describe("VertexAI wrapper", function() {
             responses: [{
                 toolCallId: "someFun",
                 toolName: "someFun",
-                response: getDispatchSuccess(data2)
+                response: getReducerSuccess(data2)
             }]
         };
         dispatcher = (d, tc) => {

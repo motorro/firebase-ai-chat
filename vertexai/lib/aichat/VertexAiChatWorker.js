@@ -7,29 +7,72 @@ const CloseWorker_1 = require("./workers/CloseWorker");
 const PostWorker_1 = require("./workers/PostWorker");
 const SwitchToUserWorker_1 = require("./workers/SwitchToUserWorker");
 const HandBackCleanupWorker_1 = require("./workers/HandBackCleanupWorker");
+const VertexAiChatCommand_1 = require("./data/VertexAiChatCommand");
 /**
  * Chat worker that dispatches chat commands and runs AI
  */
 class VertexAiChatWorker {
+    getWorker(command) {
+        firebase_ai_chat_core_1.logger.d("Dispatching VertexAi command...");
+        if (PostWorker_1.ContinuePostWorker.isSupportedCommand(command)) {
+            firebase_ai_chat_core_1.logger.d("Action to be handled with ContinuePostWorker");
+            return new PostWorker_1.ContinuePostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+        }
+        const action = command.actionData[0];
+        if (CloseWorker_1.CloseWorker.isSupportedAction(action)) {
+            firebase_ai_chat_core_1.logger.d("Action to be handled with CloseWorker");
+            return new CloseWorker_1.CloseWorker(this.firestore, this.scheduler, this.wrapper);
+        }
+        if (CreateWorker_1.CreateWorker.isSupportedAction(action)) {
+            firebase_ai_chat_core_1.logger.d("Action to be handled with CreateWorker");
+            return new CreateWorker_1.CreateWorker(this.firestore, this.scheduler, this.wrapper);
+        }
+        if (HandBackCleanupWorker_1.HandBackCleanupWorker.isSupportedAction(action)) {
+            firebase_ai_chat_core_1.logger.d("Action to be handled with HandBackCleanupWorker");
+            return new HandBackCleanupWorker_1.HandBackCleanupWorker(this.wrapper);
+        }
+        if (PostWorker_1.PostWorker.isSupportedAction(action)) {
+            firebase_ai_chat_core_1.logger.d("Action to be handled with PostWorker");
+            return new PostWorker_1.PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+        }
+        if (PostWorker_1.ExplicitPostWorker.isSupportedAction(action)) {
+            firebase_ai_chat_core_1.logger.d("Action to be handled with ExplicitPostWorker");
+            return new PostWorker_1.ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+        }
+        if (SwitchToUserWorker_1.SwitchToUserWorker.isSupportedAction(action)) {
+            firebase_ai_chat_core_1.logger.d("Action to be handled with ContinuePostWorker");
+            return new SwitchToUserWorker_1.SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
+        }
+        firebase_ai_chat_core_1.logger.w("Unsupported command:", command);
+        return undefined;
+    }
     constructor(firestore, scheduler, wrapper, 
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    instructions) {
-        this.workers = [
-            new CloseWorker_1.CloseWorker(firestore, scheduler, wrapper, instructions),
-            new CreateWorker_1.CreateWorker(firestore, scheduler, wrapper, instructions),
-            new PostWorker_1.PostWorker(firestore, scheduler, wrapper, instructions),
-            new PostWorker_1.ExplicitPostWorker(firestore, scheduler, wrapper, instructions),
-            new SwitchToUserWorker_1.SwitchToUserWorker(firestore, scheduler, wrapper, instructions),
-            new HandBackCleanupWorker_1.HandBackCleanupWorker(wrapper)
-        ];
+    instructions, getContinuationFactory) {
+        this.firestore = firestore;
+        this.scheduler = scheduler;
+        this.wrapper = wrapper;
+        this.instructions = instructions;
+        this.getContinuationFactory = getContinuationFactory || (() => {
+            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+            const dispatchers = {};
+            Object.keys(this.instructions).forEach((id) => {
+                var _a, _b;
+                const dispatcher = (_b = (_a = this.instructions[id]) === null || _a === void 0 ? void 0 : _a.tools) === null || _b === void 0 ? void 0 : _b.dispatcher;
+                if (undefined !== dispatcher) {
+                    dispatchers[id] = dispatcher;
+                }
+            });
+            return (0, firebase_ai_chat_core_1.toolContinuationFactory)(this.firestore, dispatchers, this.scheduler);
+        });
     }
     async dispatch(req, onQueueComplete) {
-        for (let i = 0; i < this.workers.length; ++i) {
-            if (await this.workers[i].dispatch(req, onQueueComplete)) {
-                return true;
+        if ((0, VertexAiChatCommand_1.isVertexAiChatReq)(req)) {
+            const worker = this.getWorker(req.data);
+            if (undefined !== worker) {
+                return await worker.dispatch(req, onQueueComplete);
             }
         }
-        firebase_ai_chat_core_1.logger.d("Didn't find worker for command:", JSON.stringify(req.data));
         return false;
     }
 }

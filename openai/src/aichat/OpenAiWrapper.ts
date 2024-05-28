@@ -2,8 +2,7 @@ import {
     ChatData,
     ChatError,
     Continuation,
-    isDispatchError,
-    isDispatchSuccess,
+    isDispatchError, isReducerSuccess,
     logger,
     Messages,
     ToolCallRequest,
@@ -177,7 +176,7 @@ export class OpenAiWrapper implements AiWrapper {
         let data: DATA = dataSoFar;
         for (const r of request.toolsResult) {
             const response = r.response;
-            if (isDispatchSuccess(response)) {
+            if (isReducerSuccess(response)) {
                 data = response.data;
             }
             if (isDispatchError(response)) {

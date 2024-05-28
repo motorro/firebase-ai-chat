@@ -117,7 +117,7 @@ class OpenAiWrapper {
         let data = dataSoFar;
         for (const r of request.toolsResult) {
             const response = r.response;
-            if ((0, firebase_ai_chat_core_1.isDispatchSuccess)(response)) {
+            if ((0, firebase_ai_chat_core_1.isReducerSuccess)(response)) {
                 data = response.data;
             }
             if ((0, firebase_ai_chat_core_1.isDispatchError)(response)) {

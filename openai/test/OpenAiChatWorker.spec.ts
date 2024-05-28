@@ -22,7 +22,7 @@ import {
     ChatWorker,
     Collections,
     Continuation, ContinuationRequest,
-    Dispatch, getDispatchSuccess,
+    Dispatch, getReducerSuccess,
     Meta,
     Run,
     TaskScheduler, ToolCallRequest,
@@ -289,7 +289,7 @@ describe("Chat worker", function() {
             responses: [{
                 toolCallId: "toolId",
                 toolName: "toolName",
-                response: getDispatchSuccess({
+                response: getReducerSuccess({
                     value: "Test2"
                 })
             }]
@@ -383,7 +383,7 @@ describe("Chat worker", function() {
             responses: [{
                 toolCallId: "toolId",
                 toolName: "toolName",
-                response: getDispatchSuccess({
+                response: getReducerSuccess({
                     value: "Test2"
                 })
             }]

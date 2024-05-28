@@ -44,7 +44,8 @@ class VertexAiWrapper {
     /**
      * Sometimes Gemini creates a call with faulty data:
      * '{"functionCall":{"args":{"value":25}}}'
-     * @param part
+     * @param part Part to check
+     * @return True if part is a function call
      * @private
      */
     static checkFunctionCall(part) {
@@ -81,16 +82,31 @@ class VertexAiWrapper {
         await doc.set({ meta: meta });
         return doc.id;
     }
-    async postMessage(threadId, instructions, messages, dataSoFar) {
+    async postMessage(threadId, instructions, messages, dataSoFar, dispatch) {
+        firebase_ai_chat_core_1.logger.d("Posting messages...");
+        return await this.doPost(threadId, instructions, messages.map((it) => ({
+            text: it
+        })), dataSoFar, dispatch);
+    }
+    /**
+     * Maintains conversation data
+     * @param threadId Thread ID
+     * @param instructions Instructions
+     * @param parts Parts to post
+     * @param dataSoFar Data so far
+     * @param dispatch Dispatch function
+     * @return Post result
+     * @private
+     */
+    async doPost(threadId, instructions, parts, dataSoFar, dispatch) {
         const tools = instructions.tools;
         const params = Object.assign(Object.assign({ systemInstruction: VertexAiWrapper.generateSystemInstructions(instructions) }, (undefined !== tools ? { tools: tools.definition } : {})), { history: (await this.getThreadMessages(threadId)).map((it) => it[1].content) });
         const chat = this.model.startChat(params);
-        const result = await this.doPostMessage(chat, messages.map((it) => ({
-            text: it
-        })), (tools === null || tools === void 0 ? void 0 : tools.dispatcher) || ((data) => Promise.resolve(data)), { data: dataSoFar, messages: [] });
+        const result = await this.run(chat, parts, { data: dataSoFar, messages: [] }, dispatch);
+        const { data: stateData, messages: stateMessages } = result.state;
         const resultMessages = [];
         const batch = this.firestore.batch();
-        result.messages.forEach((threadMessage) => {
+        stateMessages.forEach((threadMessage) => {
             const mDoc = this.getThreadMessageCollection(threadId).doc();
             batch.set(mDoc, threadMessage);
             if ("model" === threadMessage.content.role) {
@@ -112,12 +128,32 @@ class VertexAiWrapper {
             }
         });
         await batch.commit();
-        return {
-            data: result.data,
-            messages: resultMessages
-        };
+        if (false === result.suspended) {
+            return firebase_ai_chat_core_1.Continuation.resolve({
+                data: stateData,
+                messages: resultMessages
+            });
+        }
+        return firebase_ai_chat_core_1.Continuation.suspend();
     }
-    async doPostMessage(chat, parts, dispatcher, soFar) {
+    processToolsResponse(threadId, instructions, request, dataSoFar, dispatch) {
+        return this.doPost(threadId, instructions, request.toolsResult.map((it) => ({
+            functionResponse: {
+                name: it.toolName,
+                response: it.response
+            }
+        })), dataSoFar, dispatch);
+    }
+    /**
+     * Runs AI
+     * @param chat Chat session
+     * @param parts Parts to provide
+     * @param soFar Data so far
+     * @param dispatch Dispatching function
+     * @return Inter-run session state
+     * @private
+     */
+    async run(chat, parts, soFar, dispatch) {
         var _a, _b, _c;
         let data = soFar.data;
         let nextBatchSortIndex = ((_a = soFar.messages[soFar.messages.length - 1]) === null || _a === void 0 ? void 0 : _a.inBatchSortIndex) || 0;
@@ -132,6 +168,63 @@ class VertexAiWrapper {
                 inBatchSortIndex: ++nextBatchSortIndex
             }
         ];
+        /**
+         * Runs tools
+         * @param toolCalls Tool calls
+         * @return Next state
+         */
+        const runTools = async (toolCalls) => {
+            if (0 === toolCalls.length) {
+                return { suspended: false, state: { data: data, messages: messages } };
+            }
+            firebase_ai_chat_core_1.logger.d("Dispatching tools...");
+            // Gemini misses function names from time to time
+            let nameErrorIn = -1;
+            let nameError = undefined;
+            for (let i = 0; i < toolCalls.length; ++i) {
+                if (nameErrorIn < 0) {
+                    const checkError = VertexAiWrapper.checkFunctionCall(toolCalls[i]);
+                    if (undefined !== checkError) {
+                        nameErrorIn = i;
+                        nameError = checkError;
+                    }
+                    break;
+                }
+            }
+            if (nameErrorIn >= 0 && undefined !== nameError) {
+                firebase_ai_chat_core_1.logger.w(`Empty function name in part ${nameErrorIn}`);
+                const thisError = nameError;
+                const otherError = {
+                    error: `Function call was not done because you didn't provide a function name in part with index ${nameErrorIn}!`
+                };
+                return await this.run(chat, toolCalls.map((it, index) => ({
+                    functionResponse: {
+                        name: it.functionCall.name || "function name was not provided",
+                        response: index === nameErrorIn ? thisError : otherError
+                    }
+                })), { data: data, messages: messages }, dispatch);
+            }
+            const result = await dispatch(data, toolCalls.map((part) => ({
+                toolCallId: part.functionCall.name,
+                toolName: part.functionCall.name,
+                soFar: data,
+                args: part.functionCall.args
+            })));
+            if (result.isResolved()) {
+                firebase_ai_chat_core_1.logger.d("All tools dispatched");
+                data = result.value.data;
+                return await this.run(chat, result.value.responses.map((it) => ({
+                    functionResponse: {
+                        name: it.toolName,
+                        response: it.response
+                    }
+                })), { data: result.value.data, messages: messages }, dispatch);
+            }
+            else {
+                firebase_ai_chat_core_1.logger.d("Some tools suspended...");
+                return { suspended: true, state: { data: data, messages: messages } };
+            }
+        };
         let aiResult = undefined;
         try {
             aiResult = (_c = (_b = (await chat.sendMessage(parts)).response) === null || _b === void 0 ? void 0 : _b.candidates) === null || _c === void 0 ? void 0 : _c.at(0);
@@ -149,37 +242,11 @@ class VertexAiWrapper {
             createdAt: Timestamp.now(),
             inBatchSortIndex: ++nextBatchSortIndex
         });
-        const functionResults = [];
-        for (const part of aiResult.content.parts) {
-            if (VertexAiWrapper.isFunctionCall(part)) {
-                firebase_ai_chat_core_1.logger.d("Function called:", JSON.stringify(part));
-                let dispatchResult;
-                const checkError = VertexAiWrapper.checkFunctionCall(part);
-                if (undefined !== checkError) {
-                    dispatchResult = checkError;
-                }
-                else {
-                    try {
-                        data = await dispatcher(data, part.functionCall.name, part.functionCall.args);
-                        dispatchResult = { data: data };
-                    }
-                    catch (e) {
-                        firebase_ai_chat_core_1.logger.w("Error dispatching function:", e);
-                        dispatchResult = (0, firebase_ai_chat_core_1.getDispatchError)(e);
-                    }
-                }
-                functionResults.push({
-                    functionResponse: {
-                        name: part.functionCall.name || "function name was not provided",
-                        response: dispatchResult
-                    }
-                });
-            }
+        const functionCalls = aiResult.content.parts.filter(VertexAiWrapper.isFunctionCall);
+        if (0 !== functionCalls.length) {
+            return runTools(functionCalls);
         }
-        if (0 !== functionResults.length) {
-            return await this.doPostMessage(chat, functionResults, dispatcher, { data: data, messages: messages });
-        }
-        return { data: data, messages: messages };
+        return { suspended: false, state: { data: data, messages: messages } };
     }
     async deleteThread(threadId) {
         await this.firestore.recursiveDelete(this.threads.doc(threadId));
