@@ -296,11 +296,12 @@ describe("Chat worker", function() {
         };
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
+        // eslint-disable-next-line max-len
         when(toolDispatcher.dispatch(anything(), anything(), anything())).thenCall(async (data, calls, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
             const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
-            command.actionData.should.deep.equal(["continueRun", ...runCommand.actionData]);
+            command.actionData.should.deep.equal(["continueRun", "retrieve"]);
             command.continuation.should.deep.equal({
                 continuationId: continuationId,
                 tool: {

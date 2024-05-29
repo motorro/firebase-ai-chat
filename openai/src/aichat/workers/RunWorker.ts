@@ -59,7 +59,7 @@ export class RunWorker extends OpenAiQueueWorker {
             const getContinuationCommand = (continuationRequest: ContinuationRequest): OpenAiContinuationCommand => ({
                 // Shift following actions and add continuation run
                 ...command,
-                actionData: ["continueRun", ...command.actionData],
+                actionData: ["continueRun", ...command.actionData.slice(1)],
                 continuation: continuationRequest,
                 meta: {
                     runId: runId

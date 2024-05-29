@@ -20,7 +20,7 @@ class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         }
         const dispatcher = this.toolsDispatchFactory.getDispatcher(command.commonData.chatDocumentPath, state.config.assistantConfig.dispatcherId);
         const dispatch = async (data, toolCalls, runId) => {
-            const getContinuationCommand = (continuationRequest) => (Object.assign(Object.assign({}, command), { actionData: ["continueRun", ...command.actionData], continuation: continuationRequest, meta: {
+            const getContinuationCommand = (continuationRequest) => (Object.assign(Object.assign({}, command), { actionData: ["continueRun", ...command.actionData.slice(1)], continuation: continuationRequest, meta: {
                     runId: runId
                 } }));
             return await dispatcher.dispatch(data, toolCalls, getContinuationCommand);

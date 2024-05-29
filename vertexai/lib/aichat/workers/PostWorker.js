@@ -31,7 +31,7 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
     getPostDispatch(command, dispatcherId) {
         const dispatcher = this.getDispatcherFactory().getDispatcher(command.commonData.chatDocumentPath, dispatcherId);
         return async (data, toolCalls) => {
-            const getContinuationCommand = (continuationRequest) => (Object.assign(Object.assign({}, command), { actionData: ["continuePost", ...command.actionData], continuation: continuationRequest }));
+            const getContinuationCommand = (continuationRequest) => (Object.assign(Object.assign({}, command), { actionData: ["continuePost", ...command.actionData.slice(1)], continuation: continuationRequest }));
             return await dispatcher.dispatch(data, toolCalls, getContinuationCommand);
         };
     }

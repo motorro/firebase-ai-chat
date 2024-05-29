@@ -318,7 +318,7 @@ describe("Chat worker", function() {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
             const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
-            command.actionData.should.deep.equal(["continuePost", ...postCommand.actionData]);
+            command.actionData.should.deep.equal(["continuePost"]);
             command.continuation.should.deep.equal({
                 continuationId: continuationId,
                 tool: {

@@ -90,7 +90,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
             const getContinuationCommand = (continuationRequest: ContinuationRequest): VertexAiContinuationCommand => ({
                 // Shift following actions and add continuation run
                 ...command,
-                actionData: ["continuePost", ...command.actionData],
+                actionData: ["continuePost", ...command.actionData.slice(1)],
                 continuation: continuationRequest
             });
 
