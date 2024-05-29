@@ -28,6 +28,7 @@ Supported AI engines:
   * [Handling user messages](#handling-user-messages)
   * [Running AI](#running-ai)
   * [Using OpenAI function tools](#using-openai-function-tools)
+  * [Tool continuation](#tool-continuation)
 - [Client application](#client-application)
 
 <!-- tocstop -->
@@ -533,8 +534,9 @@ const whenResultIsReady = async (data: string) => {
       await continuationScheduler.continue(continuation, {result: {answer: data}});
   }
 }
-
 ```
+Example of suspending tool dispatch in tools reducer could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L42).
+Example of resuming AI run could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts#L136).
 
 ## Client application
 The sample project includes a sample KMP [Android application](https://github.com/motorro/firebase-openai-chat-project/tree/master/Client)
