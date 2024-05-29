@@ -1,39 +1,45 @@
-import {ChatState, ChatData, DispatchControl, logger, ChatError, ChatCommandData} from "@motorro/firebase-ai-chat-core";
+import {
+    ChatState,
+    ChatData,
+    DispatchControl,
+    logger,
+    ChatError,
+} from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {OpenAiChatActions} from "../data/OpenAiChatAction";
-import {BaseOpenAiWorker} from "./BaseOpenAiWorker";
+import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {firestore} from "firebase-admin";
 import FieldValue = firestore.FieldValue;
+import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
+import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
-export class RetrieveWorker extends BaseOpenAiWorker {
-    protected isSupportedAction(action: string): boolean {
+export class RetrieveWorker extends OpenAiQueueWorker {
+    static isSupportedAction(action: unknown): action is OpenAiChatAction {
         return "retrieve" === action;
     }
 
     async doDispatch(
-        actions: OpenAiChatActions,
-        data: ChatCommandData,
+        command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
         logger.d("Retrieving messages...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
 
-        const messageCollectionRef = this.getMessageCollection(data.chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(data.chatDocumentPath, data.dispatchId);
+        const messageCollectionRef = this.getMessageCollection(command.commonData.chatDocumentPath);
+        const latestInBatchId = await this.getNextBatchSortIndex(command.commonData.chatDocumentPath, command.commonData.dispatchId);
 
-        const newMessages = await this.wrapper.getMessages(threadId, state.lastMessageId);
+        const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         const batch = this.db.batch();
         newMessages.messages.forEach((message, index) => {
             batch.set(
                 messageCollectionRef.doc(),
                 {
-                    userId: data.ownerId,
-                    dispatchId: data.dispatchId,
+                    userId: command.commonData.ownerId,
+                    dispatchId: command.commonData.dispatchId,
                     author: "ai",
                     text: message[1],
                     inBatchSortIndex: latestInBatchId + index,
@@ -42,10 +48,12 @@ export class RetrieveWorker extends BaseOpenAiWorker {
             );
         });
         await batch.commit();
-        await control.updateChatState({
-            lastMessageId: newMessages.latestMessageId
-        });
+        await this.updateConfig(
+            control,
+            state,
+            () => ({lastMessageId: newMessages.latestMessageId})
+        );
 
-        await this.continueQueue(control, actions.slice(1, actions.length));
+        await this.continueNextInQueue(control, command);
     }
 }

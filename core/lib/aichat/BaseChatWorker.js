@@ -213,4 +213,4 @@ class BaseChatWorker {
     }
 }
 exports.BaseChatWorker = BaseChatWorker;
-//# sourceMappingURL=BaseChatWorker.js.map
+//# sourceMappingURL=ChatWorker.js.map

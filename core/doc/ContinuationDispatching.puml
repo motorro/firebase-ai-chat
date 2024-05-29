@@ -1,0 +1,56 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+participant AI
+participant Worker
+participant ToolContinuationDispatcher
+participant ToolDispatcher
+participant ToolContinuationScheduler
+entity ToolContinuation
+entity ContinuationCommand
+
+Worker -> AI: run
+Worker <- AI: runTools(tool1, tool2)
+Worker -> ToolContinuationDispatcher: dispatch(tool1, tool2)
+create ToolContinuation
+ToolContinuationDispatcher -> ToolContinuation: create
+create ContinuationCommand
+ToolContinuationDispatcher -> ContinuationCommand: create
+ToolContinuation -> ContinuationCommand: set continuation id
+ToolContinuationDispatcher -> ToolDispatcher: run(command, tool1)
+ToolContinuationDispatcher <-- ToolDispatcher: result1
+ToolContinuationDispatcher -> ToolContinuation: save(result1)
+note left
+Tool is processed at once
+end note
+ToolContinuationDispatcher -> ToolDispatcher: run(command, tool2)
+ToolContinuationDispatcher <-- ToolDispatcher: SUSPENDED
+note left
+Tool suspends saving
+continuation command elsewhere
+end note
+Worker <-- ToolContinuationDispatcher: SUSPENDED
+
+== Continuation ==
+
+ToolDispatcher -> ToolContinuationScheduler: continue(command, result2)
+note left
+When result is ready dispatcher uses
+saved command to resume tool processing
+end note
+ToolContinuationScheduler -> ContinuationCommand: get continuation id
+ToolContinuationScheduler <-- ContinuationCommand: continuation
+ToolContinuationScheduler -> ToolContinuation: save(result2)
+ToolContinuationScheduler -> Worker: schedule(command)
+...
+Worker -> ToolContinuationDispatcher: dispatchCommand(command)
+ToolContinuationDispatcher -> ContinuationCommand: get continuation id
+ToolContinuationDispatcher <-- ContinuationCommand: continuation
+ToolContinuationDispatcher -> ToolContinuation: get results
+ToolContinuationDispatcher <-- ToolContinuation: result1, result2
+Worker <-- ToolContinuationDispatcher: result1, result2
+Worker -> AI: submitResults(result1, result2)
+
+@enduml

@@ -1,21 +1,19 @@
-import { BaseChatWorker, ChatCommand, ChatData, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
+import { BaseChatWorker, ChatCommand, ChatData, ChatState, TaskScheduler } from "@motorro/firebase-ai-chat-core";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
-import { OpenAiChatActions } from "../data/OpenAiChatAction";
+import { OpenAiChatAction, OpenAiChatActions } from "../data/OpenAiChatAction";
 import { OpenAiAssistantConfig } from "../data/OpenAiAssistantConfig";
 import { OpenAiDispatchControl } from "../OpenAiChatWorker";
 import { AiWrapper } from "../AiWrapper";
-export declare abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
+import { ActionWorker } from "./ActionWorker";
+export declare abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> implements ActionWorker {
     protected readonly wrapper: AiWrapper;
-    protected readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
-    protected readonly defaultDispatcher: ToolsDispatcher<ChatData>;
     /**
      * Constructor
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
-     * @param dispatchers Tools dispatcher map
      */
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>);
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper);
     /**
      * Checks if command passed in `req` is supported by this dispatcher
      * @param req Dispatch request
@@ -24,12 +22,12 @@ export declare abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChat
      */
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<OpenAiChatActions>>;
     /**
-     * Is supported Open AI command
+     * Is supported Open AI action
      * @param action Command to check
      * @returns true if worker supports the command
      * @protected
      */
-    protected abstract isSupportedAction(action: string): boolean;
+    abstract isSupportedAction(action: unknown): action is OpenAiChatAction;
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
      * @param control Dispatch control
@@ -44,4 +42,12 @@ export declare abstract class BaseOpenAiWorker extends BaseChatWorker<OpenAiChat
      * @protected
      */
     private runSwitchToUser;
+    /**
+     * Updates config
+     * @param control Chat control
+     * @param state Current state
+     * @param update Builds config changes
+     * @protected
+     */
+    protected updateConfig(control: OpenAiDispatchControl, state: ChatState<OpenAiAssistantConfig, ChatData>, update: (soFar: OpenAiAssistantConfig) => Partial<OpenAiAssistantConfig>): Promise<void>;
 }

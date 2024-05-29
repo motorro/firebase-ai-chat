@@ -1,8 +1,9 @@
-import { ChatCommandData, ChatState, ChatData, DispatchControl } from "@motorro/firebase-ai-chat-core";
+import { ChatState, ChatData, DispatchControl } from "@motorro/firebase-ai-chat-core";
 import { OpenAiAssistantConfig } from "../data/OpenAiAssistantConfig";
-import { OpenAiChatActions } from "../data/OpenAiChatAction";
-import { BaseOpenAiWorker } from "./BaseOpenAiWorker";
-export declare class CloseWorker extends BaseOpenAiWorker {
-    protected isSupportedAction(action: string): boolean;
-    doDispatch(actions: OpenAiChatActions, data: ChatCommandData, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
+import { OpenAiChatAction, OpenAiChatActions } from "../data/OpenAiChatAction";
+import { OpenAiQueueWorker } from "./OpenAiQueueWorker";
+import { OpenAiChatCommand } from "../data/OpenAiChatCommand";
+export declare class CloseWorker extends OpenAiQueueWorker {
+    static isSupportedAction(action: unknown): action is OpenAiChatAction;
+    doDispatch(command: OpenAiChatCommand, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
 }

@@ -1,9 +1,10 @@
-import { ChatData } from "@motorro/firebase-ai-chat-core";
+import { ChatData, Continuation, ToolCallRequest, ToolCallsResult } from "@motorro/firebase-ai-chat-core";
 import { GenerativeModel } from "@google-cloud/vertexai";
 import { VertexAiSystemInstructions } from "./data/VertexAiSystemInstructions";
 import { firestore } from "firebase-admin";
 import { AiWrapper, PostMessageResult } from "./AiWrapper";
 import { ThreadMessage } from "./data/ThreadMessage";
+import { RunContinuationRequest } from "./data/RunResponse";
 import CollectionReference = firestore.CollectionReference;
 /**
  * Wraps Open AI assistant use
@@ -29,7 +30,8 @@ export declare class VertexAiWrapper implements AiWrapper {
     /**
      * Sometimes Gemini creates a call with faulty data:
      * '{"functionCall":{"args":{"value":25}}}'
-     * @param part
+     * @param part Part to check
+     * @return True if part is a function call
      * @private
      */
     private static checkFunctionCall;
@@ -49,7 +51,28 @@ export declare class VertexAiWrapper implements AiWrapper {
      */
     getThreadMessages(threadId: string): Promise<ReadonlyArray<[string, ThreadMessage]>>;
     createThread(meta: Readonly<Record<string, string>>): Promise<string>;
-    postMessage<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, messages: ReadonlyArray<string>, dataSoFar: DATA): Promise<PostMessageResult<DATA>>;
-    private doPostMessage;
+    postMessage<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, messages: ReadonlyArray<string>, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
+    /**
+     * Maintains conversation data
+     * @param threadId Thread ID
+     * @param instructions Instructions
+     * @param parts Parts to post
+     * @param dataSoFar Data so far
+     * @param dispatch Dispatch function
+     * @return Post result
+     * @private
+     */
+    private doPost;
+    processToolsResponse<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, request: RunContinuationRequest<DATA>, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
+    /**
+     * Runs AI
+     * @param chat Chat session
+     * @param parts Parts to provide
+     * @param soFar Data so far
+     * @param dispatch Dispatching function
+     * @return Inter-run session state
+     * @private
+     */
+    private run;
     deleteThread(threadId: string): Promise<void>;
 }

@@ -1,9 +1,17 @@
 import {ChatCommandData} from "./data/ChatCommandData";
+import {AssistantConfig} from "./data/ChatState";
 
 /**
  * Schedules common chat commands
  */
 export interface CommandScheduler {
+    /**
+     * Checks is passed config is supported by command scheduler
+     * @param config Assistant config
+     * @return True if config is supported
+     */
+    isSupported(config: AssistantConfig): boolean
+
     /**
      * Creates chat
      * @param common Common command data
@@ -27,6 +35,20 @@ export interface CommandScheduler {
      * @param common Common command data
      */
     postAndRun(common: ChatCommandData): Promise<void>;
+
+    /**
+     * Hands over chat to another assistant
+     * @param common Common command data
+     * @param handOverMessages Messages used to hand-over chat
+     */
+    handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<string>): Promise<void>
+
+    /**
+     * Cleanup after chat hand-over
+     * @param common Common command data
+     * @param config Assistant config who has lost the chat
+     */
+    handBackCleanup(common: ChatCommandData, config: AssistantConfig): Promise<void>
 
     /**
      * Closes chat and cleans-up

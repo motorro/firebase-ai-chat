@@ -1,8 +1,10 @@
-import {CommandScheduler, logger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
+import {AssistantConfig, CommandScheduler, logger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
 import {ChatCommandData} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatCommandQueue";
 import {OpenAiChatActions} from "./data/OpenAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
 import {OpenAiChatCommand} from "./data/OpenAiChatCommand";
+import {isOpenAiAssistantConfig, OpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
+import {engineId} from "../engineId";
 
 /**
  * Close command delay to settle down AI runs
@@ -21,6 +23,10 @@ export class OpenAICommandScheduler implements CommandScheduler {
         this.scheduler = scheduler;
     }
 
+    isSupported(config: AssistantConfig): boolean {
+        return isOpenAiAssistantConfig(config);
+    }
+
     async create(common: ChatCommandData): Promise<void> {
         logger.d("Scheduling create: ", JSON.stringify(common));
         await this.schedule(common, ["create", "switchToUserInput"]);
@@ -37,6 +43,14 @@ export class OpenAICommandScheduler implements CommandScheduler {
         logger.d("Scheduling postAndRun: ", JSON.stringify(common));
         await this.schedule(common, ["post", "run", "retrieve", "switchToUserInput"]);
     }
+    async handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<string>): Promise<void> {
+        logger.d("Scheduling hand-over: ", JSON.stringify(common));
+        await this.schedule(common, ["create", {name: "postExplicit", messages: handOverMessages}, "run", "retrieve", "switchToUserInput"]);
+    }
+    async handBackCleanup(common: ChatCommandData, config: AssistantConfig): Promise<void> {
+        logger.d("Scheduling hand-back cleanup: ", JSON.stringify(common));
+        await this.schedule(common, [{name: "handBackCleanup", config: <OpenAiAssistantConfig>config}]);
+    }
     async close(common: ChatCommandData): Promise<void> {
         logger.d("Scheduling close: ", JSON.stringify(common));
         await this.schedule(common, ["close"], {scheduleDelaySeconds: SCHEDULE_CLOSE_AFTER});
@@ -44,7 +58,7 @@ export class OpenAICommandScheduler implements CommandScheduler {
 
     private async schedule(common: ChatCommandData, actions: OpenAiChatActions, schedule?: DeliverySchedule): Promise<void> {
         const command: OpenAiChatCommand = {
-            engine: "openai",
+            engine: engineId,
             commonData: common,
             actionData: actions
         };

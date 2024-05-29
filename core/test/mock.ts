@@ -1,8 +1,8 @@
 import {firestore} from "firebase-admin";
 import Timestamp = firestore.Timestamp;
-import {AssistantConfig, ChatData, ChatState} from "../src";
+import {AssistantConfig, ChatCommandData, ChatData, ChatState} from "../src";
+import {ToolCallData, ToolsContinuationData} from "../src/aichat/data/ContinuationCommand";
 
-export const NAME = "Chat";
 export const CHATS = "chats";
 
 export interface Data extends ChatData {
@@ -31,6 +31,12 @@ export const config: AiConfig = {
 export const data: Data = {
     value: "test"
 };
+export const data2: Data = {
+    value: "test2"
+};
+export const data3: Data = {
+    value: "data3"
+};
 
 export const chatState: ChatState<AiConfig, Data> = {
     userId: userId,
@@ -41,7 +47,47 @@ export const chatState: ChatState<AiConfig, Data> = {
     status: "userInput",
     latestDispatchId: "dispatch",
     createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
-    updatedAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23))
+    updatedAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
+    meta: null
+};
+
+export const toolCall1: ToolCallData<Data> = {
+    index: 1,
+    call: {
+        request: {
+            toolCallId: "call1",
+            toolName: "callOne",
+            args: {a: 1}
+        },
+        response: null
+    }
+};
+
+export const toolCall2: ToolCallData<Data> = {
+    index: 2,
+    call: {
+        request: {
+            toolCallId: "call2",
+            toolName: "callTwo",
+            args: {a: 2}
+        },
+        response: null
+    }
+};
+
+export const commandData: ChatCommandData = {
+    ownerId: userId,
+    chatDocumentPath: "chatDoc",
+    dispatchId: "dispatchId",
+    meta: null
+};
+
+export const continuationData: ToolsContinuationData<Data> = {
+    dispatcherId: dispatcherId,
+    state: "suspended",
+    data: data,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now()
 };
 
 

@@ -1,21 +1,26 @@
-import {ChatCommandData, ChatState, ChatData, DispatchControl, logger} from "@motorro/firebase-ai-chat-core";
+import {
+    ChatState,
+    ChatData,
+    DispatchControl,
+    logger
+} from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {OpenAiChatActions} from "../data/OpenAiChatAction";
-import {BaseOpenAiWorker} from "./BaseOpenAiWorker";
+import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
+import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
+import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
-export class CloseWorker extends BaseOpenAiWorker {
-    protected isSupportedAction(action: string): boolean {
+export class CloseWorker extends OpenAiQueueWorker {
+    static isSupportedAction(action: unknown): action is OpenAiChatAction {
         return "close" === action;
     }
 
     async doDispatch(
-        actions: OpenAiChatActions,
-        data: ChatCommandData,
+        command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
         logger.d("Closing chat...");
-        const threadId = state.config.threadId;
+        const threadId = state.config.assistantConfig.threadId;
         if (undefined !== threadId) {
             await this.wrapper.deleteThread(threadId);
         }
@@ -23,6 +28,6 @@ export class CloseWorker extends BaseOpenAiWorker {
             status: "complete"
         });
 
-        await this.continueQueue(control, actions.slice(1, actions.length));
+        await this.continueNextInQueue(control, command);
     }
 }

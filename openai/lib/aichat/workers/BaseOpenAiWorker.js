@@ -8,15 +8,10 @@ class BaseOpenAiWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
-     * @param dispatchers Tools dispatcher map
      */
-    constructor(firestore, scheduler, wrapper, 
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    dispatchers) {
+    constructor(firestore, scheduler, wrapper) {
         super(firestore, scheduler);
-        this.defaultDispatcher = (data) => Promise.resolve(data);
         this.wrapper = wrapper;
-        this.dispatchers = dispatchers;
     }
     /**
      * Checks if command passed in `req` is supported by this dispatcher
@@ -60,6 +55,19 @@ class BaseOpenAiWorker extends firebase_ai_chat_core_1.BaseChatWorker {
         firebase_ai_chat_core_1.logger.d("Switching to user input");
         await control.updateChatState({
             status: "userInput"
+        });
+    }
+    /**
+     * Updates config
+     * @param control Chat control
+     * @param state Current state
+     * @param update Builds config changes
+     * @protected
+     */
+    async updateConfig(control, state, update) {
+        const config = Object.assign(Object.assign({}, state.config), { assistantConfig: Object.assign(Object.assign({}, state.config.assistantConfig), (update(state.config.assistantConfig))) });
+        await control.updateChatState({
+            config: config
         });
     }
 }

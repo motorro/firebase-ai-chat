@@ -1,8 +1,9 @@
-import { ChatCommandData, ChatState, ChatData, DispatchControl } from "@motorro/firebase-ai-chat-core";
+import { ChatData, ChatState, DispatchControl } from "@motorro/firebase-ai-chat-core";
 import { VertexAiAssistantConfig } from "../data/VertexAiAssistantConfig";
 import { VertexAiChatActions } from "../data/VertexAiChatAction";
-import { BaseVertexAiWorker } from "./BaseVertexAiWorker";
-export declare class SwitchToUserWorker extends BaseVertexAiWorker {
-    protected isSupportedAction(action: string): boolean;
-    doDispatch(actions: VertexAiChatActions, _data: ChatCommandData, _state: ChatState<VertexAiAssistantConfig, ChatData>, control: DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>): Promise<void>;
+import { VertexAiQueueWorker } from "./VertexAiQueueWorker";
+import { VertexAiChatCommand } from "../data/VertexAiChatCommand";
+export declare class SwitchToUserWorker extends VertexAiQueueWorker {
+    static isSupportedAction(action: unknown): action is "switchToUserInput";
+    doDispatch(command: VertexAiChatCommand, _state: ChatState<VertexAiAssistantConfig, ChatData>, control: DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>): Promise<void>;
 }

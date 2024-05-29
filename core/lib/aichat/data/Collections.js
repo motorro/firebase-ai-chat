@@ -4,6 +4,9 @@ exports.Collections = void 0;
 exports.Collections = {
     messages: "messages",
     dispatches: "dispatches",
-    runs: "runs"
+    runs: "runs",
+    contextStack: "contextStack",
+    continuations: "continuations",
+    toolCalls: "toolCalls"
 };
 //# sourceMappingURL=Collections.js.map

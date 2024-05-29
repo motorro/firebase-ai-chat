@@ -64,4 +64,4 @@ class BaseOpenAiWorker extends firebase_ai_chat_core_1.BaseChatWorker {
     }
 }
 exports.BaseOpenAiWorker = BaseOpenAiWorker;
-//# sourceMappingURL=BaseOpenAiWorker.js.map
+//# sourceMappingURL=BaseOpenAiWorkerCommand.js.map

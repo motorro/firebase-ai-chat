@@ -5,5 +5,4 @@ import {AssistantConfig} from "./ChatState";
  */
 export interface ChatConfig<out C extends AssistantConfig> {
     readonly assistantConfig: C,
-    readonly threadId?: string
 }

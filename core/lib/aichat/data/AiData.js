@@ -28,6 +28,7 @@ function printAiExample(example, exampleNumber) {
         return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput from user: ${example.input}\nOutput: ${example.output}`;
     }
     function printFunctionCall(example) {
+        // eslint-disable-next-line max-len
         return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput from user: ${example.input}\nFunction to call: ${example.name}\nFunction arguments: ${JSON.stringify(example.arguments)}`;
     }
 }

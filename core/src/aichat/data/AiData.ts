@@ -115,7 +115,8 @@ export function printAiExample(example: AiExample, exampleNumber?: number): stri
     }
 
     function printFunctionCall(example: AiFunctionCallExample): string {
-        return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput from user: ${example.input}\nFunction to call: ${example.name}\nFunction arguments: ${JSON.stringify(example.arguments)}`
+        // eslint-disable-next-line max-len
+        return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput from user: ${example.input}\nFunction to call: ${example.name}\nFunction arguments: ${JSON.stringify(example.arguments)}`;
     }
 }
 

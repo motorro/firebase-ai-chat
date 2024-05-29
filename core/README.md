@@ -8,6 +8,6 @@ See [top-level](https://github.com/motorro/firebase-ai-chat) documentation for c
 ## Contains
 The module has three classes to use in your project:
 - [AssistantChat](src/aichat/AssistantChat.ts) - handles requests from the App user
-- [BaseChatWorker](src/aichat/BaseChatWorker.ts) - base logic to run AI chat actions with cloud functions
+- [Chat workers](src/aichat/workers) - base logic to run AI chat actions with cloud functions
 - Core chat [data](src/aichat/data) structures
 

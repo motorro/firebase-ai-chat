@@ -3,9 +3,6 @@ import Timestamp = firestore.Timestamp;
 import {ChatData, ChatMessage, ChatState} from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../src";
 
-export const NAME = "Chat";
-export const CHATS = "chats";
-
 export interface Data extends ChatData {
     readonly value: string
 }
@@ -55,7 +52,8 @@ export const chatState: ChatState<OpenAiAssistantConfig, Data> = {
     status: "userInput",
     latestDispatchId: "dispatch",
     createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
-    updatedAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23))
+    updatedAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
+    meta: null
 };
 
 

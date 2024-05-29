@@ -1,11 +1,12 @@
-import { BaseChatWorker, ChatCommand, ChatData, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
+import { BaseChatWorker, ChatCommand, ChatData, ChatState, TaskScheduler, ToolsDispatcher } from "@motorro/firebase-ai-chat-core";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
-import { VertexAiChatActions } from "../data/VertexAiChatAction";
+import { VertexAiChatAction, VertexAiChatActions } from "../data/VertexAiChatAction";
 import { VertexAiAssistantConfig } from "../data/VertexAiAssistantConfig";
 import { OpenAiDispatchControl } from "../VertexAiChatWorker";
 import { AiWrapper } from "../AiWrapper";
 import { VertexAiSystemInstructions } from "../data/VertexAiSystemInstructions";
-export declare abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActions, VertexAiAssistantConfig, ChatData> {
+import { ActionWorker } from "./ActionWorker";
+export declare abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAiChatActions, VertexAiAssistantConfig, ChatData> implements ActionWorker {
     protected readonly wrapper: AiWrapper;
     protected readonly instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>;
     protected readonly defaultDispatcher: ToolsDispatcher<ChatData>;
@@ -25,12 +26,12 @@ export declare abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAi
      */
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<VertexAiChatActions>>;
     /**
-     * Is supported Open AI command
+     * Is supported Vertex AI command
      * @param action Command to check
      * @returns true if worker supports the command
      * @protected
      */
-    protected abstract isSupportedAction(action: string): boolean;
+    abstract isSupportedAction(action: unknown): action is VertexAiChatAction;
     /**
      * Runs some actions at once so there is no extra scheduling for trivial commands
      * @param control Dispatch control
@@ -45,4 +46,12 @@ export declare abstract class BaseVertexAiWorker extends BaseChatWorker<VertexAi
      * @protected
      */
     private runSwitchToUser;
+    /**
+     * Updates config
+     * @param control Chat control
+     * @param state Current state
+     * @param update Builds config changes
+     * @protected
+     */
+    protected updateConfig(control: OpenAiDispatchControl, state: ChatState<VertexAiAssistantConfig, ChatData>, update: (soFar: VertexAiAssistantConfig) => Partial<VertexAiAssistantConfig>): Promise<void>;
 }

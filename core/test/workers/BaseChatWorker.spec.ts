@@ -1,10 +1,9 @@
 import * as admin from "firebase-admin";
 import {firestore} from "firebase-admin";
-import {db, test} from "./functionsTest";
+import {db, test} from "../functionsTest";
 import {anything, capture, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
-import {AiConfig, chatState, data, Data, DispatchAction, threadId, userId} from "./mock";
+import {AiConfig, chatState, data, Data, DispatchAction, userId} from "../mock";
 import {
-    BaseChatWorker,
     ChatCommand,
     ChatCommandData,
     ChatError,
@@ -16,8 +15,9 @@ import {
     DispatchControl,
     Meta,
     Run,
-    TaskScheduler
-} from "../src";
+    TaskScheduler,
+    BaseChatWorker
+} from "../../src";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {expect} from "chai";
 import CollectionReference = admin.firestore.CollectionReference;
@@ -77,11 +77,10 @@ describe("Base chat worker", function() {
         await db.recursiveDelete(chats);
     });
 
-    async function createChat(thread?: string, status?: ChatStatus, dispatch?: string) {
+    async function createChat(status?: ChatStatus, dispatch?: string) {
         const dispatchDoc = dispatch || dispatchId;
         const data: ChatState<AiConfig, Data> = {
             ...chatState,
-            config: (thread ? {...chatState.config, threadId: thread} : chatState.config),
             ...(status ? {status: status} : {status: "processing"}),
             latestDispatchId: dispatchDoc
         };
@@ -103,11 +102,10 @@ describe("Base chat worker", function() {
     }
 
     it("processes command", async function() {
-        await createChat(undefined, "processing", dispatchId);
+        await createChat("processing", dispatchId);
 
         let passedReq: Request<ChatCommand<unknown>> | null = null;
-        let passedAction: DispatchAction | null = null;
-        let passedData: ChatCommandData | null = null;
+        let passedCommand: ChatCommand<DispatchAction> | null = null;
         let passedState: ChatState<AiConfig, Data> | null = null;
 
         const worker = new TestWorker(
@@ -120,13 +118,11 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (
-                action: DispatchAction,
-                data: ChatCommandData,
+                command: ChatCommand<DispatchAction>,
                 state: ChatState<AiConfig, Data>,
                 control: DispatchControl<DispatchAction, AiConfig, Data>
             ): Promise<void> => {
-                passedAction = action;
-                passedData = data;
+                passedCommand = command;
                 passedState = state;
                 await control.updateChatState({status: "complete"});
                 return Promise.resolve();
@@ -151,10 +147,7 @@ describe("Base chat worker", function() {
         });
 
         expect(passedReq).to.be.equal(request);
-        expect(passedAction).to.be.equal("close");
-        expect(passedData).to.deep.include({
-            ...commandData
-        });
+        expect(passedCommand).to.be.deep.equal(closeCommand);
         expect(passedState).to.deep.equal({
             ...chatState,
             status: "processing",
@@ -163,7 +156,7 @@ describe("Base chat worker", function() {
     });
 
     it("sets retry if there are retries", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
 
         const worker = new TestWorker(
             db,
@@ -190,7 +183,7 @@ describe("Base chat worker", function() {
     });
 
     it("fails chat if there are no retries", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
 
         const worker = new TestWorker(
             db,
@@ -226,7 +219,7 @@ describe("Base chat worker", function() {
     });
 
     it("completes run on success", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
         const request: Request<ChatCommand<unknown>> = {
             ...context,
             data: createCommand
@@ -239,7 +232,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (_command, _state, control): Promise<void> => {
                 await control.updateChatState({
                     status: "userInput"
                 });
@@ -258,7 +251,7 @@ describe("Base chat worker", function() {
     });
 
     it("completes run on fail", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
         const worker = new TestWorker(
             db,
             instance(scheduler),
@@ -291,7 +284,7 @@ describe("Base chat worker", function() {
     });
 
     it("sets run to retry on retry", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
 
         const worker = new TestWorker(
             db,
@@ -324,7 +317,7 @@ describe("Base chat worker", function() {
     });
 
     it("aborts if running in parallel", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
         await chatDispatches.doc(dispatchId)
             .collection(Collections.runs).doc(runId)
             .set({status: "running", createdAt: FieldValue.serverTimestamp()});
@@ -341,7 +334,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (_command, _state, control): Promise<void> => {
                 await control.updateChatState({
                     status: "userInput"
                 });
@@ -361,7 +354,7 @@ describe("Base chat worker", function() {
     });
 
     it("aborts if already run", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
         await chatDispatches.doc(dispatchId)
             .collection(Collections.runs).doc(runId)
             .set({status: "complete", createdAt: FieldValue.serverTimestamp()});
@@ -378,7 +371,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (_command, _state, control): Promise<void> => {
                 await control.updateChatState({
                     status: "userInput"
                 });
@@ -398,7 +391,7 @@ describe("Base chat worker", function() {
     });
 
     it("returns false if command is not supported", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
         const request: Request<ChatCommand<unknown>> = {
             ...context,
             data: createCommand
@@ -422,7 +415,7 @@ describe("Base chat worker", function() {
     });
 
     it("runs command batch", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
         const worker = new TestWorker(
             db,
             instance(scheduler),
@@ -431,11 +424,11 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (command, _state, control): Promise<void> => {
                 await control.updateChatState({
                     status: "userInput"
                 });
-                await control.continueQueue("close");
+                await control.continueQueue({...command, actionData: "close"});
             }
         );
 
@@ -460,7 +453,7 @@ describe("Base chat worker", function() {
     });
 
     it("runs completion handler", async function() {
-        await createChat(threadId, "processing");
+        await createChat("processing");
         const worker = new TestWorker(
             db,
             instance(scheduler),
@@ -469,7 +462,7 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async (_action, _data, _state, control): Promise<void> => {
+            async (_command, _state, control): Promise<void> => {
                 await control.completeQueue();
                 await control.updateChatState({
                     status: "userInput"
@@ -498,8 +491,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     private readonly isSupportedCommandImpl: (req: Request<ChatCommand<unknown>>) => req is Request<ChatCommand<DispatchAction>>;
     // eslint-disable-next-line max-len
     private readonly doDispatchImpl: (
-        action: DispatchAction,
-        data: ChatCommandData,
+        command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
         control: DispatchControl<DispatchAction, AiConfig, Data>
     ) => Promise<void>;
@@ -511,8 +503,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
         isSupportedCommand: (req: Request<ChatCommand<unknown>>) => req is Request<ChatCommand<DispatchAction>>,
         // eslint-disable-next-line max-len
         doDispatch: (
-            action: DispatchAction,
-            data: ChatCommandData,
+            command: ChatCommand<DispatchAction>,
             state: ChatState<AiConfig, Data>,
             control: DispatchControl<DispatchAction, AiConfig, Data>
         ) => Promise<void>
@@ -527,11 +518,10 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     }
 
     protected doDispatch(
-        action: DispatchAction,
-        data: ChatCommandData,
+        command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
         control: DispatchControl<DispatchAction, AiConfig, Data>
     ): Promise<void> {
-        return this.doDispatchImpl(action, data, state, control);
+        return this.doDispatchImpl(command, state, control);
     }
 }
