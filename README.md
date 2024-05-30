@@ -22,14 +22,13 @@ Supported AI engines:
 - [Module API](#module-api)
   * [Scaffolds](#scaffolds)
   * [Firestore indexes](#firestore-indexes)
-  * [OpenAPI setup](#openapi-setup)
   * [Checking user authentication](#checking-user-authentication)
   * [Front-facing functions](#front-facing-functions)
   * [Creating AssistantChat](#creating-assistantchat)
   * [Creating a new chat](#creating-a-new-chat)
   * [Handling user messages](#handling-user-messages)
   * [Running AI](#running-ai)
-  * [Using OpenAI function tools](#using-openai-function-tools)
+  * [Using AI function tools](#using-ai-function-tools)
   * [Tool continuation](#tool-continuation)
 - [Client application](#client-application)
 
@@ -196,24 +195,6 @@ service cloud.firestore {
 To be able to run the code Firebase needs two special indexes to sort chat documents and messages.
 You can get the latest indexes versions [here](firestore.indexes.json).
 
-### OpenAI setup
-We also need to set up the OpenAI API. To do this we need to get the OpenAI API key and to define the used assistant ID:
-
-```typescript
-const region = "europe-west1";
-const openAiApiKey = defineSecret("OPENAI_API_KEY");
-const openAiAssistantId = defineString("OPENAI_ASSISTANT_ID");
-
-const options: CallableOptions = {
-  secrets: [openAiApiKey],
-  region: region,
-  invoker: "public"
-};
-```
-
-Refer to [Configure your environment](https://firebase.google.com/docs/functions/config-env) article for more 
-information on setting environment and secret variables for your functions.
-
 ### Checking user authentication
 As soon as we want all users to be authenticated to access the functions, let's create a template function to handle 
 all function requests. We will later use this function to wrap all client-facing handlers:
@@ -309,7 +290,15 @@ export const calculate = onCall2(options, async (request: CallableRequest<Calcul
             {sum: 0}, // Initial data state
             config, // Configuration
             [data.messages], // Initial message to process
-            {a: 1} // Optional metadata to pass with worker task. Available in completion handler
+            {a: 1}, // Optional metadata to pass with worker task. Available in completion handler
+            {
+              aiMessageMeta: { // This meta will be added to all AI messages (optional)
+                  name: "AI"
+              },
+              userMessageMeta: { // This meta will be added to all User messages (optional)
+                  name: "Vasya"
+              }
+            }
     );
     
     // Return the `CalculateChatResponse` to client App
@@ -417,7 +406,7 @@ As the AI run may involve several OpenAI calls which may fail at any intermediat
 seems unclear at the moment. That is why the worker will set the `failed` state to chat on any error. If you want to 
 restore the thread somehow - create the new chat and copy your messages manually.
 
-### Using OpenAI function tools
+### Using AI function tools
 OpenAI Assistant and Chat completion API has a powerful feature called [Function calling](https://platform.openai.com/docs/assistants/tools/function-calling).
 The use of functions is a bridge between your business logic and the AI. It may be used to retrieve some information
 from your domain, to alter some state that resides on your server or to limit the AI "hallucinations" when operating

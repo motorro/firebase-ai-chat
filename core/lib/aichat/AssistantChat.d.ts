@@ -3,7 +3,7 @@ import { AssistantConfig, ChatData, ChatState, ChatStateUpdate } from "./data/Ch
 import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;
 import Firestore = firestore.Firestore;
-import { Meta } from "./data/Meta";
+import { ChatMeta, Meta } from "./data/Meta";
 import { CommandScheduler } from "./CommandScheduler";
 /**
  * Front-facing assistant chat
@@ -14,7 +14,7 @@ import { CommandScheduler } from "./CommandScheduler";
  * - Close - closes chat
  * Functions post commands to processing table and complete ASAP
  */
-export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM extends Meta = Meta> {
+export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
     private readonly db;
     private readonly schedulers;
     private getScheduler;
@@ -82,6 +82,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
+     * @param meta User message meta if any
      * @return Write batch
      * @private
      */

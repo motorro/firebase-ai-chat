@@ -172,7 +172,12 @@ describe("Chat worker", function() {
             ...chatState,
             config: config,
             ...(status ? {status: status} : {status: "processing"}),
-            latestDispatchId: dispatchDoc
+            latestDispatchId: dispatchDoc,
+            meta: {
+                aiMessageMeta: {
+                    name: "ai"
+                }
+            }
         };
 
         await chatDoc.set(data);
@@ -394,6 +399,7 @@ describe("Chat worker", function() {
         when(toolDispatcher.dispatchCommand(anything(), anything())).thenCall(async () => {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
+        // eslint-disable-next-line max-len
         when(toolDispatcher.dispatch(anything(), anything(), anything())).thenCall(async (data, calls, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
@@ -413,6 +419,7 @@ describe("Chat worker", function() {
 
         when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
+        // eslint-disable-next-line max-len
         when(wrapper.processToolsResponse(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _dataSoFar, dispatch) => {
             const dispatchResult = await dispatch(data, [toolCall], runId);
             return Continuation.resolve(dispatchResult.value.data);
@@ -489,7 +496,10 @@ describe("Chat worker", function() {
             message.should.deep.include({
                 userId: userId,
                 author: "ai",
-                text: aiMessages[i - 2][1]
+                text: aiMessages[i - 2][1],
+                meta: {
+                    name: "ai"
+                }
             });
         }
 

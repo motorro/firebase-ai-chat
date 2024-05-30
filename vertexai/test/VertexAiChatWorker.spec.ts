@@ -183,7 +183,12 @@ describe("Chat worker", function() {
             ...chatState,
             config: config,
             ...(status ? {status: status} : {status: "processing"}),
-            latestDispatchId: dispatchDoc
+            latestDispatchId: dispatchDoc,
+            meta: {
+                aiMessageMeta: {
+                    name: "ai"
+                }
+            }
         };
 
         await chatDoc.set(data);
@@ -280,12 +285,18 @@ describe("Chat worker", function() {
         insertedData[2].should.deep.include({
             userId: userId,
             author: "ai",
-            text: aiMessages[0].text
+            text: aiMessages[0].text,
+            meta: {
+                name: "ai"
+            }
         });
         insertedData[3].should.deep.include({
             userId: userId,
             author: "ai",
-            text: aiMessages[1].text
+            text: aiMessages[1].text,
+            meta: {
+                name: "ai"
+            }
         });
     });
 

@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import Timestamp = admin.firestore.Timestamp;
+import {Meta} from "./Meta";
 
 export interface ChatMessage {
     readonly userId: string,
@@ -8,4 +9,5 @@ export interface ChatMessage {
     readonly text: string
     readonly inBatchSortIndex: number,
     readonly createdAt: Timestamp
+    readonly meta?: Meta
 }

@@ -21,14 +21,8 @@ class RetrieveWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         const batch = this.db.batch();
         newMessages.messages.forEach((message, index) => {
-            batch.set(messageCollectionRef.doc(), {
-                userId: command.commonData.ownerId,
-                dispatchId: command.commonData.dispatchId,
-                author: "ai",
-                text: message[1],
-                inBatchSortIndex: latestInBatchId + index,
-                createdAt: FieldValue.serverTimestamp()
-            });
+            var _a;
+            batch.set(messageCollectionRef.doc(), Object.assign({ userId: command.commonData.ownerId, dispatchId: command.commonData.dispatchId, author: "ai", text: message[1], inBatchSortIndex: latestInBatchId + index, createdAt: FieldValue.serverTimestamp() }, (((_a = state.meta) === null || _a === void 0 ? void 0 : _a.aiMessageMeta) ? { meta: state.meta.aiMessageMeta } : {})));
         });
         await batch.commit();
         await this.updateConfig(control, state, () => ({ lastMessageId: newMessages.latestMessageId }));

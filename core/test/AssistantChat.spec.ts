@@ -39,8 +39,8 @@ describe("Assistant Chat", function() {
     });
 
     it("creates chat record", async function() {
-        const update = await chat.create(chatDoc, userId, data, {assistantId});
         when(scheduler.create(anything())).thenReturn(Promise.resolve());
+        const update = await chat.create(chatDoc, userId, data, {assistantId});
 
         update.should.deep.include({
             status: "processing",
@@ -73,8 +73,20 @@ describe("Assistant Chat", function() {
     });
 
     it("creates chat record with messages", async function() {
-        const update = await chat.create(chatDoc, userId, data, {assistantId}, messages);
         when(scheduler.createAndRun(anything())).thenReturn(Promise.resolve());
+        const update = await chat.create(
+            chatDoc,
+            userId,
+            data,
+            {assistantId},
+            messages,
+            undefined,
+            {
+                userMessageMeta: {
+                    name: "Vasya"
+                }
+            }
+        );
 
         update.should.deep.include({
             status: "processing",
@@ -106,7 +118,10 @@ describe("Assistant Chat", function() {
                 userId: userId,
                 author: "user",
                 text: messages[i],
-                dispatchId: dispatchDoc.id
+                dispatchId: dispatchDoc.id,
+                meta: {
+                    name: "Vasya"
+                }
             });
         }
 
@@ -122,8 +137,20 @@ describe("Assistant Chat", function() {
 
     it("creates a single run", async function() {
         const meta: Meta = {a: 1};
-        const update = await chat.singleRun(chatDoc, userId, data, {assistantId}, messages, meta);
         when(scheduler.singleRun(anything())).thenReturn(Promise.resolve());
+        const update = await chat.singleRun(
+            chatDoc,
+            userId,
+            data,
+            {assistantId},
+            messages,
+            meta,
+            {
+                userMessageMeta: {
+                    name: "Vasya"
+                }
+            }
+        );
 
         update.should.deep.include({
             status: "processing",
@@ -155,7 +182,10 @@ describe("Assistant Chat", function() {
                 userId: userId,
                 author: "user",
                 text: messages[i],
-                dispatchId: dispatchDoc.id
+                dispatchId: dispatchDoc.id,
+                meta: {
+                    name: "Vasya"
+                }
             });
         }
 
@@ -200,7 +230,10 @@ describe("Assistant Chat", function() {
                 userId: userId,
                 author: "user",
                 text: messages[i],
-                dispatchId: dispatchDoc.id
+                dispatchId: dispatchDoc.id,
+                meta: {
+                    name: "Vasya"
+                }
             });
         }
 

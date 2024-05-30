@@ -21,7 +21,7 @@ export {ChatCommandData} from "./aichat/data/ChatCommandData";
 export {ChatMessage} from "./aichat/data/ChatMessage";
 export {ChatError} from "./aichat/data/ChatError";
 export {Dispatch, Run, RunStatus} from "./aichat/data/Dispatch";
-export {Meta} from "./aichat/data/Meta";
+export {Meta, ChatMeta} from "./aichat/data/Meta";
 export {Logger, logger, setLogger} from "./logging";
 export {
     FunctionSuccess,

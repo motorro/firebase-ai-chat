@@ -142,7 +142,8 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
                         author: message.author,
                         text: message.text,
                         inBatchSortIndex: latestInBatchId + index,
-                        createdAt: message.createdAt
+                        createdAt: message.createdAt,
+                        ...(state.meta?.aiMessageMeta ? {meta: state.meta.aiMessageMeta} : {})
                     }
                 );
             });
