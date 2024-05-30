@@ -26,6 +26,7 @@ export {
     ChatStatus,
     ChatMessage,
     Meta,
+    ChatMeta,
     Logger,
     setLogger,
     TaskScheduler,

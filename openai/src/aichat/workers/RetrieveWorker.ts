@@ -43,7 +43,8 @@ export class RetrieveWorker extends OpenAiQueueWorker {
                     author: "ai",
                     text: message[1],
                     inBatchSortIndex: latestInBatchId + index,
-                    createdAt: FieldValue.serverTimestamp()
+                    createdAt: FieldValue.serverTimestamp(),
+                    ...(state.meta?.aiMessageMeta ? {meta: state.meta.aiMessageMeta} : {})
                 }
             );
         });

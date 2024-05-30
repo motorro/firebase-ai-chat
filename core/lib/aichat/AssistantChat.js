@@ -67,7 +67,7 @@ class AssistantChat {
             await scheduler.create(common);
         };
         if (undefined !== messages && messages.length > 0) {
-            this.insertMessages(batch, document, userId, dispatchDoc.id, messages);
+            this.insertMessages(batch, document, userId, dispatchDoc.id, messages, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
             action = async (common) => {
                 await scheduler.createAndRun(common);
             };
@@ -117,7 +117,7 @@ class AssistantChat {
         batch.set(dispatchDoc, {
             createdAt: Timestamp.now()
         });
-        this.insertMessages(batch, document, userId, dispatchDoc.id, messages);
+        this.insertMessages(batch, document, userId, dispatchDoc.id, messages, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
         await batch.commit();
         const command = {
             ownerId: userId,
@@ -217,7 +217,8 @@ class AssistantChat {
     async postMessage(document, userId, messages, workerMeta) {
         logging_1.logger.d("Posting user messages to: ", document.path);
         const state = await this.prepareDispatchWithChecks(document, userId, (current) => ["userInput"].includes(current), "processing", async (state) => {
-            await this.insertMessages(this.db.batch(), document, userId, state.latestDispatchId, messages).commit();
+            var _a;
+            await this.insertMessages(this.db.batch(), document, userId, state.latestDispatchId, messages, (_a = state.meta) === null || _a === void 0 ? void 0 : _a.userMessageMeta).commit();
             const command = {
                 ownerId: userId,
                 chatDocumentPath: document.path,
@@ -239,20 +240,14 @@ class AssistantChat {
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
+     * @param meta User message meta if any
      * @return Write batch
      * @private
      */
-    insertMessages(batch, document, userId, dispatchId, messages) {
+    insertMessages(batch, document, userId, dispatchId, messages, meta) {
         const messageList = document.collection(Collections_1.Collections.messages);
         messages.forEach((message, index) => {
-            batch.create(messageList.doc(), {
-                userId: userId,
-                dispatchId: dispatchId,
-                author: "user",
-                text: message,
-                inBatchSortIndex: index,
-                createdAt: Timestamp.now()
-            });
+            batch.create(messageList.doc(), Object.assign({ userId: userId, dispatchId: dispatchId, author: "user", text: message, inBatchSortIndex: index, createdAt: Timestamp.now() }, (meta ? { meta: meta } : {})));
         });
         return batch;
     }

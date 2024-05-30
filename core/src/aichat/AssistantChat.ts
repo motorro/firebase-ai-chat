@@ -17,7 +17,7 @@ import * as admin from "firebase-admin";
 import DocumentReference = admin.firestore.DocumentReference;
 import Firestore = firestore.Firestore;
 import {Dispatch} from "./data/Dispatch";
-import {Meta} from "./data/Meta";
+import {ChatMeta, Meta} from "./data/Meta";
 import {CommandScheduler} from "./CommandScheduler";
 import Transaction = firestore.Transaction;
 import Timestamp = firestore.Timestamp;
@@ -31,7 +31,7 @@ import Timestamp = firestore.Timestamp;
  * - Close - closes chat
  * Functions post commands to processing table and complete ASAP
  */
-export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM extends Meta = Meta> {
+export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
     private readonly db: FirebaseFirestore.Firestore;
     private readonly schedulers: ReadonlyArray<CommandScheduler>;
 
@@ -98,7 +98,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
             await scheduler.create(common);
         };
         if (undefined !== messages && messages.length > 0) {
-            this.insertMessages(batch, document, userId, dispatchDoc.id, messages);
+            this.insertMessages(batch, document, userId, dispatchDoc.id, messages, chatMeta?.userMessageMeta);
             action = async (common) => {
                 await scheduler.createAndRun(common);
             };
@@ -159,7 +159,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         batch.set(dispatchDoc, {
             createdAt: Timestamp.now()
         });
-        this.insertMessages(batch, document, userId, dispatchDoc.id, messages);
+        this.insertMessages(batch, document, userId, dispatchDoc.id, messages, chatMeta?.userMessageMeta);
         await batch.commit();
 
         const command: ChatCommandData = {
@@ -322,7 +322,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                     document,
                     userId,
                     state.latestDispatchId,
-                    messages
+                    messages,
+                    state.meta?.userMessageMeta
                 ).commit();
                 const command: ChatCommandData = {
                     ownerId: userId,
@@ -348,6 +349,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
+     * @param meta User message meta if any
      * @return Write batch
      * @private
      */
@@ -356,7 +358,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         dispatchId: string,
-        messages: ReadonlyArray<string>
+        messages: ReadonlyArray<string>,
+        meta?: Meta
     ): FirebaseFirestore.WriteBatch {
         const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
         messages.forEach((message, index) => {
@@ -368,7 +371,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                     author: "user",
                     text: message,
                     inBatchSortIndex: index,
-                    createdAt: Timestamp.now()
+                    createdAt: Timestamp.now(),
+                    ...(meta ? {meta: meta} : {})
                 }
             );
         });

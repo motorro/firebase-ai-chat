@@ -48,7 +48,11 @@ export const chatState: ChatState<AiConfig, Data> = {
     latestDispatchId: "dispatch",
     createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
     updatedAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
-    meta: null
+    meta: {
+        userMessageMeta: {
+            name: "Vasya"
+        }
+    }
 };
 
 export const toolCall1: ToolCallData<Data> = {
