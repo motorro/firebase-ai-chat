@@ -80,7 +80,7 @@ class ToolsContinuationDispatcherImpl {
         return result;
     }
     async doDispatch(batch, continuationDoc, continuation, toolCalls, getContinuationCommand) {
-        const dispatched = await this.dispatchRunner.dispatch(continuation, toolCalls, (continuationToolCall) => getContinuationCommand({
+        const dispatched = await this.dispatchRunner.dispatch(continuation, toolCalls, await this.getChatData(), (continuationToolCall) => getContinuationCommand({
             continuationId: continuationDoc.id,
             tool: continuationToolCall
         }));
@@ -116,6 +116,17 @@ class ToolsContinuationDispatcherImpl {
                 responses: result
             });
         }
+    }
+    async getChatData() {
+        const chat = (await this.chatDocument.get()).data();
+        if (undefined === chat) {
+            return Promise.reject(new ChatError_1.ChatError("not-found", true, "Chat not found"));
+        }
+        return {
+            ownerId: chat.userId,
+            chatDocumentPath: this.chatDocument.path,
+            meta: chat.meta
+        };
     }
 }
 exports.ToolsContinuationDispatcherImpl = ToolsContinuationDispatcherImpl;

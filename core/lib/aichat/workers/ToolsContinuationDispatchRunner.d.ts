@@ -1,8 +1,9 @@
 import { ChatData } from "../data/ChatState";
-import { DispatchError, ToolsDispatcher } from "../ToolsDispatcher";
+import { ChatDispatchData, DispatchError, ToolsDispatcher } from "../ToolsDispatcher";
 import { ContinuationCommand, ContinuationRequestToolData, ToolCallData, ToolCallRequest, ToolsContinuationData } from "../data/ContinuationCommand";
 import { firestore } from "firebase-admin";
 import DocumentReference = firestore.DocumentReference;
+import { ChatMeta } from "../data/Meta";
 /**
  * Dispatch data
  */
@@ -23,25 +24,26 @@ export interface DispatchData<DATA extends ChatData> {
 /**
  * Runs passed tools and manages continuation and call status
  */
-export interface ToolsContinuationDispatchRunner<DATA extends ChatData> {
+export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
     /**
      * Dispatches calls
      * @param continuationData Current continuation data
      * @param tools Tool calls
+     * @param chatData Chat data to provide to dispatcher
      * @param getContinuationCommand Continuation command factory
      * @returns Updated continuation state
      */
-    dispatch(continuationData: ToolsContinuationData<DATA>, tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>, getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>): Promise<DispatchData<DATA>>;
+    dispatch(continuationData: ToolsContinuationData<DATA>, tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>, chatData: ChatDispatchData<CM>, getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>): Promise<DispatchData<DATA>>;
 }
 /**
  * Runs passed tools sequentially suspending continuation if suspended
  * If any call fails - also fails other subsequent calls
  */
-export declare class SequentialToolsContinuationDispatchRunner<DATA extends ChatData> implements ToolsContinuationDispatchRunner<DATA> {
+export declare class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, CM> {
     private readonly dispatchers;
     private readonly formatContinuationError;
     constructor(dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>, formatContinuationError?: (failed: ToolCallRequest, error: DispatchError) => DispatchError);
-    dispatch(continuationData: ToolsContinuationData<DATA>, tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>, getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>): Promise<DispatchData<DATA>>;
+    dispatch(continuationData: ToolsContinuationData<DATA>, tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>, chatData: ChatDispatchData<CM>, getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>): Promise<DispatchData<DATA>>;
     private getDispatcher;
 }
 export declare function commonFormatContinuationError(toolCall: ToolCallRequest): DispatchError;

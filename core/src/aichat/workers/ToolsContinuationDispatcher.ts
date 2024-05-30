@@ -18,6 +18,7 @@ import Timestamp = firestore.Timestamp;
 import CollectionReference = firestore.CollectionReference;
 import {ChatError} from "../data/ChatError";
 import FieldValue = firestore.FieldValue;
+import {ChatDispatchData} from "../ToolsDispatcher";
 
 /**
  * Tools dispatch continuation
@@ -170,6 +171,7 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
         const dispatched = await this.dispatchRunner.dispatch(
             continuation,
             toolCalls,
+            await this.getChatData(),
             (continuationToolCall) => getContinuationCommand({
                 continuationId: continuationDoc.id,
                 tool: continuationToolCall
@@ -210,6 +212,18 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
                 data: dispatched.data,
                 responses: result
             });
+        }
+    }
+
+    private async getChatData(): Promise<ChatDispatchData> {
+        const chat = (await this.chatDocument.get()).data();
+        if (undefined === chat) {
+            return Promise.reject(new ChatError("not-found", true, "Chat not found"));
+        }
+        return {
+            ownerId: chat.userId,
+            chatDocumentPath: this.chatDocument.path,
+            meta: chat.meta
         }
     }
 }

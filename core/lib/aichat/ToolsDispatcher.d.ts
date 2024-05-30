@@ -1,6 +1,12 @@
 import { ChatData } from "./data/ChatState";
 import { Continuation } from "./data/Continuation";
 import { ContinuationCommand } from "./data/ContinuationCommand";
+import { ChatMeta } from "./data/Meta";
+export interface ChatDispatchData<CM extends ChatMeta = ChatMeta> {
+    readonly ownerId: string;
+    readonly chatDocumentPath: string;
+    readonly meta: CM | null;
+}
 /**
  * Function Dispatch was successful. Contains function result
  */
@@ -45,11 +51,12 @@ export type ToolDispatcherReturnValue<DATA extends ChatData> = DATA | DispatchRe
  * @param {string} name - The name of the tool to be executed
  * @param {Record<string, unknown>} args - The arguments to be passed to the tool
  * @param {ChatCommand} continuation - Command to dispatch when result is ready in case you want to suspend
+ * @param {ChatCommandData} chatData - Chat data
  * @returns {PromiseLike<DispatchResult>} A promise that resolves with the result of the tool execution or suspension
  * @see ToolsContinuation
  */
-export interface ToolsDispatcher<DATA extends ChatData> {
-    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>): ToolDispatcherReturnValue<DATA>;
+export interface ToolsDispatcher<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
+    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>, chatData: ChatDispatchData<CM>): ToolDispatcherReturnValue<DATA>;
 }
 /**
  * Creates a function success result

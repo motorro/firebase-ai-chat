@@ -429,7 +429,7 @@ The [dispatcher](core/src/aichat/ToolsDispatcher.ts) is the following function:
 
 ```typescript
 export interface ToolsDispatcher<DATA extends ChatData> {
-  (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>): ToolDispatcherReturnValue<DATA>
+  (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>, chatData: ChatDispatchData): ToolDispatcherReturnValue<DATA>
 }
 ```
 The parameters are the following:
@@ -438,6 +438,7 @@ The parameters are the following:
 - `name` - Name of function called
 - `args` - Function arguments
 - `continuation` - Continuation command (see below)
+- `chatData` - Common chat data
 
 The function returns [ToolDispatcherReturnValue](core/src/aichat/ToolsDispatcher.ts) value which may be:
 

@@ -1,5 +1,6 @@
 import {ChatData} from "../data/ChatState";
 import {
+    ChatDispatchData,
     DispatchError,
     DispatchResult,
     dispatchToContinuation, isDispatchError,
@@ -17,6 +18,7 @@ import {Continuation} from "../data/Continuation";
 import {ChatError} from "../data/ChatError";
 import {firestore} from "firebase-admin";
 import DocumentReference = firestore.DocumentReference;
+import {ChatMeta} from "../data/Meta";
 
 /**
  * Dispatch data
@@ -39,17 +41,19 @@ export interface DispatchData<DATA extends ChatData> {
 /**
  * Runs passed tools and manages continuation and call status
  */
-export interface ToolsContinuationDispatchRunner<DATA extends ChatData> {
+export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
     /**
      * Dispatches calls
      * @param continuationData Current continuation data
      * @param tools Tool calls
+     * @param chatData Chat data to provide to dispatcher
      * @param getContinuationCommand Continuation command factory
      * @returns Updated continuation state
      */
     dispatch(
         continuationData: ToolsContinuationData<DATA>,
         tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>,
+        chatData: ChatDispatchData<CM>,
         getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>
     ): Promise<DispatchData<DATA>>
 }
@@ -58,7 +62,7 @@ export interface ToolsContinuationDispatchRunner<DATA extends ChatData> {
  * Runs passed tools sequentially suspending continuation if suspended
  * If any call fails - also fails other subsequent calls
  */
-export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData> implements ToolsContinuationDispatchRunner<DATA> {
+export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, CM> {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
     private readonly formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError;
@@ -75,6 +79,7 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData> im
     async dispatch(
         continuationData: ToolsContinuationData<DATA>,
         tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>,
+        chatData: ChatDispatchData<CM>,
         getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>
     ): Promise<DispatchData<DATA>> {
         let suspended = false;
@@ -114,7 +119,8 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData> im
                     currentData,
                     callData.call.request.toolName,
                     callData.call.request.args,
-                    continuationCommand
+                    continuationCommand,
+                    chatData
                 );
             });
 

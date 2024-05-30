@@ -2,6 +2,7 @@ import * as admin from "firebase-admin";
 import {firestore} from "firebase-admin";
 import {test} from "../functionsTest";
 import {
+    CHATS,
     commandData,
     continuationData,
     data,
@@ -9,9 +10,11 @@ import {
     data2, data3,
     DispatchAction,
     dispatcherId,
-    toolCall1, toolCall2
+    toolCall1, toolCall2, userId
 } from "../mock";
 import {
+    AssistantConfig,
+    ChatDispatchData, ChatState,
     Collections,
     Continuation,
     ContinuationCommand, ContinuationRequestToolData,
@@ -25,9 +28,12 @@ import {
 } from "../../src/aichat/workers/ToolsContinuationDispatchRunner";
 import {ToolCallData, ToolsContinuationData} from "../../src/aichat/data/ContinuationCommand";
 import CollectionReference = admin.firestore.CollectionReference;
+import DocumentReference = firestore.DocumentReference;
+import {afterEach} from "mocha";
 
 const db = firestore();
-const continuations = db.collection(Collections.continuations) as CollectionReference<ToolsContinuationData<Data>>;
+const chatDoc = db.collection(CHATS).doc() as DocumentReference<ChatState<AssistantConfig, Data>>;
+const continuations = chatDoc.collection(Collections.continuations) as CollectionReference<ToolsContinuationData<Data>>;
 const continuationDoc = continuations.doc();
 const toolCalls = continuationDoc.collection(Collections.continuations) as CollectionReference<ToolCallData<Data>>;
 
@@ -54,11 +60,24 @@ const continuationCommand2: ContinuationCommand<DispatchAction> = {
         }
     }
 };
+export const chatData: ChatDispatchData = {
+    ownerId: userId,
+    chatDocumentPath: chatDoc.path,
+    meta: {
+        userMessageMeta: {
+            name: "Vasya"
+        }
+    }
+}
+
 
 describe("Tool continuation dispatch runner", function() {
     after(async function() {
         test.cleanup();
     });
+    afterEach(async function() {
+        await db.recursiveDelete(chatDoc);
+    })
 
     function createRunner(dispatcher: ToolsDispatcher<Data>): ToolsContinuationDispatchRunner<Data> {
         return new SequentialToolsContinuationDispatchRunner<Data>({[dispatcherId]: dispatcher});
@@ -71,6 +90,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1]],
+            chatData,
             () => continuationCommand1
         );
         result.should.deep.equal({
@@ -92,6 +112,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1]],
+            chatData,
             () => continuationCommand1
         );
         result.should.deep.equal({
@@ -113,6 +134,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1]],
+            chatData,
             () => continuationCommand1
         );
         result.should.deep.equal({
@@ -134,6 +156,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1]],
+            chatData,
             () => continuationCommand1
         );
         result.should.deep.equal({
@@ -155,6 +178,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1]],
+            chatData,
             () => continuationCommand1
         );
         result.should.deep.equal({
@@ -198,6 +222,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
+            chatData,
             (toolCall) => {
                 passedToolCalls.push(toolCall);
                 return commands[commandIndex++];
@@ -235,6 +260,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1]],
+            chatData,
             () => continuationCommand1
         );
         result.should.deep.equal({
@@ -270,6 +296,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
+            chatData,
             () => commands[commandIndex++]
         );
         result.should.deep.equal({
@@ -309,6 +336,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
+            chatData,
             () => commands[commandIndex++]
         );
         result.should.deep.equal({
@@ -342,6 +370,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
+            chatData,
             () => {
                 return commands[commandIndex++];
             }
@@ -377,6 +406,7 @@ describe("Tool continuation dispatch runner", function() {
         const result = await runner.dispatch(
             continuationData,
             [[toolCall1Id, {...toolCall1, call: {...toolCall1.call, response: {error: "Error"}}}], [toolCall2Id, toolCall2]],
+            chatData,
             () => {
                 return commands[commandIndex++];
             }

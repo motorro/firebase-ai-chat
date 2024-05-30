@@ -42,4 +42,5 @@ export declare class ToolsContinuationDispatcherImpl<A, C extends ContinuationCo
     dispatch(soFar: DATA, toolCalls: ReadonlyArray<ToolCallRequest>, getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>): Promise<Continuation<ToolCallsResult<DATA>>>;
     dispatchCommand(command: C, getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>): Promise<Continuation<ToolCallsResult<DATA>>>;
     private doDispatch;
+    private getChatData;
 }

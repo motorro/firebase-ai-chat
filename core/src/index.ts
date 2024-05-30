@@ -24,6 +24,7 @@ export {Dispatch, Run, RunStatus} from "./aichat/data/Dispatch";
 export {Meta, ChatMeta} from "./aichat/data/Meta";
 export {Logger, logger, setLogger} from "./logging";
 export {
+    ChatDispatchData,
     FunctionSuccess,
     ReducerSuccess,
     DispatchError,

@@ -15,7 +15,7 @@ class SequentialToolsContinuationDispatchRunner {
         this.dispatchers = dispatchers;
         this.formatContinuationError = formatContinuationError;
     }
-    async dispatch(continuationData, tools, getContinuationCommand) {
+    async dispatch(continuationData, tools, chatData, getContinuationCommand) {
         let suspended = false;
         let failed = null;
         let currentData = continuationData.data;
@@ -43,7 +43,7 @@ class SequentialToolsContinuationDispatchRunner {
             logging_1.logger.d("Arguments:", JSON.stringify(callData.call.request.args));
             const continuationCommand = getContinuationCommand({ toolId: callId.id });
             const result = await (0, ToolsDispatcher_1.dispatchToContinuation)(async () => {
-                return this.getDispatcher(continuationData.dispatcherId)(currentData, callData.call.request.toolName, callData.call.request.args, continuationCommand);
+                return this.getDispatcher(continuationData.dispatcherId)(currentData, callData.call.request.toolName, callData.call.request.args, continuationCommand, chatData);
             });
             let response = null;
             if (result.isResolved()) {

@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import {firestore} from "firebase-admin";
 import {test} from "../functionsTest";
 import {
-    CHATS,
+    CHATS, chatState,
     commandData,
     data,
     Data,
@@ -44,6 +44,10 @@ const continuations = chatDoc.collection(Collections.continuations) as Collectio
 describe("Tool continuation dispatcher", function() {
     after(async function() {
         test.cleanup();
+    });
+
+    beforeEach(async function() {
+        await chatDoc.set(chatState);
     });
 
     afterEach(async function() {
