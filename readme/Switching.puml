@@ -1,0 +1,28 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+actor User
+database Chat
+control Calculator
+control Divider
+
+User -> Chat: add 20
+Chat -> Calculator: add 20
+Calculator --> Chat: sum += 20
+Calculator -> Chat: what else can I do for you?
+
+User -> Chat: divide by 4
+Chat -> Calculator: divide by 4
+create Divider
+Calculator -> Divider: user wants to divide by 4
+Divider --> Chat: sum = sum / 4
+Divider -> Chat: what else can I do for you
+
+User -> Chat: subtract 5
+Chat -> Divider: subtract 5
+Divider -> Calculator: user wants to subtract 5
+destroy Divider
+
+Calculator --> Chat: sum -= 5
+Calculator -> Chat: what else can I do for you?
+@enduml

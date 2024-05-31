@@ -30,6 +30,7 @@ Supported AI engines:
   * [Running AI](#running-ai)
   * [Using AI function tools](#using-ai-function-tools)
   * [Tool continuation](#tool-continuation)
+  * [Assistant switching and assistant crew](#assistant-swithching-and-assistant-crew)
 - [Client application](#client-application)
 
 <!-- tocstop -->
@@ -529,6 +530,29 @@ const whenResultIsReady = async (data: string) => {
 ```
 Example of suspending tool dispatch in tools reducer could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L42).
 Example of resuming AI run could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts#L136).
+
+## Assistant swithching and assistant crew
+As your tasks grow more complex it is worth considering delegating different tasks to different assistants each of them
+trained to perform certain scope of tasks. Thus, a crew of assistants work as a team to decompose the task and move step
+by step to fulfill it. One of the famous frameworks to build such a team is [Crew AI](https://docs.crewai.com/). This 
+library also supports changing assistants on-demand. For example, consider our main Calculator who could add and subtract
+numbers. If user wants to divide the accumulated value by some number we could switch chat context to another assistant
+"trained" to divide numbers. Here is the example:
+![Switching](/readme/Switching.png)
+
+Here is how it is being done as a sequence diagram:
+![Switching](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/motorro/firebase-openai-chat/master/readme/Switching.puml)
+
+To be able to do it there are two methods in [AssistantChat](core/src/aichat/AssistantChat.ts):
+
+- `handOver` - changes the context of chat to use with another assistant.
+- `handBack` - restores context to main assistant
+
+You may want to use function calling to switch the context suspending main chat with a continuation.
+Take a look at the full example:
+
+- [Reducers](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts)
+- [Tool definition](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/vertexai/vertexai.ts)
 
 ## Client application
 The sample project includes a sample KMP [Android application](https://github.com/motorro/firebase-openai-chat-project/tree/master/Client)
