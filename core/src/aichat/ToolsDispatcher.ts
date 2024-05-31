@@ -51,12 +51,8 @@ export function isDispatchResult<DATA extends ChatData>(data: unknown): data is 
  * - Some value. Wrapped to `FunctionSuccess` and returned to AI
  * - `DispatchResult` (`FunctionSuccess`, `ReducerSuccess`, `DispatchError' - this will be returned to AI tool
  * - Continuation of above
- * - Promise of above
  */
-export type ToolDispatcherReturnValue<DATA extends ChatData> = DATA
-    | DispatchResult<DATA>
-    | Continuation<DATA | DispatchResult<DATA>>
-    | PromiseLike<DATA | DispatchResult<DATA> | Continuation<DATA | DispatchResult<DATA>>>;
+export type ToolDispatcherReturnValue<DATA extends ChatData> = DATA | DispatchResult<DATA> | Continuation<DATA | DispatchResult<DATA>>;
 
 /**
  * Represents a functions tools dispatcher that can execute different tools based on their names
@@ -75,7 +71,7 @@ export interface ToolsDispatcher<DATA extends ChatData, CM extends ChatMeta = Ch
         args: Record<string, unknown>,
         continuation: ContinuationCommand<unknown>,
         chatData: ChatDispatchData<CM>
-    ): ToolDispatcherReturnValue<DATA>
+    ): ToolDispatcherReturnValue<DATA> | PromiseLike<ToolDispatcherReturnValue<DATA>>
 }
 
 /**
@@ -169,7 +165,7 @@ export function isDispatchError(data: unknown): data is DispatchError {
  * Wraps dispatch to continuation
  * @param block Dispatching code
  */
-export async function dispatchToContinuation<DATA extends ChatData>(block: () => ToolDispatcherReturnValue<DATA>): Promise<Continuation<DispatchResult<DATA>>> {
+export async function dispatchToContinuation<DATA extends ChatData>(block: () => ToolDispatcherReturnValue<DATA> | PromiseLike<ToolDispatcherReturnValue<DATA>>): Promise<Continuation<DispatchResult<DATA>>> {
     try {
         const result = await block();
         if (Continuation.isContinuation(result)) {
