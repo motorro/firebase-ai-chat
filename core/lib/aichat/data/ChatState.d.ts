@@ -65,6 +65,6 @@ export interface ChatStateUpdate<DATA> {
 /**
  * Chat context stack entry
  */
-export interface ChatContextStackEntry<out DATA extends ChatData> extends Pick<ChatState<AssistantConfig, DATA>, "config" | "status" | "latestDispatchId"> {
+export interface ChatContextStackEntry<out DATA extends ChatData> extends Pick<ChatState<AssistantConfig, DATA>, "config" | "status" | "latestDispatchId" | "meta"> {
     readonly createdAt: Timestamp;
 }

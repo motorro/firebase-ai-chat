@@ -55,9 +55,10 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param assistantConfig Assistant Config
      * @param handOverMessages Messages used to initialize the new chat passed  Hidden from user
      * @param workerMeta Metadata to pass to chat worker
+     * @param chatMeta Chat meta to set for switched chat
      * @return Chat stack update
      */
-    handOver(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, assistantConfig: AssistantConfig, handOverMessages: ReadonlyArray<string>, workerMeta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    handOver(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, assistantConfig: AssistantConfig, handOverMessages: ReadonlyArray<string>, workerMeta?: WM, chatMeta?: CM): Promise<ChatStateUpdate<DATA>>;
     /**
      * Hands chat back to the next popped assistant
      * @param document Document reference

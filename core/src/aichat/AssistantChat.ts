@@ -182,6 +182,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
      * @param assistantConfig Assistant Config
      * @param handOverMessages Messages used to initialize the new chat passed  Hidden from user
      * @param workerMeta Metadata to pass to chat worker
+     * @param chatMeta Chat meta to set for switched chat
      * @return Chat stack update
      */
     async handOver(
@@ -189,7 +190,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         userId: string,
         assistantConfig: AssistantConfig,
         handOverMessages: ReadonlyArray<string>,
-        workerMeta?: Meta
+        workerMeta?: WM,
+        chatMeta?: CM
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Handing over chat: ", document.path);
 
@@ -208,7 +210,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                 config: state.config,
                 createdAt: now,
                 latestDispatchId: state.latestDispatchId,
-                status: state.status
+                status: state.status,
+                meta: state.meta
             };
             tx.set(document.collection(Collections.contextStack).doc(), stackEntry);
 
@@ -217,7 +220,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                 config: {...state.config, assistantConfig: assistantConfig},
                 status: "processing",
                 latestDispatchId: dispatchDoc.id,
-                updatedAt: now
+                updatedAt: now,
+                meta: chatMeta || null
             };
             tx.set(document, newState);
 
@@ -275,7 +279,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                 config: stackEntryData.config,
                 status: stackEntryData.status,
                 latestDispatchId: stackEntryData.latestDispatchId,
-                updatedAt: Timestamp.now()
+                updatedAt: Timestamp.now(),
+                meta: stackEntryData.meta
             };
             tx.set(document, newState);
             tx.delete(stackEntry.ref);

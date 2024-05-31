@@ -138,9 +138,10 @@ class AssistantChat {
      * @param assistantConfig Assistant Config
      * @param handOverMessages Messages used to initialize the new chat passed  Hidden from user
      * @param workerMeta Metadata to pass to chat worker
+     * @param chatMeta Chat meta to set for switched chat
      * @return Chat stack update
      */
-    async handOver(document, userId, assistantConfig, handOverMessages, workerMeta) {
+    async handOver(document, userId, assistantConfig, handOverMessages, workerMeta, chatMeta) {
         logging_1.logger.d("Handing over chat: ", document.path);
         const state = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
@@ -151,10 +152,11 @@ class AssistantChat {
                 config: state.config,
                 createdAt: now,
                 latestDispatchId: state.latestDispatchId,
-                status: state.status
+                status: state.status,
+                meta: state.meta
             };
             tx.set(document.collection(Collections_1.Collections.contextStack).doc(), stackEntry);
-            const newState = Object.assign(Object.assign({}, state), { config: Object.assign(Object.assign({}, state.config), { assistantConfig: assistantConfig }), status: "processing", latestDispatchId: dispatchDoc.id, updatedAt: now });
+            const newState = Object.assign(Object.assign({}, state), { config: Object.assign(Object.assign({}, state.config), { assistantConfig: assistantConfig }), status: "processing", latestDispatchId: dispatchDoc.id, updatedAt: now, meta: chatMeta || null });
             tx.set(document, newState);
             return newState;
         });
@@ -189,7 +191,7 @@ class AssistantChat {
             if (undefined === stackEntry || undefined === stackEntryData) {
                 return Promise.reject(new https_1.HttpsError("failed-precondition", "No state to pop"));
             }
-            const newState = Object.assign(Object.assign({}, state), { config: stackEntryData.config, status: stackEntryData.status, latestDispatchId: stackEntryData.latestDispatchId, updatedAt: Timestamp.now() });
+            const newState = Object.assign(Object.assign({}, state), { config: stackEntryData.config, status: stackEntryData.status, latestDispatchId: stackEntryData.latestDispatchId, updatedAt: Timestamp.now(), meta: stackEntryData.meta });
             tx.set(document, newState);
             tx.delete(stackEntry.ref);
             return [newState, state.config.assistantConfig];

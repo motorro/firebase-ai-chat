@@ -1,6 +1,6 @@
 {
   "name": "@motorro/firebase-ai-chat-vertexai",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "A library to run VertexAI chats on Firebase",
   "publishConfig": {
     "access": "public"
@@ -35,7 +35,7 @@
     "url": "https://github.com/motorro/firebase-ai-chat/issues"
   },
   "peerDependencies": {
-    "@motorro/firebase-ai-chat-core": "^6.7.0",
+    "@motorro/firebase-ai-chat-core": "^6.7.1",
     "firebase-admin": "^10.0.0 || ^11.0.0 || ^12.1.1",
     "firebase-functions": "^4.9.0 || ^5.0.1",
     "@google-cloud/vertexai": "^1.2.0"
