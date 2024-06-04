@@ -20,6 +20,7 @@ import Firestore = firestore.Firestore;
 
 export {
     AssistantChat,
+    HandOverResult,
     ChatData,
     ChatState,
     ChatStatus,

@@ -5,6 +5,7 @@ import DocumentReference = admin.firestore.DocumentReference;
 import Firestore = firestore.Firestore;
 import { ChatMeta, Meta } from "./data/Meta";
 import { CommandScheduler } from "./CommandScheduler";
+import { HandOverResult } from "./data/HandOverResult";
 /**
  * Front-facing assistant chat
  * Runs AI chat saving state in the database
@@ -58,7 +59,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param chatMeta Chat meta to set for switched chat
      * @return Chat stack update
      */
-    handOver(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, assistantConfig: AssistantConfig, handOverMessages: ReadonlyArray<string>, workerMeta?: WM, chatMeta?: CM): Promise<ChatStateUpdate<DATA>>;
+    handOver(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, assistantConfig: AssistantConfig, handOverMessages: ReadonlyArray<string>, workerMeta?: WM, chatMeta?: CM): Promise<HandOverResult>;
     /**
      * Hands chat back to the next popped assistant
      * @param document Document reference
@@ -66,7 +67,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param workerMeta Metadata to pass to chat worker
      * @return Chat stack update
      */
-    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, workerMeta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, workerMeta?: Meta): Promise<HandOverResult>;
     /**
      * Posts messages to the thread
      * @param document Chat document

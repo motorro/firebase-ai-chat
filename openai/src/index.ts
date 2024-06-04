@@ -21,6 +21,7 @@ import {OpenAiWrapper} from "./aichat/OpenAiWrapper";
 
 export {
     AssistantChat,
+    HandOverResult,
     ChatData,
     ChatState,
     ChatStatus,

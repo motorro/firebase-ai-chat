@@ -40,6 +40,7 @@ export {
     isReducerSuccess
 } from "./aichat/ToolsDispatcher";
 export {AssistantChat} from "./aichat/AssistantChat";
+export {HandOverResult} from "./aichat/data/HandOverResult"
 export {DispatchControl, ChatWorker} from "./aichat/workers/ChatWorker";
 export {BaseChatWorker} from "./aichat/workers/BaseChatWorker";
 export {DispatchRunner} from "./aichat/workers/DispatchRunner";

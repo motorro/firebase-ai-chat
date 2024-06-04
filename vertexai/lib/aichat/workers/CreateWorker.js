@@ -8,11 +8,17 @@ class CreateWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
         return "create" === action;
     }
     async doDispatch(command, state, control) {
-        firebase_ai_chat_core_1.logger.d("Creating thread...");
-        const threadId = await this.wrapper.createThread({
-            chat: command.commonData.chatDocumentPath
-        });
-        await this.updateConfig(control, state, () => ({ threadId: threadId }));
+        if (state.config.assistantConfig.threadId) {
+            firebase_ai_chat_core_1.logger.d("Already has a thread:", state.config.assistantConfig.threadId);
+        }
+        else {
+            firebase_ai_chat_core_1.logger.d("Creating thread...");
+            const threadId = await this.wrapper.createThread({
+                chat: command.commonData.chatDocumentPath
+            });
+            firebase_ai_chat_core_1.logger.d("Thread created:", threadId);
+            await this.updateConfig(control, state, () => ({ threadId: threadId }));
+        }
         await this.continueNextInQueue(control, command);
     }
 }

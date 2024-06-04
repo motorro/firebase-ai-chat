@@ -19,15 +19,20 @@ export class CreateWorker extends OpenAiQueueWorker {
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
     ): Promise<void> {
-        logger.d("Creating thread...");
-        const threadId = await this.wrapper.createThread({
-            chat: command.commonData.chatDocumentPath
-        });
-        await this.updateConfig(
-            control,
-            state,
-            () => ({threadId: threadId})
-        );
+        if (state.config.assistantConfig.threadId) {
+            logger.d("Already has a thread:", state.config.assistantConfig.threadId);
+        } else {
+            logger.d("Creating thread...");
+            const threadId = await this.wrapper.createThread({
+                chat: command.commonData.chatDocumentPath
+            });
+            logger.d("Thread created:", threadId);
+            await this.updateConfig(
+                control,
+                state,
+                () => ({threadId: threadId})
+            );
+        }
         await this.continueNextInQueue(control, command);
     }
 }

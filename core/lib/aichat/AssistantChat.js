@@ -143,7 +143,7 @@ class AssistantChat {
      */
     async handOver(document, userId, assistantConfig, handOverMessages, workerMeta, chatMeta) {
         logging_1.logger.d("Handing over chat: ", document.path);
-        const state = await this.db.runTransaction(async (tx) => {
+        const [state, newState] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
             const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
             tx.set(dispatchDoc, { createdAt: Timestamp.now() });
@@ -158,18 +158,18 @@ class AssistantChat {
             tx.set(document.collection(Collections_1.Collections.contextStack).doc(), stackEntry);
             const newState = Object.assign(Object.assign({}, state), { config: Object.assign(Object.assign({}, state.config), { assistantConfig: assistantConfig }), status: "processing", latestDispatchId: dispatchDoc.id, updatedAt: now, meta: chatMeta || null });
             tx.set(document, newState);
-            return newState;
+            return [state, newState];
         });
         const command = {
             ownerId: userId,
             chatDocumentPath: document.path,
-            dispatchId: state.latestDispatchId,
+            dispatchId: newState.latestDispatchId,
             meta: workerMeta || null
         };
-        await this.getScheduler(state.config.assistantConfig).handOver(command, handOverMessages);
+        await this.getScheduler(newState.config.assistantConfig).handOver(command, handOverMessages);
         return {
-            data: state.data,
-            status: state.status
+            formerAssistantConfig: state.config.assistantConfig,
+            formerChatMeta: state.meta
         };
     }
     /**
@@ -181,7 +181,7 @@ class AssistantChat {
      */
     async handBack(document, userId, workerMeta) {
         logging_1.logger.d("Popping chat state: ", document.path);
-        const [state, formerConfig] = await this.db.runTransaction(async (tx) => {
+        const [state, newState] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
             const stackEntryQuery = document.collection(Collections_1.Collections.contextStack)
                 .orderBy("createdAt", "desc")
@@ -194,18 +194,18 @@ class AssistantChat {
             const newState = Object.assign(Object.assign({}, state), { config: stackEntryData.config, status: stackEntryData.status, latestDispatchId: stackEntryData.latestDispatchId, updatedAt: Timestamp.now(), meta: stackEntryData.meta });
             tx.set(document, newState);
             tx.delete(stackEntry.ref);
-            return [newState, state.config.assistantConfig];
+            return [state, newState];
         });
         const command = {
             ownerId: userId,
             chatDocumentPath: document.path,
-            dispatchId: state.latestDispatchId,
+            dispatchId: newState.latestDispatchId,
             meta: workerMeta || null
         };
-        await this.getScheduler(formerConfig).handBackCleanup(command, formerConfig);
+        await this.getScheduler(state.config.assistantConfig).handBackCleanup(command, state.config.assistantConfig);
         return {
-            data: state.data,
-            status: state.status
+            formerAssistantConfig: state.config.assistantConfig,
+            formerChatMeta: state.meta
         };
     }
     /**

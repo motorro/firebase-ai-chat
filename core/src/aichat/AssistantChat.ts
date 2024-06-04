@@ -21,6 +21,7 @@ import {ChatMeta, Meta} from "./data/Meta";
 import {CommandScheduler} from "./CommandScheduler";
 import Transaction = firestore.Transaction;
 import Timestamp = firestore.Timestamp;
+import {HandOverResult} from "./data/HandOverResult";
 
 /**
  * Front-facing assistant chat
@@ -192,10 +193,10 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         handOverMessages: ReadonlyArray<string>,
         workerMeta?: WM,
         chatMeta?: CM
-    ): Promise<ChatStateUpdate<DATA>> {
+    ): Promise<HandOverResult> {
         logger.d("Handing over chat: ", document.path);
 
-        const state = await this.db.runTransaction(async (tx) => {
+        const [state, newState] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(
                 tx,
                 document,
@@ -225,20 +226,20 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
             };
             tx.set(document, newState);
 
-            return newState;
+            return [state, newState];
         });
 
         const command: ChatCommandData = {
             ownerId: userId,
             chatDocumentPath: document.path,
-            dispatchId: state.latestDispatchId,
+            dispatchId: newState.latestDispatchId,
             meta: workerMeta || null
         };
-        await this.getScheduler(state.config.assistantConfig).handOver(command, handOverMessages);
+        await this.getScheduler(newState.config.assistantConfig).handOver(command, handOverMessages);
 
         return {
-            data: state.data,
-            status: state.status
+            formerAssistantConfig: state.config.assistantConfig,
+            formerChatMeta: state.meta
         };
     }
 
@@ -253,9 +254,9 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         workerMeta?: Meta
-    ): Promise<ChatStateUpdate<DATA>> {
+    ): Promise<HandOverResult> {
         logger.d("Popping chat state: ", document.path);
-        const [state, formerConfig] = await this.db.runTransaction(async (tx) => {
+        const [state, newState] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(
                 tx,
                 document,
@@ -285,19 +286,19 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
             tx.set(document, newState);
             tx.delete(stackEntry.ref);
 
-            return [newState, state.config.assistantConfig];
+            return [state, newState];
         });
         const command: ChatCommandData = {
             ownerId: userId,
             chatDocumentPath: document.path,
-            dispatchId: state.latestDispatchId,
+            dispatchId: newState.latestDispatchId,
             meta: workerMeta || null
         };
-        await this.getScheduler(formerConfig).handBackCleanup(command, formerConfig);
+        await this.getScheduler(state.config.assistantConfig).handBackCleanup(command, state.config.assistantConfig);
 
         return {
-            data: state.data,
-            status: state.status
+            formerAssistantConfig: state.config.assistantConfig,
+            formerChatMeta: state.meta
         };
     }
 

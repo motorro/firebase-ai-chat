@@ -226,6 +226,34 @@ describe("Chat worker", function() {
         verify(wrapper.createThread(anything())).once();
     });
 
+    it("skips thread creation if already created", async function() {
+        await createChat(threadId, "processing", dispatchId);
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: createCommand
+        };
+
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<OpenAiAssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            config: {
+                ...chatState.config,
+                assistantConfig: {
+                    ...chatState.config.assistantConfig,
+                    threadId: threadId
+                }
+            }
+        });
+
+        verify(wrapper.createThread(anything())).never();
+    });
+
     it("processes post command", async function() {
         await createChat(threadId, "processing", dispatchId);
 
@@ -596,7 +624,7 @@ describe("Chat worker", function() {
     });
 
     it("sets retry if there are retries", async function() {
-        await createChat(threadId, "processing");
+        await createChat(undefined, "processing");
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
 
@@ -612,7 +640,7 @@ describe("Chat worker", function() {
     });
 
     it("fails chat if there are no retries", async function() {
-        await createChat(threadId, "processing");
+        await createChat(undefined, "processing");
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
         when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
@@ -676,7 +704,7 @@ describe("Chat worker", function() {
     });
 
     it("sets run to retry on retry", async function() {
-        await createChat(threadId, "processing");
+        await createChat(undefined, "processing");
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
 
@@ -742,7 +770,7 @@ describe("Chat worker", function() {
     });
 
     it("runs command batch", async function() {
-        await createChat(threadId, "processing");
+        await createChat(undefined, "processing");
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
         when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
 
@@ -770,7 +798,7 @@ describe("Chat worker", function() {
     });
 
     it("runs completion handler", async function() {
-        await createChat(threadId, "processing");
+        await createChat(undefined, "processing");
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
 
         const request: Request<OpenAiChatCommand> = {

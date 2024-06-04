@@ -3,7 +3,7 @@ import {db, test} from "./functionsTest";
 
 import {anything, capture, deepEqual, imock, instance, reset, verify, when} from "@johanblumenberg/ts-mockito";
 import CollectionReference = admin.firestore.CollectionReference;
-import {assistantId, data, Data, userId, chatState, CHATS, AiConfig} from "./mock";
+import {assistantId, data, Data, userId, chatState, CHATS, AiConfig, config} from "./mock";
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import {ChatState, AssistantChat, Meta, Collections, CommandScheduler} from "../src";
@@ -375,18 +375,22 @@ describe("Assistant Chat", function() {
         await chatDoc.set(chatState);
         when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
 
-        const config: AssistantConfig = {engine: "other"};
+        const newConfig: AssistantConfig = {engine: "other"};
         const messages = ["Please help me with this"];
         const update = await chat.handOver(
             chatDoc,
             userId,
-            config,
+            newConfig,
             messages
         );
 
         update.should.deep.include({
-            status: "processing",
-            data: data
+            formerAssistantConfig: config,
+            formerChatMeta: {
+                userMessageMeta: {
+                    name: "Vasya"
+                }
+            }
         });
         const updatedState: ChatState<AssistantConfig, Data> | undefined = (await chatDoc.get()).data();
         if (undefined === updatedState) {
@@ -394,7 +398,7 @@ describe("Assistant Chat", function() {
         }
         updatedState.should.deep.include({
             config: {
-                assistantConfig: config
+                assistantConfig: newConfig
             },
             status: "processing"
         });
@@ -414,7 +418,7 @@ describe("Assistant Chat", function() {
         });
         savedState.latestDispatchId.should.not.equal(updatedState.latestDispatchId);
 
-        verify(scheduler.isSupported(deepEqual(config))).once();
+        verify(scheduler.isSupported(deepEqual(newConfig))).once();
         const [command, passedMessages] = capture(scheduler.handOver).last();
         command.should.deep.include(
             {
@@ -475,8 +479,8 @@ describe("Assistant Chat", function() {
 
         const update = await chat.handBack(chatDoc, userId);
         update.should.deep.include({
-            status: "userInput",
-            data: data
+            formerAssistantConfig: config,
+            formerChatMeta: null
         });
 
         const updatedState: ChatState<AssistantConfig, Data> | undefined = (await chatDoc.get()).data();
