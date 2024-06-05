@@ -9,7 +9,7 @@ import {
     Data,
     data2, data3,
     DispatchAction,
-    dispatcherId,
+    dispatcherId, threadId,
     toolCall1, toolCall2, userId
 } from "../mock";
 import {
@@ -63,6 +63,9 @@ const continuationCommand2: ContinuationCommand<DispatchAction> = {
 export const chatData: ChatDispatchData = {
     ownerId: userId,
     chatDocumentPath: chatDoc.path,
+    assistantConfig: {
+        threadId: threadId
+    },
     meta: {
         userMessageMeta: {
             name: "Vasya"

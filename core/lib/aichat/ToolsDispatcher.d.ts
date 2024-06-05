@@ -1,10 +1,11 @@
-import { ChatData } from "./data/ChatState";
+import { AssistantConfig, ChatData } from "./data/ChatState";
 import { Continuation } from "./data/Continuation";
 import { ContinuationCommand } from "./data/ContinuationCommand";
 import { ChatMeta } from "./data/Meta";
 export interface ChatDispatchData<CM extends ChatMeta = ChatMeta> {
     readonly ownerId: string;
     readonly chatDocumentPath: string;
+    readonly assistantConfig: AssistantConfig;
     readonly meta: CM | null;
 }
 /**
