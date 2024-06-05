@@ -110,7 +110,7 @@ export interface AiChat {
      * @return Worker interface
      */
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker
+    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>): OpenAiChatWorker
 
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
@@ -150,7 +150,7 @@ export function factory(
             return new AssistantChat<DATA>(firestore, commandSchedulers(queueName, _taskScheduler));
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker {
+        worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>): OpenAiChatWorker {
             return new OpenAiChatWorker(
                 firestore,
                 _taskScheduler,

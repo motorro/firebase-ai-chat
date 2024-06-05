@@ -107,7 +107,7 @@ export interface AiChat {
      * @return Worker interface
      */
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>): ChatWorker
+    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>): ChatWorker
 
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
@@ -145,7 +145,7 @@ export function factory(
             return new AssistantChat<DATA>(firestore, new VertexAICommandScheduler(queueName, _taskScheduler));
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        worker: function(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>): ChatWorker {
+        worker: function(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>): ChatWorker {
             return new VertexAiChatWorker(
                 firestore,
                 _taskScheduler,

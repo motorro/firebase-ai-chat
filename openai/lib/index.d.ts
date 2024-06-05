@@ -43,7 +43,7 @@ export interface AiChat {
      * @param dispatchers Tools dispatchers
      * @return Worker interface
      */
-    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>): OpenAiChatWorker;
+    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>): OpenAiChatWorker;
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
      * @param queueName The name of the queue the dispatch will be continued on
