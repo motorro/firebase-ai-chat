@@ -198,13 +198,16 @@ class AssistantChat {
             tx.delete(stackEntry.ref);
             return [state, newState];
         });
-        const command = {
-            ownerId: userId,
-            chatDocumentPath: document.path,
-            dispatchId: newState.latestDispatchId,
-            meta: workerMeta || null
-        };
-        await this.getScheduler(state.config.assistantConfig).handBackCleanup(command, state.config.assistantConfig);
+        if (cleanup) {
+            logger.d("Scheduling cleanup command");
+            const command = {
+                ownerId: userId,
+                chatDocumentPath: document.path,
+                dispatchId: newState.latestDispatchId,
+                meta: workerMeta || null
+            };
+            await this.getScheduler(state.config.assistantConfig).handBackCleanup(command, state.config.assistantConfig);
+        }
         return {
             formerAssistantConfig: state.config.assistantConfig,
             formerChatMeta: state.meta

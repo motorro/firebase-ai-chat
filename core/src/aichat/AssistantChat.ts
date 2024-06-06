@@ -292,13 +292,17 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
 
             return [state, newState];
         });
-        const command: ChatCommandData = {
-            ownerId: userId,
-            chatDocumentPath: document.path,
-            dispatchId: newState.latestDispatchId,
-            meta: workerMeta || null
-        };
-        await this.getScheduler(state.config.assistantConfig).handBackCleanup(command, state.config.assistantConfig);
+
+        if (cleanup) {
+            logger.d("Scheduling cleanup command");
+            const command: ChatCommandData = {
+                ownerId: userId,
+                chatDocumentPath: document.path,
+                dispatchId: newState.latestDispatchId,
+                meta: workerMeta || null
+            };
+            await this.getScheduler(state.config.assistantConfig).handBackCleanup(command, state.config.assistantConfig);
+        }
 
         return {
             formerAssistantConfig: state.config.assistantConfig,
