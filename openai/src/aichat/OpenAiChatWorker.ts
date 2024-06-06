@@ -2,8 +2,8 @@ import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {
     ChatCommand,
     ChatWorker,
-    logger,
     Meta,
+    tagLogger,
     TaskScheduler,
     ToolContinuationDispatcherFactory
 } from "@motorro/firebase-ai-chat-core";
@@ -18,6 +18,8 @@ import {PostExplicitWorker} from "./workers/PostExplicitWorker";
 import {HandBackCleanupWorker} from "./workers/HandBackCleanupWorker";
 import {RunContinuationWorker} from "./workers/RunContinuationWorker";
 import {isOpenAiChatReq, OpenAiChatCommand} from "./data/OpenAiChatCommand";
+
+const logger = tagLogger("OpenAiChatWorker");
 
 /**
  * Chat worker that dispatches chat commands and runs AI

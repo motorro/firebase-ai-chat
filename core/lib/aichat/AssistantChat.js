@@ -2,10 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AssistantChat = void 0;
 const firebase_admin_1 = require("firebase-admin");
-const logging_1 = require("../logging");
 const Collections_1 = require("./data/Collections");
 const https_1 = require("firebase-functions/v2/https");
 var Timestamp = firebase_admin_1.firestore.Timestamp;
+const logging_1 = require("../logging");
+const logger = (0, logging_1.tagLogger)("AssistantChat");
 /**
  * Front-facing assistant chat
  * Runs AI chat saving state in the database
@@ -43,7 +44,7 @@ class AssistantChat {
      * @param chatMeta Metadata saved to chat state
      */
     async create(document, userId, data, assistantConfig, messages, workerMeta, chatMeta) {
-        logging_1.logger.d("Creating new chat with assistant:", JSON.stringify(assistantConfig));
+        logger.d("Creating new chat with assistant:", JSON.stringify(assistantConfig));
         const batch = this.db.batch();
         const status = "processing";
         const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
@@ -98,7 +99,7 @@ class AssistantChat {
      * @return Chat state update
      */
     async singleRun(document, userId, data, assistantConfig, messages, workerMeta, chatMeta) {
-        logging_1.logger.d("Creating new single run with assistant:", JSON.stringify(assistantConfig));
+        logger.d("Creating new single run with assistant:", JSON.stringify(assistantConfig));
         const batch = this.db.batch();
         const status = "processing";
         const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
@@ -142,7 +143,7 @@ class AssistantChat {
      * @return Chat stack update
      */
     async handOver(document, userId, assistantConfig, handOverMessages, workerMeta, chatMeta) {
-        logging_1.logger.d("Handing over chat: ", document.path);
+        logger.d("Handing over chat: ", document.path);
         const [state, newState] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
             const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
@@ -177,10 +178,11 @@ class AssistantChat {
      * @param document Document reference
      * @param userId Chat owner
      * @param workerMeta Metadata to pass to chat worker
+     * @param cleanup If true, cleans-up the current chat internals after hand-back, e.g: deletes underlying thread
      * @return Chat stack update
      */
-    async handBack(document, userId, workerMeta) {
-        logging_1.logger.d("Popping chat state: ", document.path);
+    async handBack(document, userId, workerMeta, cleanup = true) {
+        logger.d("Popping chat state: ", document.path);
         const [state, newState] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
             const stackEntryQuery = document.collection(Collections_1.Collections.contextStack)
@@ -217,7 +219,7 @@ class AssistantChat {
      * @return Chat state update
      */
     async postMessage(document, userId, messages, workerMeta) {
-        logging_1.logger.d("Posting user messages to: ", document.path);
+        logger.d("Posting user messages to: ", document.path);
         const state = await this.prepareDispatchWithChecks(document, userId, (current) => ["userInput"].includes(current), "processing", async (state) => {
             var _a;
             await this.insertMessages(this.db.batch(), document, userId, state.latestDispatchId, messages, (_a = state.meta) === null || _a === void 0 ? void 0 : _a.userMessageMeta).commit();
@@ -261,7 +263,7 @@ class AssistantChat {
      */
     async closeChat(document, userId, meta) {
         const state = await this.prepareDispatchWithChecks(document, userId, (current) => false === ["closing", "complete", "failed"].includes(current), "closing", async (state) => {
-            logging_1.logger.d("Closing chat: ", document.path);
+            logger.d("Closing chat: ", document.path);
             const command = {
                 ownerId: userId,
                 chatDocumentPath: document.path,
@@ -310,15 +312,15 @@ class AssistantChat {
         const doc = await tx.get(document);
         const state = doc.data();
         if (false === doc.exists || undefined === state) {
-            logging_1.logger.w("Chat not found", document.path);
+            logger.w("Chat not found", document.path);
             return Promise.reject(new https_1.HttpsError("not-found", "Chat not found"));
         }
         if (userId !== state.userId) {
-            logging_1.logger.w("Access denied to:", userId);
+            logger.w("Access denied to:", userId);
             return Promise.reject(new https_1.HttpsError("permission-denied", "Access denied"));
         }
         if (false === checkStatus(state.status)) {
-            logging_1.logger.w(`Chat is in invalid state ${state.status}`);
+            logger.w(`Chat is in invalid state ${state.status}`);
             return Promise.reject(new https_1.HttpsError("failed-precondition", "Can't perform this operation due to current chat state"));
         }
         return state;

@@ -166,7 +166,9 @@ export function isDispatchError(data: unknown): data is DispatchError {
  * Wraps dispatch to continuation
  * @param block Dispatching code
  */
-export async function dispatchToContinuation<DATA extends ChatData>(block: () => ToolDispatcherReturnValue<DATA> | PromiseLike<ToolDispatcherReturnValue<DATA>>): Promise<Continuation<DispatchResult<DATA>>> {
+export async function dispatchToContinuation<DATA extends ChatData>(
+    block: () => ToolDispatcherReturnValue<DATA> | PromiseLike<ToolDispatcherReturnValue<DATA>>
+): Promise<Continuation<DispatchResult<DATA>>> {
     try {
         const result = await block();
         if (Continuation.isContinuation(result)) {

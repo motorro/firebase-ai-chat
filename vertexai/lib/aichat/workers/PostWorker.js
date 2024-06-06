@@ -5,6 +5,7 @@ const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const VertexAiChatAction_1 = require("../data/VertexAiChatAction");
 const VertexAiQueueWorker_1 = require("./VertexAiQueueWorker");
 const VertexAiChatCommand_1 = require("../data/VertexAiChatCommand");
+const logger = (0, firebase_ai_chat_core_1.tagLogger)("BasePostWorker");
 class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
     /**
      * Constructor
@@ -36,16 +37,16 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
         };
     }
     async doDispatch(command, state, control) {
-        firebase_ai_chat_core_1.logger.d("Posting messages...");
+        logger.d("Posting messages...");
         const commonData = command.commonData;
         const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
-            firebase_ai_chat_core_1.logger.e("Thread ID is not defined at message posting");
+            logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
         const instructions = this.instructions[state.config.assistantConfig.instructionsId];
         if (undefined === instructions) {
-            firebase_ai_chat_core_1.logger.e("Requested instructions are not found:", state.config.assistantConfig.instructionsId);
+            logger.e("Requested instructions are not found:", state.config.assistantConfig.instructionsId);
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Requested instructions not found"));
         }
         const response = await this.doPost(command, threadId, state.config.assistantConfig.instructionsId, instructions, state.data);
@@ -61,11 +62,11 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
             await control.updateChatState({
                 data: response.value.data
             });
-            firebase_ai_chat_core_1.logger.d("Resolved");
+            logger.d("Resolved");
             await this.continueNextInQueue(control, command);
         }
         else {
-            firebase_ai_chat_core_1.logger.d("Suspended");
+            logger.d("Suspended");
         }
     }
 }

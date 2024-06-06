@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenAiWrapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const core_1 = require("openai/core");
+const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiWrapper");
 /**
  * Wraps Open AI assistant use
  */
@@ -18,7 +19,7 @@ class OpenAiWrapper {
         this.openAi = openAi;
     }
     async createThread(meta) {
-        firebase_ai_chat_core_1.logger.d("Creating thread...", meta);
+        logger.d("Creating thread...", meta);
         const body = {
             metadata: meta
         };
@@ -26,7 +27,7 @@ class OpenAiWrapper {
         return thread.id;
     }
     async postMessage(threadId, message) {
-        firebase_ai_chat_core_1.logger.d("Posting message...");
+        logger.d("Posting message...");
         return this.runAi(async (ai) => {
             const created = await ai.beta.threads.messages.create(threadId, {
                 role: "user",
@@ -39,7 +40,7 @@ class OpenAiWrapper {
         return await this.doRun(threadId, assistantId, dataSoFar, dispatch);
     }
     async doRun(threadId, assistantId, dataSoFar, dispatch, passedRun) {
-        firebase_ai_chat_core_1.logger.d("Running Assistant for:", threadId);
+        logger.d("Running Assistant for:", threadId);
         return this.runAi(async (ai) => {
             var _a;
             let run = passedRun || await ai.beta.threads.runs.create(threadId, { assistant_id: assistantId });
@@ -49,7 +50,7 @@ class OpenAiWrapper {
                 if (0 === toolCalls.length) {
                     return firebase_ai_chat_core_1.Continuation.resolve(data);
                 }
-                firebase_ai_chat_core_1.logger.d("Dispatching tools...");
+                logger.d("Dispatching tools...");
                 const result = await dispatch(data, toolCalls.map((call) => ({
                     toolCallId: call.id,
                     toolName: call.function.name,
@@ -57,7 +58,7 @@ class OpenAiWrapper {
                     args: JSON.parse(call.function.arguments)
                 })), run.id);
                 if (result.isResolved()) {
-                    firebase_ai_chat_core_1.logger.d("All tools dispatched");
+                    logger.d("All tools dispatched");
                     data = result.value.data;
                     return this.processToolsResponse(threadId, assistantId, data, dispatch, {
                         runId: run.id,
@@ -65,7 +66,7 @@ class OpenAiWrapper {
                     });
                 }
                 else {
-                    firebase_ai_chat_core_1.logger.d("Some tools suspended...");
+                    logger.d("Some tools suspended...");
                     return firebase_ai_chat_core_1.Continuation.suspend();
                 }
             };
@@ -73,18 +74,18 @@ class OpenAiWrapper {
                 return ["queued", "in_progress", "cancelling"].indexOf(run.status) >= 0;
             };
             while (false === complete) {
-                firebase_ai_chat_core_1.logger.d("Started assistant run: ", run.id);
+                logger.d("Started assistant run: ", run.id);
                 do {
                     await (0, core_1.sleep)(1000);
                     run = await this.runAi(async () => this.openAi.beta.threads.runs.retrieve(threadId, run.id));
                 } while (isRunning());
-                firebase_ai_chat_core_1.logger.d("Complete assistant run: ", run.id);
+                logger.d("Complete assistant run: ", run.id);
                 const status = run.status;
                 const requiredAction = run.required_action;
                 const requiredActionType = requiredAction === null || requiredAction === void 0 ? void 0 : requiredAction.type;
                 switch (status) {
                     case "completed":
-                        firebase_ai_chat_core_1.logger.d("Running Assistant complete for:", threadId);
+                        logger.d("Running Assistant complete for:", threadId);
                         complete = true;
                         continue;
                     case "cancelled":
@@ -94,7 +95,7 @@ class OpenAiWrapper {
                     case "expired":
                         throw new firebase_ai_chat_core_1.ChatError("deadline-exceeded", true, `Thread run error. Status: expired, Error: ${run.last_error}`);
                     case "requires_action":
-                        firebase_ai_chat_core_1.logger.d("Running Assistant actions for:", threadId);
+                        logger.d("Running Assistant actions for:", threadId);
                         switch (requiredActionType) {
                             case "submit_tool_outputs":
                                 return runTools(((_a = requiredAction === null || requiredAction === void 0 ? void 0 : requiredAction.submit_tool_outputs) === null || _a === void 0 ? void 0 : _a.tool_calls) || []);
@@ -109,7 +110,7 @@ class OpenAiWrapper {
         });
     }
     async processToolsResponse(threadId, assistantId, dataSoFar, dispatch, request) {
-        firebase_ai_chat_core_1.logger.d(`Submitting tools result: ${threadId} / ${assistantId}`);
+        logger.d(`Submitting tools result: ${threadId} / ${assistantId}`);
         const dispatches = request.toolsResult.map((it) => ({
             output: JSON.stringify(it.response),
             tool_call_id: it.toolCallId
@@ -121,7 +122,7 @@ class OpenAiWrapper {
                 data = response.data;
             }
             if ((0, firebase_ai_chat_core_1.isDispatchError)(response)) {
-                firebase_ai_chat_core_1.logger.d("Error in dispatch response:", response);
+                logger.d("Error in dispatch response:", response);
                 break;
             }
         }
@@ -130,7 +131,7 @@ class OpenAiWrapper {
         }));
     }
     async getMessages(threadId, from) {
-        firebase_ai_chat_core_1.logger.d("Getting messages from: ", threadId);
+        logger.d("Getting messages from: ", threadId);
         return await this.runAi(async (ai) => {
             var _a, e_1, _b, _c;
             let cursor = from;
@@ -174,7 +175,7 @@ class OpenAiWrapper {
         });
     }
     async deleteThread(threadId) {
-        firebase_ai_chat_core_1.logger.d("Deleting thread: ", threadId);
+        logger.d("Deleting thread: ", threadId);
         await this.runAi((ai) => ai.beta.threads.del(threadId));
     }
     /**
@@ -187,7 +188,7 @@ class OpenAiWrapper {
             return await block(this.openAi);
         }
         catch (e) {
-            firebase_ai_chat_core_1.logger.e("Open AI error", e);
+            logger.e("Open AI error", e);
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("unavailable", false, "Error running AI", e));
         }
     }

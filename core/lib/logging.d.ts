@@ -25,4 +25,14 @@ export type Logger = {
 };
 export declare const ConsoleLogger: Logger;
 export declare let logger: Logger;
+/**
+ * Sets the logger
+ * @param instance Logger instance
+ */
 export declare function setLogger(instance: Logger): void;
+/**
+ * Adds a tag to the logger
+ * @param tag Logging tag
+ * @return Tagged logger
+ */
+export declare function tagLogger(tag: string): Logger;

@@ -1,7 +1,9 @@
-import {ChatCommand, ChatWorker, logger} from "@motorro/firebase-ai-chat-core";
+import {ChatCommand, ChatWorker, tagLogger} from "@motorro/firebase-ai-chat-core";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {AiWrapper} from "../AiWrapper";
 import {HandBackCleanup, isHandBackCleanupAction, OpenAiChatAction} from "../data/OpenAiChatAction";
+
+const logger = tagLogger("HandBackCleanupWorker");
 
 /**
  * Cleans-up OpenAI thread on hand-back

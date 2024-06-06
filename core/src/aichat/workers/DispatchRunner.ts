@@ -5,10 +5,12 @@ import {firestore} from "firebase-admin";
 import DocumentReference = firestore.DocumentReference;
 import {TaskScheduler} from "../TaskScheduler";
 import {Collections} from "../data/Collections";
-import {logger} from "../../logging";
+import {tagLogger} from "../../logging";
 import {isPermanentError} from "../data/ChatError";
 import FieldValue = firestore.FieldValue;
 import {AssistantConfig, ChatData, ChatState} from "../data/ChatState";
+
+const logger = tagLogger("DispatchRunner");
 
 /**
  * Runs task locking on current dispatch and run

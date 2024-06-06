@@ -1,7 +1,7 @@
 import {DispatchResult, isReducerSuccess} from "../ToolsDispatcher";
 import {ChatData} from "../data/ChatState";
 import {firestore} from "firebase-admin";
-import {logger} from "../../logging";
+import {tagLogger} from "../../logging";
 import {Collections} from "../data/Collections";
 import {ChatError} from "../data/ChatError";
 import {
@@ -13,6 +13,8 @@ import {TaskScheduler} from "../TaskScheduler";
 import DocumentReference = firestore.DocumentReference;
 import CollectionReference = firestore.CollectionReference;
 import FieldValue = firestore.FieldValue;
+
+const logger = tagLogger("ToolsContinuationScheduler");
 
 /**
  * Registers tool result and launches continuation command for the next dispatch

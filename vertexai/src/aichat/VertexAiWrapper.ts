@@ -3,8 +3,8 @@ import {
     ChatError,
     Continuation,
     DispatchError,
-    logger,
     printAiExample,
+    tagLogger,
     ToolCallRequest,
     ToolCallsResult
 } from "@motorro/firebase-ai-chat-core";
@@ -18,6 +18,8 @@ import {ChatThreadMessage, ThreadMessage} from "./data/ThreadMessage";
 import {RunContinuationRequest} from "./data/RunResponse";
 import CollectionReference = firestore.CollectionReference;
 import Timestamp = firestore.Timestamp;
+
+const logger = tagLogger("VertexAiWrapper");
 
 /**
  * Inter AI call state

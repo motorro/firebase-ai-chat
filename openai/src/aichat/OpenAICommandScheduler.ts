@@ -1,4 +1,4 @@
-import {AssistantConfig, CommandScheduler, logger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
+import {AssistantConfig, CommandScheduler, tagLogger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
 import {ChatCommandData} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatCommandQueue";
 import {OpenAiChatActions} from "./data/OpenAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
@@ -10,6 +10,7 @@ import {engineId} from "../engineId";
  * Close command delay to settle down AI runs
  */
 const SCHEDULE_CLOSE_AFTER = 3 * 60;
+const logger = tagLogger("OpenAICommandScheduler");
 
 /**
  * Schedules OpenAI actions

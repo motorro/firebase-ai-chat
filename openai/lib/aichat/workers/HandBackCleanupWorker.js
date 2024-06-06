@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HandBackCleanupWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiChatAction_1 = require("../data/OpenAiChatAction");
+const logger = (0, firebase_ai_chat_core_1.tagLogger)("HandBackCleanupWorker");
 /**
  * Cleans-up OpenAI thread on hand-back
  */
@@ -29,7 +30,7 @@ class HandBackCleanupWorker {
     async dispatch(req) {
         const action = this.getAction(req);
         if (undefined !== action) {
-            firebase_ai_chat_core_1.logger.d("Deleting thread...");
+            logger.d("Deleting thread...");
             const threadId = action.config.threadId;
             if (undefined !== threadId) {
                 await this.wrapper.deleteThread(threadId);

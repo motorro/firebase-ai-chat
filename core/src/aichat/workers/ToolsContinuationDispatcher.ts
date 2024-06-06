@@ -10,7 +10,7 @@ import {
     ToolsContinuationData
 } from "../data/ContinuationCommand";
 import {Continuation} from "../data/Continuation";
-import {logger} from "../../logging";
+import {tagLogger} from "../../logging";
 import {Collections} from "../data/Collections";
 import {firestore} from "firebase-admin";
 import DocumentReference = firestore.DocumentReference;
@@ -19,6 +19,8 @@ import CollectionReference = firestore.CollectionReference;
 import {ChatError} from "../data/ChatError";
 import FieldValue = firestore.FieldValue;
 import {ChatDispatchData} from "../ToolsDispatcher";
+
+const logger = tagLogger("ToolsContinuationDispatcher");
 
 /**
  * Tools dispatch continuation

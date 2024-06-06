@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RunWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
+const logger = (0, firebase_ai_chat_core_1.tagLogger)("RunWorker");
 class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
     static isSupportedAction(action) {
         return "run" === action;
@@ -12,10 +13,10 @@ class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
     async doDispatch(command, state, control) {
-        firebase_ai_chat_core_1.logger.d("Running assistant...");
+        logger.d("Running assistant...");
         const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
-            firebase_ai_chat_core_1.logger.e("Thread ID is not defined at running");
+            logger.e("Thread ID is not defined at running");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at running"));
         }
         const dispatcher = this.toolsDispatchFactory.getDispatcher(command.commonData.chatDocumentPath, state.config.assistantConfig.dispatcherId);

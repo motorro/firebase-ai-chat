@@ -4,6 +4,7 @@ exports.VertexAiWrapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const firebase_admin_1 = require("firebase-admin");
 var Timestamp = firebase_admin_1.firestore.Timestamp;
+const logger = (0, firebase_ai_chat_core_1.tagLogger)("VertexAiWrapper");
 /**
  * Wraps Open AI assistant use
  */
@@ -50,7 +51,7 @@ class VertexAiWrapper {
      */
     static checkFunctionCall(part) {
         if (undefined === part.functionCall.name) {
-            firebase_ai_chat_core_1.logger.w("Function call error: no function name in call:", JSON.stringify(part));
+            logger.w("Function call error: no function name in call:", JSON.stringify(part));
             return { error: "You didn't supply a function name. Check tools definition and supply a function name!" };
         }
         return undefined;
@@ -77,13 +78,13 @@ class VertexAiWrapper {
         });
     }
     async createThread(meta) {
-        firebase_ai_chat_core_1.logger.d("Creating thread. Meta:", JSON.stringify(meta));
+        logger.d("Creating thread. Meta:", JSON.stringify(meta));
         const doc = this.threads.doc();
         await doc.set({ meta: meta });
         return doc.id;
     }
     async postMessage(threadId, instructions, messages, dataSoFar, dispatch) {
-        firebase_ai_chat_core_1.logger.d("Posting messages...");
+        logger.d("Posting messages...");
         return await this.doPost(threadId, instructions, messages.map((it) => ({
             text: it
         })), dataSoFar, dispatch);
@@ -177,7 +178,7 @@ class VertexAiWrapper {
             if (0 === toolCalls.length) {
                 return { suspended: false, state: { data: data, messages: messages } };
             }
-            firebase_ai_chat_core_1.logger.d("Dispatching tools...");
+            logger.d("Dispatching tools...");
             // Gemini misses function names from time to time
             let nameErrorIn = -1;
             let nameError = undefined;
@@ -192,7 +193,7 @@ class VertexAiWrapper {
                 }
             }
             if (nameErrorIn >= 0 && undefined !== nameError) {
-                firebase_ai_chat_core_1.logger.w(`Empty function name in part ${nameErrorIn}`);
+                logger.w(`Empty function name in part ${nameErrorIn}`);
                 const thisError = nameError;
                 const otherError = {
                     error: `Function call was not done because you didn't provide a function name in part with index ${nameErrorIn}!`
@@ -211,7 +212,7 @@ class VertexAiWrapper {
                 args: part.functionCall.args
             })));
             if (result.isResolved()) {
-                firebase_ai_chat_core_1.logger.d("All tools dispatched");
+                logger.d("All tools dispatched");
                 data = result.value.data;
                 return await this.run(chat, result.value.responses.map((it) => ({
                     functionResponse: {
@@ -221,7 +222,7 @@ class VertexAiWrapper {
                 })), { data: result.value.data, messages: messages }, dispatch);
             }
             else {
-                firebase_ai_chat_core_1.logger.d("Some tools suspended...");
+                logger.d("Some tools suspended...");
                 return { suspended: true, state: { data: data, messages: messages } };
             }
         };
@@ -230,11 +231,11 @@ class VertexAiWrapper {
             aiResult = (_c = (_b = (await chat.sendMessage(parts)).response) === null || _b === void 0 ? void 0 : _b.candidates) === null || _c === void 0 ? void 0 : _c.at(0);
         }
         catch (e) {
-            firebase_ai_chat_core_1.logger.w("AI call error", e);
+            logger.w("AI call error", e);
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("unavailable", false, "Error running AI", e));
         }
         if (undefined === aiResult) {
-            firebase_ai_chat_core_1.logger.w("Empty AI result");
+            logger.w("Empty AI result");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("unavailable", false, "No candidates in AI answer"));
         }
         messages.push({

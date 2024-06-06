@@ -41,7 +41,34 @@ export const ConsoleLogger: Logger = {
 
 export let logger: Logger = ConsoleLogger;
 
+/**
+ * Sets the logger
+ * @param instance Logger instance
+ */
 export function setLogger(instance: Logger) {
     logger = instance;
+}
+
+/**
+ * Adds a tag to the logger
+ * @param tag Logging tag
+ * @return Tagged logger
+ */
+export function tagLogger(tag: string): Logger {
+    const tagStr = `${tag}:`;
+    return {
+        d(...args: unknown[]): void {
+            logger.d(...[tagStr, ...args]);
+        },
+        i(...args: unknown[]): void {
+            logger.i(...[tagStr, ...args]);
+        },
+        w(...args: unknown[]): void {
+            logger.w(...[tagStr, ...args]);
+        },
+        e(...args: unknown[]): void {
+            logger.e(...[tagStr, ...args]);
+        }
+    };
 }
 

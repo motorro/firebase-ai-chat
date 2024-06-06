@@ -3,12 +3,14 @@ import {
     ChatError,
     ChatState,
     DispatchControl,
-    logger
+    tagLogger
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {isPostExplicitAction, OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
+
+const logger = tagLogger("PostExplicitWorker");
 
 export class PostExplicitWorker extends OpenAiQueueWorker {
     static isSupportedAction(action: unknown): action is OpenAiChatAction {

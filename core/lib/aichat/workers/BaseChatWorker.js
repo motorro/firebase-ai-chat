@@ -5,6 +5,7 @@ const Collections_1 = require("../data/Collections");
 const logging_1 = require("../../logging");
 const ChatCommand_1 = require("../data/ChatCommand");
 const DispatchRunner_1 = require("./DispatchRunner");
+const logger = (0, logging_1.tagLogger)("BaseChatWorker");
 /**
  * Basic `OpenAiChatWorker` implementation that maintains chat state and dispatch runs
  */
@@ -26,7 +27,7 @@ class BaseChatWorker {
      */
     async dispatch(req, onQueueComplete) {
         if (this.isSupportedCommand(req)) {
-            logging_1.logger.d("Dispatching command: ", JSON.stringify(req.data));
+            logger.d("Dispatching command: ", JSON.stringify(req.data));
             await this.dispatchWithCheck(req, onQueueComplete, async (command, state, control) => {
                 return await this.doDispatch(command, state, control);
             });
@@ -101,7 +102,7 @@ class BaseChatWorker {
             const control = {
                 updateChatState: updateState,
                 continueQueue: async (next) => {
-                    logging_1.logger.d("Scheduling next step: ", JSON.stringify(next));
+                    logger.d("Scheduling next step: ", JSON.stringify(next));
                     let command;
                     let queueName = req.queueName;
                     if ((0, ChatCommand_1.isBoundChatCommand)(chatCommand)) {
@@ -114,14 +115,14 @@ class BaseChatWorker {
                     await this.scheduler.schedule(queueName, command);
                 },
                 completeQueue: async () => {
-                    logging_1.logger.d("Command queue complete");
+                    logger.d("Command queue complete");
                     if (undefined !== onQueueComplete) {
-                        logging_1.logger.d("Running queue complete handler...");
+                        logger.d("Running queue complete handler...");
                         try {
                             await onQueueComplete(command.commonData.chatDocumentPath, command.commonData.meta);
                         }
                         catch (e) {
-                            logging_1.logger.w("Error running complete handler", e);
+                            logger.w("Error running complete handler", e);
                         }
                     }
                 }

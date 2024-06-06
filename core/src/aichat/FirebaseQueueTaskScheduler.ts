@@ -1,10 +1,12 @@
 import {GoogleAuth} from "google-auth-library";
 import {DeliverySchedule, Functions} from "firebase-admin/lib/functions";
 import {projectID} from "firebase-functions/params";
-import {logger} from "../logging";
 import {HttpsError} from "firebase-functions/v2/https";
 import {TaskScheduler} from "./TaskScheduler";
 import {CloudTasksClient} from "@google-cloud/tasks";
+import {tagLogger} from "../logging";
+
+const logger = tagLogger("FirebaseQueueTaskScheduler");
 
 export class FirebaseQueueTaskScheduler<Args extends Record<string, unknown> = Record<string, unknown>> implements TaskScheduler<Args> {
     private readonly auth: GoogleAuth = new GoogleAuth({

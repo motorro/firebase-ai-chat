@@ -2,8 +2,8 @@ import {
     ChatState,
     ChatData,
     DispatchControl,
-    logger,
     ChatError,
+    tagLogger
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
@@ -11,6 +11,8 @@ import {firestore} from "firebase-admin";
 import FieldValue = firestore.FieldValue;
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
+
+const logger = tagLogger("RetrieveWorker");
 
 export class RetrieveWorker extends OpenAiQueueWorker {
     static isSupportedAction(action: unknown): action is OpenAiChatAction {

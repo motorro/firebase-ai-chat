@@ -4,6 +4,7 @@ exports.commonFormatContinuationError = exports.SequentialToolsContinuationDispa
 const ToolsDispatcher_1 = require("../ToolsDispatcher");
 const logging_1 = require("../../logging");
 const ChatError_1 = require("../data/ChatError");
+const logger = (0, logging_1.tagLogger)("ToolsContinuationDispatchRunner");
 /**
  * Runs passed tools sequentially suspending continuation if suspended
  * If any call fails - also fails other subsequent calls
@@ -38,24 +39,24 @@ class SequentialToolsContinuationDispatchRunner {
                 pushResult(callId, callData, this.formatContinuationError(...failed));
                 continue;
             }
-            logging_1.logger.d("Running tool:", callData.call.request.toolName);
-            logging_1.logger.d("Data so far:", currentData);
-            logging_1.logger.d("Arguments:", JSON.stringify(callData.call.request.args));
+            logger.d("Running tool:", callData.call.request.toolName);
+            logger.d("Data so far:", currentData);
+            logger.d("Arguments:", JSON.stringify(callData.call.request.args));
             const continuationCommand = getContinuationCommand({ toolId: callId.id });
             const result = await (0, ToolsDispatcher_1.dispatchToContinuation)(async () => {
                 return this.getDispatcher(continuationData.dispatcherId)(currentData, callData.call.request.toolName, callData.call.request.args, continuationCommand, chatData);
             });
             let response = null;
             if (result.isResolved()) {
-                logging_1.logger.d("Resolved.");
+                logger.d("Resolved.");
                 response = result.value;
                 if ((0, ToolsDispatcher_1.isDispatchError)(response)) {
-                    logging_1.logger.w("Dispatch error. Failing calls:", response.error);
+                    logger.w("Dispatch error. Failing calls:", response.error);
                     failed = [callData.call.request, response];
                 }
             }
             else {
-                logging_1.logger.d("Suspended...");
+                logger.d("Suspended...");
                 suspended = true;
             }
             pushResult(callId, callData, response);
@@ -65,7 +66,7 @@ class SequentialToolsContinuationDispatchRunner {
     getDispatcher(dispatcherId) {
         const dispatcher = this.dispatchers[dispatcherId];
         if (undefined === dispatcher) {
-            logging_1.logger.w("Dispatcher not found:", dispatcherId);
+            logger.w("Dispatcher not found:", dispatcherId);
             throw new ChatError_1.ChatError("unimplemented", true, "Dispatcher not found:", dispatcherId);
         }
         return dispatcher;

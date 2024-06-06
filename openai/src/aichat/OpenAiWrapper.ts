@@ -2,9 +2,10 @@ import {
     ChatData,
     ChatError,
     Continuation,
-    isDispatchError, isReducerSuccess,
-    logger,
+    isDispatchError,
+    isReducerSuccess,
     Messages,
+    tagLogger,
     ToolCallRequest,
     ToolCallsResult
 } from "@motorro/firebase-ai-chat-core";
@@ -15,6 +16,9 @@ import {MessagesPage, RequiredActionFunctionToolCall, RunSubmitToolOutputsParams
 import {AiWrapper} from "./AiWrapper";
 import {RunContinuationRequest} from "./data/RunResponse";
 import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
+
+const logger = tagLogger("OpenAiWrapper");
+
 
 /**
  * Wraps Open AI assistant use

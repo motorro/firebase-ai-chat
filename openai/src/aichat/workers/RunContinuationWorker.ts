@@ -6,7 +6,7 @@ import {
     Continuation,
     ContinuationRequest,
     DispatchControl,
-    logger,
+    tagLogger,
     TaskScheduler, ToolCallRequest, ToolCallsResult,
     ToolContinuationDispatcherFactory
 } from "@motorro/firebase-ai-chat-core";
@@ -15,6 +15,8 @@ import {OpenAiChatActions} from "../data/OpenAiChatAction";
 import {AiWrapper} from "../AiWrapper";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {isOpenAiContinuationCommand, OpenAiContinuationCommand} from "../data/OpenAiChatCommand";
+
+const logger = tagLogger("RunContinuationWorker");
 
 export class RunContinuationWorker extends OpenAiQueueWorker {
     static isSupportedCommand(command: ChatCommand<unknown>): boolean {

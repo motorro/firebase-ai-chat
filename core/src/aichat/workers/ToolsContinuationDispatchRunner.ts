@@ -13,12 +13,14 @@ import {
     ToolCallData, ToolCallRequest,
     ToolsContinuationData
 } from "../data/ContinuationCommand";
-import {logger} from "../../logging";
+import {tagLogger} from "../../logging";
 import {Continuation} from "../data/Continuation";
 import {ChatError} from "../data/ChatError";
 import {firestore} from "firebase-admin";
 import DocumentReference = firestore.DocumentReference;
 import {ChatMeta} from "../data/Meta";
+
+const logger = tagLogger("ToolsContinuationDispatchRunner");
 
 /**
  * Dispatch data

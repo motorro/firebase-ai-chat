@@ -2,12 +2,14 @@ import {
     ChatState,
     ChatData,
     DispatchControl,
-    logger,
+    tagLogger
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
+
+const logger = tagLogger("CreateWorker");
 
 export class CreateWorker extends OpenAiQueueWorker {
     static isSupportedAction(action: unknown): action is OpenAiChatAction {

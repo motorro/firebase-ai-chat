@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenAiQueueWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
+const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiQueueWorker");
 class OpenAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
     /**
      * Constructor
@@ -34,7 +35,7 @@ class OpenAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      */
     async continueQueue(control, command) {
         if (0 === command.actionData.length) {
-            firebase_ai_chat_core_1.logger.d("Queue complete");
+            logger.d("Queue complete");
             await control.completeQueue();
             return;
         }
@@ -43,7 +44,7 @@ class OpenAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
             await this.continueNextInQueue(control, command);
             return;
         }
-        firebase_ai_chat_core_1.logger.d("Scheduling next in queue:", JSON.stringify(command));
+        logger.d("Scheduling next in queue:", JSON.stringify(command));
         await control.continueQueue(command);
     }
     /**
@@ -53,7 +54,7 @@ class OpenAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      * @protected
      */
     async runSwitchToUser(control) {
-        firebase_ai_chat_core_1.logger.d("Switching to user input");
+        logger.d("Switching to user input");
         await control.updateChatState({
             status: "userInput"
         });

@@ -2,7 +2,7 @@ import {
     BaseChatWorker, ChatCommand,
     ChatData,
     ChatState, DispatchControl,
-    logger,
+    tagLogger,
     TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {VertexAiChatActions} from "../data/VertexAiChatAction";
@@ -11,6 +11,8 @@ import {AiWrapper} from "../AiWrapper";
 import {ChatConfig} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatConfig";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {VertexAiChatCommand} from "../data/VertexAiChatCommand";
+
+const logger = tagLogger("VertexAiQueueWorker");
 
 export type VertexAiDispatchControl = DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>;
 

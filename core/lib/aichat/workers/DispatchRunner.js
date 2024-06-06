@@ -7,6 +7,7 @@ const Collections_1 = require("../data/Collections");
 const logging_1 = require("../../logging");
 const ChatError_1 = require("../data/ChatError");
 var FieldValue = firebase_admin_1.firestore.FieldValue;
+const logger = (0, logging_1.tagLogger)("DispatchRunner");
 /**
  * Runs task locking on current dispatch and run
  */
@@ -28,26 +29,26 @@ class DispatchRunner {
             .doc(command.commonData.dispatchId)
             .collection(Collections_1.Collections.runs)
             .doc(req.id);
-        logging_1.logger.d(`Dispatching command for document: ${command.commonData.chatDocumentPath}`);
+        logger.d(`Dispatching command for document: ${command.commonData.chatDocumentPath}`);
         const stateToDispatch = await db.runTransaction(async (tx) => {
             const state = (await tx.get(doc)).data();
             if (undefined === state) {
-                logging_1.logger.w("Document not found. Aborting...");
+                logger.w("Document not found. Aborting...");
                 return undefined;
             }
             if (command.commonData.dispatchId !== state.latestDispatchId) {
-                logging_1.logger.w("Another command is dispatched. Aborting...");
+                logger.w("Another command is dispatched. Aborting...");
                 return undefined;
             }
             const run = await tx.get(runDoc);
             if (run.exists) {
                 const runData = run.data();
                 if ("complete" === (runData === null || runData === void 0 ? void 0 : runData.status)) {
-                    logging_1.logger.w("Already done. Aborting...");
+                    logger.w("Already done. Aborting...");
                     return undefined;
                 }
                 if ("running" === (runData === null || runData === void 0 ? void 0 : runData.status)) {
-                    logging_1.logger.w("Already running. Aborting...");
+                    logger.w("Already running. Aborting...");
                     return undefined;
                 }
             }
@@ -55,19 +56,19 @@ class DispatchRunner {
             return state;
         });
         if (undefined === stateToDispatch) {
-            logging_1.logger.w("Aborting...");
+            logger.w("Aborting...");
             return;
         }
         const updateState = async (state) => {
             return await this.db.runTransaction(async (tx) => {
                 const stateData = (await tx.get(doc)).data();
                 if (command.commonData.dispatchId === (stateData === null || stateData === void 0 ? void 0 : stateData.latestDispatchId)) {
-                    logging_1.logger.d(`Updating document state of ${doc.path}:`, JSON.stringify(state));
+                    logger.d(`Updating document state of ${doc.path}:`, JSON.stringify(state));
                     tx.set(doc, Object.assign(Object.assign({}, state), { updatedAt: FieldValue.serverTimestamp() }), { merge: true });
                     return true;
                 }
                 else {
-                    logging_1.logger.d("Document has dispatch another command. Data update cancelled");
+                    logger.d("Document has dispatch another command. Data update cancelled");
                     return false;
                 }
             });
@@ -84,26 +85,26 @@ class DispatchRunner {
             await updateRun("complete");
         }
         catch (e) {
-            logging_1.logger.w("Error running dispatch", e);
+            logger.w("Error running dispatch", e);
             if ((0, ChatError_1.isPermanentError)(e)) {
-                logging_1.logger.w("Permanent error. Failing chat...");
+                logger.w("Permanent error. Failing chat...");
                 await fail(e);
                 return;
             }
             const retryCount = req.retryCount;
             const maxRetries = await this.scheduler.getQueueMaxRetries(req.queueName);
-            logging_1.logger.d(`Current retry count attempt: ${retryCount}, maximum retry count: ${maxRetries}`);
+            logger.d(`Current retry count attempt: ${retryCount}, maximum retry count: ${maxRetries}`);
             if (maxRetries != -1 && retryCount + 1 == maxRetries) {
-                logging_1.logger.w("Maximum retry count reached. Failing chat...");
+                logger.w("Maximum retry count reached. Failing chat...");
                 await fail(e);
                 return;
             }
-            logging_1.logger.d(`Scheduling retry ${retryCount} of ${maxRetries}`);
+            logger.d(`Scheduling retry ${retryCount} of ${maxRetries}`);
             await updateRun("waitingForRetry");
             return Promise.reject(e);
         }
         async function updateRun(status) {
-            logging_1.logger.d("Updating run to:", status);
+            logger.d("Updating run to:", status);
             await runDoc.set({ status: status }, { merge: true });
         }
     }

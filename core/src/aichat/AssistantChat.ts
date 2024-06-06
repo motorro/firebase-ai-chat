@@ -7,7 +7,6 @@ import {
     ChatStateUpdate,
     ChatContextStackEntry
 } from "./data/ChatState";
-import {logger} from "../logging";
 import {Collections} from "./data/Collections";
 import {ChatMessage} from "./data/ChatMessage";
 import CollectionReference = firestore.CollectionReference;
@@ -22,6 +21,9 @@ import {CommandScheduler} from "./CommandScheduler";
 import Transaction = firestore.Transaction;
 import Timestamp = firestore.Timestamp;
 import {HandOverResult} from "./data/HandOverResult";
+import {tagLogger} from "../logging";
+
+const logger = tagLogger("AssistantChat");
 
 /**
  * Front-facing assistant chat
@@ -248,12 +250,14 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
      * @param document Document reference
      * @param userId Chat owner
      * @param workerMeta Metadata to pass to chat worker
+     * @param cleanup If true, cleans-up the current chat internals after hand-back, e.g: deletes underlying thread
      * @return Chat stack update
      */
     async handBack(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
-        workerMeta?: Meta
+        workerMeta?: Meta,
+        cleanup = true
     ): Promise<HandOverResult> {
         logger.d("Popping chat state: ", document.path);
         const [state, newState] = await this.db.runTransaction(async (tx) => {

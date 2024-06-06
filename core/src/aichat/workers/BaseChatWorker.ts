@@ -1,7 +1,7 @@
 import {firestore} from "firebase-admin";
 import {Collections} from "../data/Collections";
 import {ChatMessage} from "../data/ChatMessage";
-import {logger} from "../../logging";
+import {tagLogger} from "../../logging";
 import CollectionReference = firestore.CollectionReference;
 import {AssistantConfig, ChatData, ChatState} from "../data/ChatState";
 import {TaskScheduler} from "../TaskScheduler";
@@ -11,6 +11,8 @@ import Query = firestore.Query;
 import {BoundChatCommand, ChatCommand, isBoundChatCommand} from "../data/ChatCommand";
 import {ChatWorker, DispatchControl} from "./ChatWorker";
 import {DispatchRunner} from "./DispatchRunner";
+
+const logger = tagLogger("BaseChatWorker");
 
 /**
  * Basic `OpenAiChatWorker` implementation that maintains chat state and dispatch runs

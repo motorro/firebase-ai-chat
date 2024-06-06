@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
+exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.tagLogger = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
 const ToolContinuationDispatcherFactory_1 = require("./aichat/workers/ToolContinuationDispatcherFactory");
 const ToolsContinuationScheduler_1 = require("./aichat/workers/ToolsContinuationScheduler");
 var AiData_1 = require("./aichat/data/AiData");
@@ -11,6 +11,7 @@ Object.defineProperty(exports, "ChatError", { enumerable: true, get: function ()
 var logging_1 = require("./logging");
 Object.defineProperty(exports, "logger", { enumerable: true, get: function () { return logging_1.logger; } });
 Object.defineProperty(exports, "setLogger", { enumerable: true, get: function () { return logging_1.setLogger; } });
+Object.defineProperty(exports, "tagLogger", { enumerable: true, get: function () { return logging_1.tagLogger; } });
 var ToolsDispatcher_1 = require("./aichat/ToolsDispatcher");
 Object.defineProperty(exports, "isDispatchResult", { enumerable: true, get: function () { return ToolsDispatcher_1.isDispatchResult; } });
 Object.defineProperty(exports, "getDispatchError", { enumerable: true, get: function () { return ToolsDispatcher_1.getDispatchError; } });

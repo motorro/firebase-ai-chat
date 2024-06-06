@@ -1,8 +1,10 @@
-import {ChatData, ChatState, DispatchControl, logger} from "@motorro/firebase-ai-chat-core";
+import {ChatData, ChatState, DispatchControl, tagLogger} from "@motorro/firebase-ai-chat-core";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
 import {VertexAiChatActions} from "../data/VertexAiChatAction";
 import {VertexAiQueueWorker} from "./VertexAiQueueWorker";
 import {VertexAiChatCommand} from "../data/VertexAiChatCommand";
+
+const logger = tagLogger("CreateWorker");
 
 export class CreateWorker extends VertexAiQueueWorker {
     static isSupportedAction(action: unknown): action is "create" {

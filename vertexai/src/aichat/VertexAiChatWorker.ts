@@ -2,8 +2,8 @@ import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {
     ChatCommand,
     ChatWorker,
-    logger,
     Meta,
+    tagLogger,
     TaskScheduler,
     ToolContinuationDispatcherFactory,
     toolContinuationDispatcherFactory,
@@ -17,6 +17,8 @@ import {AiWrapper} from "./AiWrapper";
 import {VertexAiSystemInstructions} from "./data/VertexAiSystemInstructions";
 import {HandBackCleanupWorker} from "./workers/HandBackCleanupWorker";
 import {isVertexAiChatReq, VertexAiChatCommand} from "./data/VertexAiChatCommand";
+
+const logger = tagLogger("VertexAiChatWorker");
 
 /**
  * Chat worker that dispatches chat commands and runs AI

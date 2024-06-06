@@ -65,9 +65,10 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param document Document reference
      * @param userId Chat owner
      * @param workerMeta Metadata to pass to chat worker
+     * @param cleanup If true, cleans-up the current chat internals after hand-back, e.g: deletes underlying thread
      * @return Chat stack update
      */
-    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, workerMeta?: Meta): Promise<HandOverResult>;
+    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, workerMeta?: Meta, cleanup?: boolean): Promise<HandOverResult>;
     /**
      * Posts messages to the thread
      * @param document Chat document

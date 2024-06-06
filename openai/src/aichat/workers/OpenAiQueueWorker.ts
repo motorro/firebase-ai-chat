@@ -2,7 +2,7 @@ import {
     BaseChatWorker, ChatCommand,
     ChatData,
     ChatState, DispatchControl,
-    logger,
+    tagLogger,
     TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiChatActions} from "../data/OpenAiChatAction";
@@ -11,6 +11,8 @@ import {AiWrapper} from "../AiWrapper";
 import {ChatConfig} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatConfig";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
+
+const logger = tagLogger("OpenAiQueueWorker");
 
 export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
 

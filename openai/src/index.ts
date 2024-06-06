@@ -30,6 +30,7 @@ export {
     ChatMeta,
     Logger,
     setLogger,
+    tagLogger,
     TaskScheduler,
     CommandScheduler,
     Collections,

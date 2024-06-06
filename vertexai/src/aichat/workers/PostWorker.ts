@@ -6,7 +6,7 @@ import {
     Continuation,
     ContinuationRequest,
     DispatchControl,
-    logger,
+    tagLogger,
     TaskScheduler,
     ToolCallRequest,
     ToolCallsResult,
@@ -22,6 +22,8 @@ import {
     VertexAiChatCommand,
     VertexAiContinuationCommand
 } from "../data/VertexAiChatCommand";
+
+const logger = tagLogger("BasePostWorker");
 
 abstract class BasePostWorker extends VertexAiQueueWorker {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

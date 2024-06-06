@@ -1,10 +1,12 @@
-import {AssistantConfig, CommandScheduler, logger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
+import {AssistantConfig, CommandScheduler, tagLogger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
 import {ChatCommandData} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatCommandQueue";
 import {VertexAiChatActions} from "./data/VertexAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
 import {VertexAiChatCommand} from "./data/VertexAiChatCommand";
 import {isVertexAiAssistantConfig, VertexAiAssistantConfig} from "./data/VertexAiAssistantConfig";
 import {engineId} from "../engineId";
+
+const logger = tagLogger("VertexAICommandScheduler");
 
 /**
  * Close command delay to settle down AI runs

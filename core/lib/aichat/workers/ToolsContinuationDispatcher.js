@@ -8,6 +8,7 @@ const firebase_admin_1 = require("firebase-admin");
 var Timestamp = firebase_admin_1.firestore.Timestamp;
 const ChatError_1 = require("../data/ChatError");
 var FieldValue = firebase_admin_1.firestore.FieldValue;
+const logger = (0, logging_1.tagLogger)("ToolsContinuationDispatcher");
 /**
  * Continuation dispatcher implementation
  */
@@ -27,7 +28,7 @@ class ToolsContinuationDispatcherImpl {
         this.dispatchRunner = dispatchRunner;
     }
     async dispatch(soFar, toolCalls, getContinuationCommand) {
-        logging_1.logger.d("Dispatching tool calls");
+        logger.d("Dispatching tool calls");
         const continuationDocument = this.chatDocument.collection(Collections_1.Collections.continuations).doc();
         const toolCallsCollection = continuationDocument.collection(Collections_1.Collections.toolCalls);
         const continuation = {
@@ -50,19 +51,19 @@ class ToolsContinuationDispatcherImpl {
         const result = await this.doDispatch(batch, continuationDocument, continuation, tools, getContinuationCommand);
         // Save only if suspended
         if (result.isSuspended()) {
-            logging_1.logger.d("Saving continuation to:", continuationDocument.path);
+            logger.d("Saving continuation to:", continuationDocument.path);
             await batch.commit();
         }
         return result;
     }
     async dispatchCommand(command, getContinuationCommand) {
-        logging_1.logger.d("Continuation processing. Moving forward:", JSON.stringify(command));
+        logger.d("Continuation processing. Moving forward:", JSON.stringify(command));
         // eslint-disable-next-line max-len
         const continuationDocument = this.chatDocument.collection(Collections_1.Collections.continuations).doc(command.continuation.continuationId);
         const toolCallsCollection = continuationDocument.collection(Collections_1.Collections.toolCalls);
         const continuation = (await continuationDocument.get()).data();
         if (undefined === continuation) {
-            logging_1.logger.w("Continuation data not found");
+            logger.w("Continuation data not found");
             return Promise.reject(new ChatError_1.ChatError("not-found", true, "Continuation data not found"));
         }
         const toolCallData = (await toolCallsCollection.orderBy("index").get()).docs;
@@ -75,7 +76,7 @@ class ToolsContinuationDispatcherImpl {
         });
         const batch = this.db.batch();
         const result = await this.doDispatch(batch, continuationDocument, continuation, toolCalls, getContinuationCommand);
-        logging_1.logger.d("Saving continuation to:", continuationDocument.path);
+        logger.d("Saving continuation to:", continuationDocument.path);
         await batch.commit();
         return result;
     }
@@ -106,11 +107,11 @@ class ToolsContinuationDispatcherImpl {
             updatedAt: FieldValue.serverTimestamp()
         }, { merge: true });
         if (dispatched.suspended) {
-            logging_1.logger.d("Dispatch suspened");
+            logger.d("Dispatch suspened");
             return Continuation_1.Continuation.suspend();
         }
         else {
-            logging_1.logger.d("Dispatch resolved");
+            logger.d("Dispatch resolved");
             return Continuation_1.Continuation.resolve({
                 data: dispatched.data,
                 responses: result

@@ -5,15 +5,16 @@ const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const firebase_admin_1 = require("firebase-admin");
 var FieldValue = firebase_admin_1.firestore.FieldValue;
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
+const logger = (0, firebase_ai_chat_core_1.tagLogger)("RetrieveWorker");
 class RetrieveWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
     static isSupportedAction(action) {
         return "retrieve" === action;
     }
     async doDispatch(command, state, control) {
-        firebase_ai_chat_core_1.logger.d("Retrieving messages...");
+        logger.d("Retrieving messages...");
         const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
-            firebase_ai_chat_core_1.logger.e("Thread ID is not defined at message posting");
+            logger.e("Thread ID is not defined at message posting");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
         const messageCollectionRef = this.getMessageCollection(command.commonData.chatDocumentPath);

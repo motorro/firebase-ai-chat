@@ -2,20 +2,21 @@ import {
     ChatState,
     ChatData,
     DispatchControl,
-    logger,
     ChatError,
     TaskScheduler,
     ToolContinuationDispatcherFactory,
     ToolCallRequest,
     Continuation,
     ToolCallsResult,
-    ContinuationRequest
+    ContinuationRequest, tagLogger
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
 import {AiWrapper} from "../AiWrapper";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand, OpenAiContinuationCommand} from "../data/OpenAiChatCommand";
+
+const logger = tagLogger("RunWorker");
 
 export class RunWorker extends OpenAiQueueWorker {
     static isSupportedAction(action: unknown): action is OpenAiChatAction {

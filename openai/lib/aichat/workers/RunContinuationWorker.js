@@ -4,6 +4,7 @@ exports.RunContinuationWorker = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 const OpenAiChatCommand_1 = require("../data/OpenAiChatCommand");
+const logger = (0, firebase_ai_chat_core_1.tagLogger)("RunContinuationWorker");
 class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
     static isSupportedCommand(command) {
         return (0, OpenAiChatCommand_1.isOpenAiContinuationCommand)(command);
@@ -13,10 +14,10 @@ class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
     async doDispatch(command, state, control) {
-        firebase_ai_chat_core_1.logger.d("Running continuation...");
+        logger.d("Running continuation...");
         const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
-            firebase_ai_chat_core_1.logger.e("Thread ID is not defined at continuation running");
+            logger.e("Thread ID is not defined at continuation running");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at continuation running"));
         }
         const dispatcher = this.toolsDispatchFactory.getDispatcher(command.commonData.chatDocumentPath, state.config.assistantConfig.dispatcherId);
