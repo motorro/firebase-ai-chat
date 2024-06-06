@@ -14,7 +14,7 @@ export interface ChatDispatchData<CM extends ChatMeta = ChatMeta> {
  * Function Dispatch was successful. Contains function result
  */
 export interface FunctionSuccess {
-    readonly result: Record<string, unknown>;
+    readonly result: Record<string, unknown> | null;
     readonly comment?: string;
 }
 
