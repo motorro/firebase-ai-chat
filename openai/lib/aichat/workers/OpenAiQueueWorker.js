@@ -45,7 +45,11 @@ class OpenAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
             return;
         }
         logger.d("Scheduling next in queue:", JSON.stringify(command));
-        await control.continueQueue(command);
+        const queued = await control.continueQueue(command);
+        if (!queued) {
+            logger.d("Next command was not queued due to dispatch preconditions. Completitng...");
+            await control.completeQueue();
+        }
     }
     /**
      * Switches to user input.

@@ -112,7 +112,13 @@ class BaseChatWorker {
                     else {
                         command = next;
                     }
-                    await this.scheduler.schedule(queueName, command);
+                    if (command.commonData.dispatchId === soFar.latestDispatchId) {
+                        await this.scheduler.schedule(queueName, command);
+                        logger.d("Command scheduled");
+                        return true;
+                    }
+                    logger.d("Chat is dispatching another command. Ignoring...");
+                    return false;
                 },
                 completeQueue: async () => {
                     logger.d("Command queue complete");

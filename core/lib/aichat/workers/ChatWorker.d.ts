@@ -6,8 +6,20 @@ import { BoundChatCommand, ChatCommand } from "../data/ChatCommand";
  * Dispatch control structure passed to processing function
  */
 export interface DispatchControl<A, AC extends AssistantConfig, DATA extends ChatData> {
+    /**
+     * Updates chat state if corresponds with dispatch sequence
+     * @param state Partial state update
+     * @return True if state was updated or false if update attempt is conflicting with the dispatch logic
+     */
     updateChatState: (state: Partial<ChatState<AC, DATA>>) => Promise<boolean>;
-    continueQueue: (next: ChatCommand<A> | BoundChatCommand<A>) => Promise<void>;
+    /**
+     * Continues queue if dispatch sequence is valid
+     * @param next
+     */
+    continueQueue: (next: ChatCommand<A> | BoundChatCommand<A>) => Promise<boolean>;
+    /**
+     * Completes queue if dispatch sequence is valid
+     */
     completeQueue: () => Promise<void>;
 }
 /**
