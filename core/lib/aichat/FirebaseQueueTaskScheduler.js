@@ -8,25 +8,32 @@ const tasks_1 = require("@google-cloud/tasks");
 const logging_1 = require("../logging");
 const logger = (0, logging_1.tagLogger)("FirebaseQueueTaskScheduler");
 class FirebaseQueueTaskScheduler {
-    constructor(functions, location) {
+    /**
+     * Constructor
+     * @param functions Functions instance
+     * @param region Service region
+     * @param defaultSchedule Default scheduling region to merge with those passed to schedule method
+     */
+    constructor(functions, region, defaultSchedule) {
         this.auth = new google_auth_library_1.GoogleAuth({
             scopes: "https://www.googleapis.com/auth/cloud-platform"
         });
         this.functions = functions;
-        this.location = location;
+        this.region = region;
+        this.defaultSchedule = defaultSchedule || {};
     }
     async schedule(queueName, command, schedule) {
-        logger.d(`Dispatching to ${queueName} at ${this.location}:`, JSON.stringify(command));
-        const queue = this.functions.taskQueue(`locations/${this.location}/functions/${queueName}`);
-        const uri = await this.getFunctionUrl(queueName, this.location);
+        logger.d(`Dispatching to ${queueName} at ${this.region}:`, JSON.stringify(command));
+        const queue = this.functions.taskQueue(`locations/${this.region}/functions/${queueName}`);
+        const uri = await this.getFunctionUrl(queueName, this.region);
         const toEnqueue = Array.isArray(command) ? command : [command];
-        const options = Object.assign(Object.assign({}, (schedule || {})), { uri: uri });
+        const options = Object.assign(Object.assign({}, (schedule || this.defaultSchedule || {})), { uri: uri });
         await Promise.all(toEnqueue.map((it) => queue.enqueue(it, options)));
     }
     async getQueueMaxRetries(queueName) {
         var _a;
         const client = new tasks_1.CloudTasksClient();
-        const name = `projects/${params_1.projectID.value()}/locations/${this.location}/queues/${queueName}`;
+        const name = `projects/${params_1.projectID.value()}/locations/${this.region}/queues/${queueName}`;
         const queue = await client.getQueue({ name: name });
         return ((_a = queue[0].retryConfig) === null || _a === void 0 ? void 0 : _a.maxAttempts) || 0;
     }
