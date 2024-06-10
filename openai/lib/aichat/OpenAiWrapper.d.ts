@@ -7,7 +7,8 @@ import { RunContinuationRequest } from "./data/RunResponse";
  */
 export declare class OpenAiWrapper implements AiWrapper {
     private readonly openAi;
-    constructor(openAi: OpenAI);
+    private readonly debugAi;
+    constructor(openAi: OpenAI, debugAi?: boolean);
     createThread(meta: Readonly<Record<string, string>>): Promise<string>;
     postMessage(threadId: string, message: string): Promise<string>;
     run<DATA extends ChatData>(threadId: string, assistantId: string, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>, runId: string) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<DATA>>;

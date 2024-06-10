@@ -14,11 +14,13 @@ class VertexAiWrapper {
      * @param model Pre-configured `GenerativeModel`
      * @param firestore Firebase firestore
      * @param threadsPath Threads collection path
+     * @param debugAi If true - will log AI request and response
      */
-    constructor(model, firestore, threadsPath) {
+    constructor(model, firestore, threadsPath, debugAi = false) {
         this.model = model;
         this.firestore = firestore;
         this.threads = firestore.collection(threadsPath);
+        this.debugAi = debugAi;
     }
     /**
      * Generates system instructions
@@ -227,6 +229,9 @@ class VertexAiWrapper {
             }
         };
         let aiResult = undefined;
+        if (this.debugAi) {
+            (0, firebase_ai_chat_core_1.tagLogger)("AI").d("About to send parts to AI. Parts:", JSON.stringify(parts));
+        }
         try {
             aiResult = (_c = (_b = (await chat.sendMessage(parts)).response) === null || _b === void 0 ? void 0 : _b.candidates) === null || _c === void 0 ? void 0 : _c.at(0);
         }
@@ -237,6 +242,9 @@ class VertexAiWrapper {
         if (undefined === aiResult) {
             logger.w("Empty AI result");
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("unavailable", false, "No candidates in AI answer"));
+        }
+        if (this.debugAi) {
+            (0, firebase_ai_chat_core_1.tagLogger)("AI").d("Response from AI. Parts:", JSON.stringify(aiResult.content.parts));
         }
         messages.push({
             content: aiResult.content,

@@ -127,13 +127,15 @@ export interface AiChat {
  * @param functions Functions instance
  * @param location Function location
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param debugAi If true, raw AI input and output will be logged
  * @return Chat tools interface
  */
 export function factory(
     firestore: Firestore,
     functions: Functions,
     location: string,
-    taskScheduler?: TaskScheduler
+    taskScheduler?: TaskScheduler,
+    debugAi = false
 ): AiChat {
     const _taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
     const _continuationSchedulerFactory = toolContinuationSchedulerFactory(firestore, _taskScheduler);
@@ -155,7 +157,7 @@ export function factory(
             return new OpenAiChatWorker(
                 firestore,
                 _taskScheduler,
-                new OpenAiWrapper(openAi),
+                new OpenAiWrapper(openAi, debugAi),
                 toolContinuationDispatcherFactory(firestore, dispatchers, _taskScheduler)
             );
         },

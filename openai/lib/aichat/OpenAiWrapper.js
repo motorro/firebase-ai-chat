@@ -15,8 +15,9 @@ const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiWrapper");
  * Wraps Open AI assistant use
  */
 class OpenAiWrapper {
-    constructor(openAi) {
+    constructor(openAi, debugAi = false) {
         this.openAi = openAi;
+        this.debugAi = debugAi;
     }
     async createThread(meta) {
         logger.d("Creating thread...", meta);
@@ -28,6 +29,9 @@ class OpenAiWrapper {
     }
     async postMessage(threadId, message) {
         logger.d("Posting message...");
+        if (this.debugAi) {
+            (0, firebase_ai_chat_core_1.tagLogger)("AI").d("About to send message to AI. Message:", JSON.stringify(message));
+        }
         return this.runAi(async (ai) => {
             const created = await ai.beta.threads.messages.create(threadId, {
                 role: "user",
@@ -51,6 +55,9 @@ class OpenAiWrapper {
                     return firebase_ai_chat_core_1.Continuation.resolve(data);
                 }
                 logger.d("Dispatching tools...");
+                if (this.debugAi) {
+                    (0, firebase_ai_chat_core_1.tagLogger)("AI").d("Required tools to run:", JSON.stringify(toolCalls));
+                }
                 const result = await dispatch(data, toolCalls.map((call) => ({
                     toolCallId: call.id,
                     toolName: call.function.name,
@@ -127,6 +134,9 @@ class OpenAiWrapper {
             }
         }
         return await this.doRun(threadId, assistantId, data, dispatch, await this.runAi((ai) => {
+            if (this.debugAi) {
+                (0, firebase_ai_chat_core_1.tagLogger)("AI").d("Submitting tools output:", JSON.stringify(dispatches));
+            }
             return ai.beta.threads.runs.submitToolOutputs(threadId, request.runId, { tool_outputs: dispatches });
         }));
     }
@@ -167,6 +177,9 @@ class OpenAiWrapper {
                     if (!_d && !_a && (_b = _e.return)) await _b.call(_e);
                 }
                 finally { if (e_1) throw e_1.error; }
+            }
+            if (this.debugAi) {
+                (0, firebase_ai_chat_core_1.tagLogger)("AI").d("Got messages from AI. Messages:", JSON.stringify(messages));
             }
             return {
                 messages: messages,

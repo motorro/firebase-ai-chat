@@ -57,6 +57,7 @@ export interface AiChat {
  * @param functions Functions instance
  * @param location Function location
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param debugAi If true, raw AI input and output will be logged
  * @return Chat tools interface
  */
-export declare function factory(firestore: Firestore, functions: Functions, location: string, taskScheduler?: TaskScheduler): AiChat;
+export declare function factory(firestore: Firestore, functions: Functions, location: string, taskScheduler?: TaskScheduler, debugAi?: boolean): AiChat;

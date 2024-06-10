@@ -13,13 +13,15 @@ export declare class VertexAiWrapper implements AiWrapper {
     private readonly model;
     private readonly firestore;
     private readonly threads;
+    private readonly debugAi;
     /**
      * Constructor
      * @param model Pre-configured `GenerativeModel`
      * @param firestore Firebase firestore
      * @param threadsPath Threads collection path
+     * @param debugAi If true - will log AI request and response
      */
-    constructor(model: GenerativeModel, firestore: FirebaseFirestore.Firestore, threadsPath: string);
+    constructor(model: GenerativeModel, firestore: FirebaseFirestore.Firestore, threadsPath: string, debugAi?: boolean);
     /**
      * Generates system instructions
      * @param config System instructions config

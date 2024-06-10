@@ -33,21 +33,25 @@ export class VertexAiWrapper implements AiWrapper {
     private readonly model: GenerativeModel;
     private readonly firestore: FirebaseFirestore.Firestore;
     private readonly threads: CollectionReference<Thread>;
+    private readonly debugAi: boolean;
 
     /**
      * Constructor
      * @param model Pre-configured `GenerativeModel`
      * @param firestore Firebase firestore
      * @param threadsPath Threads collection path
+     * @param debugAi If true - will log AI request and response
      */
     constructor(
         model: GenerativeModel,
         firestore: FirebaseFirestore.Firestore,
         threadsPath: string,
+        debugAi = false
     ) {
         this.model = model;
         this.firestore = firestore;
         this.threads = firestore.collection(threadsPath) as CollectionReference<Thread>;
+        this.debugAi = debugAi;
     }
 
     /**
@@ -334,6 +338,9 @@ export class VertexAiWrapper implements AiWrapper {
         };
 
         let aiResult: GenerateContentCandidate | undefined = undefined;
+        if (this.debugAi) {
+            tagLogger("AI").d("About to send parts to AI. Parts:", JSON.stringify(parts));
+        }
         try {
             aiResult = (await chat.sendMessage(parts)).response?.candidates?.at(0);
         } catch (e) {
@@ -345,6 +352,9 @@ export class VertexAiWrapper implements AiWrapper {
             return Promise.reject(new ChatError("unavailable", false, "No candidates in AI answer"));
         }
 
+        if (this.debugAi) {
+            tagLogger("AI").d("Response from AI. Parts:", JSON.stringify(aiResult.content.parts));
+        }
         messages.push({
             content: aiResult.content,
             createdAt: Timestamp.now(),

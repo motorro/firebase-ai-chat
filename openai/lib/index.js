@@ -39,9 +39,10 @@ Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: tru
  * @param functions Functions instance
  * @param location Function location
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param debugAi If true, raw AI input and output will be logged
  * @return Chat tools interface
  */
-function factory(firestore, functions, location, taskScheduler) {
+function factory(firestore, functions, location, taskScheduler, debugAi = false) {
     const _taskScheduler = taskScheduler || new firebase_ai_chat_core_1.FirebaseQueueTaskScheduler(functions, location);
     const _continuationSchedulerFactory = (0, firebase_ai_chat_core_1.toolContinuationSchedulerFactory)(firestore, _taskScheduler);
     function defaultSchedulers(queueName, taskScheduler) {
@@ -54,7 +55,7 @@ function factory(firestore, functions, location, taskScheduler) {
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         worker(openAi, dispatchers) {
-            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler));
+            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi, debugAi), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler));
         },
         continuationScheduler(queueName) {
             return _continuationSchedulerFactory.create(queueName);

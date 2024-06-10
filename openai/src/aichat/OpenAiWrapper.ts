@@ -25,9 +25,11 @@ const logger = tagLogger("OpenAiWrapper");
  */
 export class OpenAiWrapper implements AiWrapper {
     private readonly openAi: OpenAI;
+    private readonly debugAi: boolean;
 
-    constructor(openAi: OpenAI) {
+    constructor(openAi: OpenAI, debugAi = false) {
         this.openAi = openAi;
+        this.debugAi = debugAi;
     }
 
     async createThread(meta: Readonly<Record<string, string>>): Promise<string> {
@@ -41,6 +43,9 @@ export class OpenAiWrapper implements AiWrapper {
 
     async postMessage(threadId: string, message: string): Promise<string> {
         logger.d("Posting message...");
+        if (this.debugAi) {
+            tagLogger("AI").d("About to send message to AI. Message:", JSON.stringify(message));
+        }
         return this.runAi(async (ai) => {
             const created = await ai.beta.threads.messages.create(
                 threadId,
@@ -89,6 +94,11 @@ export class OpenAiWrapper implements AiWrapper {
                 }
 
                 logger.d("Dispatching tools...");
+
+                if (this.debugAi) {
+                    tagLogger("AI").d("Required tools to run:", JSON.stringify(toolCalls));
+                }
+
                 const result: Continuation<ToolCallsResult<DATA>> = await dispatch(
                     data,
                     toolCalls.map((call) => ({
@@ -195,6 +205,9 @@ export class OpenAiWrapper implements AiWrapper {
             data,
             dispatch,
             await this.runAi((ai) => {
+                if (this.debugAi) {
+                    tagLogger("AI").d("Submitting tools output:", JSON.stringify(dispatches));
+                }
                 return ai.beta.threads.runs.submitToolOutputs(threadId, request.runId, {tool_outputs: dispatches});
             })
         );
@@ -224,6 +237,10 @@ export class OpenAiWrapper implements AiWrapper {
                         }
                     });
                 });
+            }
+
+            if (this.debugAi) {
+                tagLogger("AI").d("Got messages from AI. Messages:", JSON.stringify(messages));
             }
 
             return {
