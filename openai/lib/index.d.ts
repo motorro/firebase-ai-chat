@@ -14,7 +14,7 @@ export { Continuation, SuspendedContinuation, ResolvedContinuation } from "@moto
 export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "@motorro/firebase-ai-chat-core";
 export { AiWrapper, OpenAiChatWorker };
 export { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
-export { OpenAiChatCommand } from "./aichat/data/OpenAiChatCommand";
+export { OpenAiChatCommand, isOpenAiChatReq, isOpenAiChatCommand } from "./aichat/data/OpenAiChatCommand";
 /**
  * Chat state for OpenAI chats
  */

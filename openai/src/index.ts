@@ -77,7 +77,7 @@ export {
     OpenAiChatWorker
 };
 export {OpenAiAssistantConfig} from "./aichat/data/OpenAiAssistantConfig";
-export {OpenAiChatCommand} from "./aichat/data/OpenAiChatCommand";
+export {OpenAiChatCommand, isOpenAiChatReq, isOpenAiChatCommand} from "./aichat/data/OpenAiChatCommand";
 
 /**
  * Chat state for OpenAI chats

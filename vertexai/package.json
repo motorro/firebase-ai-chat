@@ -1,6 +1,6 @@
 {
   "name": "@motorro/firebase-ai-chat-vertexai",
-  "version": "2.5.4",
+  "version": "2.5.5",
   "description": "A library to run VertexAI chats on Firebase",
   "publishConfig": {
     "access": "public"

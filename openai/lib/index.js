@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.factory = exports.OpenAiChatWorker = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
+exports.factory = exports.isOpenAiChatCommand = exports.isOpenAiChatReq = exports.OpenAiChatWorker = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiChatWorker_1 = require("./aichat/OpenAiChatWorker");
 Object.defineProperty(exports, "OpenAiChatWorker", { enumerable: true, get: function () { return OpenAiChatWorker_1.OpenAiChatWorker; } });
@@ -33,6 +33,9 @@ var firebase_ai_chat_core_7 = require("@motorro/firebase-ai-chat-core");
 Object.defineProperty(exports, "isContinuationRequest", { enumerable: true, get: function () { return firebase_ai_chat_core_7.isContinuationRequest; } });
 Object.defineProperty(exports, "isContinuationCommand", { enumerable: true, get: function () { return firebase_ai_chat_core_7.isContinuationCommand; } });
 Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: true, get: function () { return firebase_ai_chat_core_7.isContinuationCommandRequest; } });
+var OpenAiChatCommand_1 = require("./aichat/data/OpenAiChatCommand");
+Object.defineProperty(exports, "isOpenAiChatReq", { enumerable: true, get: function () { return OpenAiChatCommand_1.isOpenAiChatReq; } });
+Object.defineProperty(exports, "isOpenAiChatCommand", { enumerable: true, get: function () { return OpenAiChatCommand_1.isOpenAiChatCommand; } });
 /**
  * Chat tools factory
  * @param firestore Firestore instance

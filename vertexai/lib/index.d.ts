@@ -14,7 +14,7 @@ export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequest
 export { AiWrapper, VertexAiSystemInstructions };
 export { VertexAiTools } from "./aichat/data/VertexAiSystemInstructions";
 export { VertexAiAssistantConfig } from "./aichat/data/VertexAiAssistantConfig";
-export { VertexAiChatCommand } from "./aichat/data/VertexAiChatCommand";
+export { VertexAiChatCommand, isVertexAiChatReq, isVertexAiChatCommand } from "./aichat/data/VertexAiChatCommand";
 export { VertexAiChatState } from "./aichat/data/VertexAiChatState";
 /**
  * AI chat components to build Firestore functions
