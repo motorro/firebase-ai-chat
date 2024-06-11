@@ -106,7 +106,7 @@ export interface AiChat {
      */
     chat<DATA extends ChatData>(
         queueName: string,
-        commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>
+        commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>
     ): AssistantChat<DATA>
 
     /**

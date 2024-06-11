@@ -35,7 +35,7 @@ export interface AiChat {
      * @see worker
      * @see createDefaultCommandSchedulers
      */
-    chat<DATA extends ChatData>(queueName: string, commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>): AssistantChat<DATA>;
+    chat<DATA extends ChatData>(queueName: string, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>): AssistantChat<DATA>;
     /**
      * Chat worker to use in Firebase tasks
      * @param model Common model setup
