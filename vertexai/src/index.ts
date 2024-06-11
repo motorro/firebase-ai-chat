@@ -95,10 +95,15 @@ export interface AiChat {
     /**
      * Chat user-facing callable functions
      * @param queueName Chat dispatcher function (queue) name to dispatch work
+     * @param commandSchedulers Creates a list of command schedulers. Should return schedulers for each platform
      * @return Chat interface
      * @see worker
+     * @see createDefaultCommandSchedulers
      */
-    chat<DATA extends ChatData>(queueName: string): AssistantChat<DATA>
+    chat<DATA extends ChatData>(
+        queueName: string,
+        commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>
+    ): AssistantChat<DATA>
 
     /**
      * Chat worker to use in Firebase tasks
@@ -148,8 +153,11 @@ export function factory(
 
     return {
         createDefaultCommandSchedulers: defaultSchedulers,
-        chat: function<DATA extends ChatData>(queueName: string): AssistantChat<DATA> {
-            return new AssistantChat<DATA>(firestore, new VertexAICommandScheduler(queueName, _taskScheduler));
+        chat: function<DATA extends ChatData>(
+            queueName: string,
+            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers
+        ): AssistantChat<DATA> {
+            return new AssistantChat<DATA>(firestore, commandSchedulers(queueName, _taskScheduler));
         },
         worker: function(
             model: GenerativeModel,

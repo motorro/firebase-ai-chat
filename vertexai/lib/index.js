@@ -54,8 +54,8 @@ taskScheduler, debugAi = false) {
     }
     return {
         createDefaultCommandSchedulers: defaultSchedulers,
-        chat: function (queueName) {
-            return new firebase_ai_chat_core_1.AssistantChat(firestore, new VertexAICommandScheduler_1.VertexAICommandScheduler(queueName, _taskScheduler));
+        chat: function (queueName, commandSchedulers = defaultSchedulers) {
+            return new firebase_ai_chat_core_1.AssistantChat(firestore, commandSchedulers(queueName, _taskScheduler));
         },
         worker: function (model, threadsPath, 
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
