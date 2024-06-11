@@ -62,7 +62,7 @@ describe("Dispatch runner", function() {
 
     before(async function() {
         scheduler = imock<TaskScheduler>();
-        runner = new DispatchRunner(db, instance(scheduler));
+        runner = new DispatchRunner(db, instance(scheduler), false);
     });
 
     beforeEach(function() {

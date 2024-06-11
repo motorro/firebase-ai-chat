@@ -27,23 +27,25 @@ export interface DispatchData<DATA extends ChatData> {
 export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
     /**
      * Dispatches calls
+     * @param soFar Current chat data
      * @param continuationData Current continuation data
      * @param tools Tool calls
      * @param chatData Chat data to provide to dispatcher
      * @param getContinuationCommand Continuation command factory
      * @returns Updated continuation state
      */
-    dispatch(continuationData: ToolsContinuationData<DATA>, tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>, chatData: ChatDispatchData<CM>, getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>): Promise<DispatchData<DATA>>;
+    dispatch(soFar: DATA, continuationData: ToolsContinuationData, tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>, chatData: ChatDispatchData<CM>, getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>): Promise<DispatchData<DATA>>;
 }
 /**
- * Runs passed tools sequentially suspending continuation if suspended
+ * Runs passed tools sequentially suspending continuation if suspended.
  * If any call fails - also fails other subsequent calls
  */
 export declare class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, CM> {
     private readonly dispatchers;
     private readonly formatContinuationError;
-    constructor(dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>, formatContinuationError?: (failed: ToolCallRequest, error: DispatchError) => DispatchError);
-    dispatch(continuationData: ToolsContinuationData<DATA>, tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>, chatData: ChatDispatchData<CM>, getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>): Promise<DispatchData<DATA>>;
+    private readonly logData;
+    constructor(dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>, formatContinuationError?: (failed: ToolCallRequest, error: DispatchError) => DispatchError, logData?: boolean);
+    dispatch(soFar: DATA, continuationData: ToolsContinuationData, tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>, chatData: ChatDispatchData<CM>, getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>): Promise<DispatchData<DATA>>;
     private getDispatcher;
 }
 export declare function commonFormatContinuationError(toolCall: ToolCallRequest): DispatchError;

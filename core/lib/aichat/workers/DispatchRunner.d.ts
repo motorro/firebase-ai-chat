@@ -8,11 +8,13 @@ import { AssistantConfig, ChatData, ChatState } from "../data/ChatState";
 export declare class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData> {
     protected readonly db: FirebaseFirestore.Firestore;
     protected readonly scheduler: TaskScheduler;
+    protected readonly logData: boolean;
     /**
      * Constructor
      * @param firestore Firestore reference
-     * @param scheduler Task scheculer
+     * @param scheduler Task scheduler
+     * @param logData If true, logs data when dispatching
      */
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler);
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, logData: boolean);
     dispatchWithCheck(req: Request<ChatCommand<A>> | Request<BoundChatCommand<A>>, run: (soFar: ChatState<AC, DATA>, command: ChatCommand<A> | BoundChatCommand<A>, updateState: (update: Partial<ChatState<AC, DATA>>) => Promise<boolean>) => Promise<void>): Promise<void>;
 }

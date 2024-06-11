@@ -80,10 +80,9 @@ export interface ToolCall<DATA extends ChatData> {
     readonly request: ToolCallRequest;
     readonly response: DispatchResult<DATA> | null;
 }
-export interface ToolsContinuationData<DATA extends ChatData> {
+export interface ToolsContinuationData {
     readonly dispatcherId: string;
     readonly state: "suspended" | "resolved";
-    readonly data: DATA;
     readonly createdAt: Timestamp;
     readonly updatedAt: Timestamp;
 }

@@ -45,7 +45,7 @@ export const chatState: ChatState<AiConfig, Data> = {
     },
     data: data,
     status: "userInput",
-    latestDispatchId: "dispatch",
+    latestDispatchId: "dispatchId",
     createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
     updatedAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
     meta: {
@@ -86,10 +86,9 @@ export const commandData: ChatCommandData = {
     meta: null
 };
 
-export const continuationData: ToolsContinuationData<Data> = {
+export const continuationData: ToolsContinuationData = {
     dispatcherId: dispatcherId,
     state: "suspended",
-    data: data,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now()
 };

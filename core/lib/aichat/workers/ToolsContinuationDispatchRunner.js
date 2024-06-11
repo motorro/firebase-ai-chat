@@ -6,20 +6,22 @@ const logging_1 = require("../../logging");
 const ChatError_1 = require("../data/ChatError");
 const logger = (0, logging_1.tagLogger)("ToolsContinuationDispatchRunner");
 /**
- * Runs passed tools sequentially suspending continuation if suspended
+ * Runs passed tools sequentially suspending continuation if suspended.
  * If any call fails - also fails other subsequent calls
  */
+// eslint-disable-next-line max-len
 class SequentialToolsContinuationDispatchRunner {
     constructor(
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    dispatchers, formatContinuationError = commonFormatContinuationError) {
+    dispatchers, formatContinuationError = commonFormatContinuationError, logData = false) {
         this.dispatchers = dispatchers;
         this.formatContinuationError = formatContinuationError;
+        this.logData = logData;
     }
-    async dispatch(continuationData, tools, chatData, getContinuationCommand) {
+    async dispatch(soFar, continuationData, tools, chatData, getContinuationCommand) {
         let suspended = false;
         let failed = null;
-        let currentData = continuationData.data;
+        let currentData = soFar;
         const dispatchedTools = [];
         function pushResult(id, call, response) {
             dispatchedTools.push([id, Object.assign(Object.assign({}, call), { call: Object.assign(Object.assign({}, call.call), { response: response }) })]);
@@ -40,8 +42,10 @@ class SequentialToolsContinuationDispatchRunner {
                 continue;
             }
             logger.d("Running tool:", callData.call.request.toolName);
-            logger.d("Data so far:", currentData);
-            logger.d("Arguments:", JSON.stringify(callData.call.request.args));
+            if (this.logData) {
+                (0, logging_1.tagLogger)("DATA").d("Data so far:", currentData);
+                (0, logging_1.tagLogger)("DATA").d("Arguments:", JSON.stringify(callData.call.request.args));
+            }
             const continuationCommand = getContinuationCommand({ toolId: callId.id });
             const result = await (0, ToolsDispatcher_1.dispatchToContinuation)(async () => {
                 return this.getDispatcher(continuationData.dispatcherId)(currentData, callData.call.request.toolName, callData.call.request.args, continuationCommand, chatData);
@@ -50,6 +54,14 @@ class SequentialToolsContinuationDispatchRunner {
             if (result.isResolved()) {
                 logger.d("Resolved.");
                 response = result.value;
+                if (this.logData) {
+                    if ((0, ToolsDispatcher_1.isReducerSuccess)(response)) {
+                        (0, logging_1.tagLogger)("DATA").d("Data after:", response.data);
+                    }
+                    if ((0, ToolsDispatcher_1.isFunctionSuccess)(response)) {
+                        (0, logging_1.tagLogger)("DATA").d("Result after:", response.result);
+                    }
+                }
                 if ((0, ToolsDispatcher_1.isDispatchError)(response)) {
                     logger.w("Dispatch error. Failing calls:", response.error);
                     failed = [callData.call.request, response];

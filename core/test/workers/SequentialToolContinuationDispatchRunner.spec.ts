@@ -33,7 +33,7 @@ import {afterEach} from "mocha";
 
 const db = firestore();
 const chatDoc = db.collection(CHATS).doc() as DocumentReference<ChatState<AssistantConfig, Data>>;
-const continuations = chatDoc.collection(Collections.continuations) as CollectionReference<ToolsContinuationData<Data>>;
+const continuations = chatDoc.collection(Collections.continuations) as CollectionReference<ToolsContinuationData>;
 const continuationDoc = continuations.doc();
 const toolCalls = continuationDoc.collection(Collections.continuations) as CollectionReference<ToolCallData<Data>>;
 
@@ -71,8 +71,7 @@ export const chatData: ChatDispatchData = {
             name: "Vasya"
         }
     }
-}
-
+};
 
 describe("Tool continuation dispatch runner", function() {
     after(async function() {
@@ -80,7 +79,7 @@ describe("Tool continuation dispatch runner", function() {
     });
     afterEach(async function() {
         await db.recursiveDelete(chatDoc);
-    })
+    });
 
     function createRunner(dispatcher: ToolsDispatcher<Data>): ToolsContinuationDispatchRunner<Data> {
         return new SequentialToolsContinuationDispatchRunner<Data>({[dispatcherId]: dispatcher});
@@ -91,6 +90,7 @@ describe("Tool continuation dispatch runner", function() {
             return data2;
         });
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
@@ -113,6 +113,7 @@ describe("Tool continuation dispatch runner", function() {
             return getReducerSuccess(data2, "comment");
         });
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
@@ -135,6 +136,7 @@ describe("Tool continuation dispatch runner", function() {
             return Continuation.resolve(data2);
         });
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
@@ -157,6 +159,7 @@ describe("Tool continuation dispatch runner", function() {
             return Continuation.resolve(getReducerSuccess(data2, "comment"));
         });
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
@@ -179,6 +182,7 @@ describe("Tool continuation dispatch runner", function() {
             return Promise.reject(new Error("Error"));
         });
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
@@ -223,6 +227,7 @@ describe("Tool continuation dispatch runner", function() {
         });
 
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
             chatData,
@@ -261,6 +266,7 @@ describe("Tool continuation dispatch runner", function() {
             return Promise.reject(new Error("Error"));
         });
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
@@ -297,6 +303,7 @@ describe("Tool continuation dispatch runner", function() {
         });
 
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
             chatData,
@@ -337,6 +344,7 @@ describe("Tool continuation dispatch runner", function() {
         });
 
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
             chatData,
@@ -371,6 +379,7 @@ describe("Tool continuation dispatch runner", function() {
         });
 
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
             chatData,
@@ -401,12 +410,12 @@ describe("Tool continuation dispatch runner", function() {
         ];
         let commandIndex = 0;
 
-        let calls = 0;
         const runner = createRunner(() => {
             throw new Error("Unexpected dispatch");
         });
 
         const result = await runner.dispatch(
+            data,
             continuationData,
             [[toolCall1Id, {...toolCall1, call: {...toolCall1.call, response: {error: "Error"}}}], [toolCall2Id, toolCall2]],
             chatData,
@@ -428,6 +437,5 @@ describe("Tool continuation dispatch runner", function() {
                 ]
             ]
         });
-        calls.should.be.equal(0);
     });
 });

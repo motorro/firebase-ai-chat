@@ -1,7 +1,8 @@
 import { ToolContinuationDispatcherFactory } from "./aichat/workers/ToolContinuationDispatcherFactory";
-import { ToolsDispatcher } from "./aichat/ToolsDispatcher";
 import { TaskScheduler } from "./aichat/TaskScheduler";
 import { ToolsContinuationSchedulerFactory } from "./aichat/workers/ToolsContinuationScheduler";
+import { ToolCallRequest } from "./aichat/data/ContinuationCommand";
+import { DispatchError, ToolsDispatcher } from "./aichat/ToolsDispatcher";
 export { Messages, AiError, isPermanentError, AiExample, AiResponseExample, AiFunctionCallExample, SystemInstructions, printAiExample } from "./aichat/data/AiData";
 export { AssistantConfig, ChatData, ChatState, ChatStatus } from "./aichat/data/ChatState";
 export { ChatCommandData } from "./aichat/data/ChatCommandData";
@@ -31,13 +32,16 @@ export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequest
  * @param db Firestore
  * @param dispatchers Tool dispatchers
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param formatContinuationError Formats continuation error
+ * @param logData If true, logs data when dispatching
  * @return Continuation tools factory
  */
-export declare function toolContinuationDispatcherFactory(db: FirebaseFirestore.Firestore, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>, taskScheduler: TaskScheduler): ToolContinuationDispatcherFactory;
+export declare function toolContinuationDispatcherFactory(db: FirebaseFirestore.Firestore, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>, taskScheduler: TaskScheduler, formatContinuationError?: (failed: ToolCallRequest, error: DispatchError) => DispatchError, logData?: boolean): ToolContinuationDispatcherFactory;
 /**
  * Tools continuation scheduler factory
  * @param db Firestore
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param logData If true, logs data when dispatching
  * @return Continuation scheduler factory
  */
-export declare function toolContinuationSchedulerFactory(db: FirebaseFirestore.Firestore, taskScheduler: TaskScheduler): ToolsContinuationSchedulerFactory;
+export declare function toolContinuationSchedulerFactory(db: FirebaseFirestore.Firestore, taskScheduler: TaskScheduler, logData?: boolean): ToolsContinuationSchedulerFactory;

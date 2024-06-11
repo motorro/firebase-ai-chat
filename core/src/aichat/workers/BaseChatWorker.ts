@@ -26,11 +26,12 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
      * Constructor
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
+     * @param logData If true, logs data when dispatching
      */
-    protected constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler) {
+    protected constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, logData: boolean) {
         this.db = firestore;
         this.scheduler = scheduler;
-        this.runner = new DispatchRunner(firestore, scheduler);
+        this.runner = new DispatchRunner(firestore, scheduler, logData);
     }
 
     /**
