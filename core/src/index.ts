@@ -1,10 +1,12 @@
 import {ToolContinuationDispatcherFactory, ToolContinuationDispatcherFactoryImpl} from "./aichat/workers/ToolContinuationDispatcherFactory";
-import {ToolsDispatcher} from "./aichat/ToolsDispatcher";
 import {TaskScheduler} from "./aichat/TaskScheduler";
 import {
     ToolsContinuationSchedulerFactory,
     ToolsContinuationSchedulerFactoryImpl
 } from "./aichat/workers/ToolsContinuationScheduler";
+import {ToolCallRequest} from "./aichat/data/ContinuationCommand";
+import {DispatchError, ToolsDispatcher} from "./aichat/ToolsDispatcher";
+import {commonFormatContinuationError} from "./aichat/workers/ToolsContinuationDispatchRunner";
 
 export {
     Messages,
@@ -40,7 +42,7 @@ export {
     isReducerSuccess
 } from "./aichat/ToolsDispatcher";
 export {AssistantChat} from "./aichat/AssistantChat";
-export {HandOverResult} from "./aichat/data/HandOverResult"
+export {HandOverResult} from "./aichat/data/HandOverResult";
 export {DispatchControl, ChatWorker} from "./aichat/workers/ChatWorker";
 export {BaseChatWorker} from "./aichat/workers/BaseChatWorker";
 export {DispatchRunner} from "./aichat/workers/DispatchRunner";
@@ -63,14 +65,17 @@ export {
     ToolCallsResult,
     isContinuationRequest,
     isContinuationCommand,
-    isContinuationCommandRequest
+    isContinuationCommandRequest,
 } from "./aichat/data/ContinuationCommand";
+export {commonFormatContinuationError}
 
 /**
  * Tools continuation dispatcher factory
  * @param db Firestore
  * @param dispatchers Tool dispatchers
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param formatContinuationError Formats continuation error
+ * @param logData If true, logs data when dispatching
  * @return Continuation tools factory
  */
 export function toolContinuationDispatcherFactory(
@@ -78,19 +83,29 @@ export function toolContinuationDispatcherFactory(
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>,
     taskScheduler: TaskScheduler,
+    formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError,
+    logData = false
 ): ToolContinuationDispatcherFactory {
-    return new ToolContinuationDispatcherFactoryImpl(db, dispatchers, taskScheduler);
+    return new ToolContinuationDispatcherFactoryImpl(
+        db,
+        dispatchers,
+        taskScheduler,
+        formatContinuationError,
+        logData
+    );
 }
 
 /**
  * Tools continuation scheduler factory
  * @param db Firestore
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param logData If true, logs data when dispatching
  * @return Continuation scheduler factory
  */
 export function toolContinuationSchedulerFactory(
     db: FirebaseFirestore.Firestore,
-    taskScheduler: TaskScheduler
+    taskScheduler: TaskScheduler,
+    logData = false
 ): ToolsContinuationSchedulerFactory {
-    return new ToolsContinuationSchedulerFactoryImpl(db, taskScheduler);
+    return new ToolsContinuationSchedulerFactoryImpl(db, taskScheduler, logData);
 }

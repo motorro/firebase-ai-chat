@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import {firestore} from "firebase-admin";
 import {test} from "../functionsTest";
 import {
-    CHATS,
+    CHATS, chatState,
     data,
     Data,
     data2,
@@ -18,10 +18,8 @@ import {
     Collections,
     ContinuationCommand,
     ContinuationRequest,
-    DispatchResult,
-    ReducerSuccess,
+    DispatchResult, getFunctionSuccess,
     getReducerSuccess,
-    isReducerSuccess,
     TaskScheduler
 } from "../../src";
 import {ToolCallData, ToolsContinuationData} from "../../src/aichat/data/ContinuationCommand";
@@ -38,7 +36,7 @@ import FieldValue = firestore.FieldValue;
 const queueName = "chats";
 const db = firestore();
 const chatDoc = db.collection(CHATS).doc() as DocumentReference<ChatState<AssistantConfig, Data>>;
-const continuations = chatDoc.collection(Collections.continuations) as CollectionReference<ToolsContinuationData<Data>>;
+const continuations = chatDoc.collection(Collections.continuations) as CollectionReference<ToolsContinuationData>;
 const continuationDoc = continuations.doc();
 const tools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
 
@@ -46,11 +44,12 @@ describe("Tool continuation scheduler", function() {
     let tScheduler: TaskScheduler;
     let cScheduler: ToolsContinuationScheduler<Data>;
 
-    before(function () {
+    before(function() {
         tScheduler = imock();
     });
 
-    beforeEach(function () {
+    beforeEach(async function() {
+        await chatDoc.set(chatState);
         cScheduler = new ToolsContinuationSchedulerImpl(queueName, firestore(), instance(tScheduler));
     });
 
@@ -82,19 +81,9 @@ describe("Tool continuation scheduler", function() {
             throw new Error("No request");
         }
 
-        // Latest continuation data is set via scheduler
-        let latestSuccess: ReducerSuccess<Data> | null = null;
-        for (let i = results.length - 1; i >= 0; --i) {
-            const r = results[i];
-            if (isReducerSuccess(r)) {
-                latestSuccess = r;
-                break;
-            }
-        }
         await continuationDoc.set({
             dispatcherId: dispatcherId,
             state: "suspended",
-            data: latestSuccess ? latestSuccess.data : data,
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp()
         });
@@ -111,7 +100,65 @@ describe("Tool continuation scheduler", function() {
         };
     }
 
-    it("updates tool call", async function() {
+    it("updates tool call with result", async function() {
+        const command = await createCommand([getReducerSuccess(data2)]);
+        when(tScheduler.schedule(anything(), anything(), anything())).thenResolve();
+
+        await cScheduler.continue(command, getFunctionSuccess(data3));
+
+        const continuation = (await continuationDoc.get()).data();
+        if (undefined === continuation) {
+            throw new Error("Expecting saved continuation");
+        }
+
+        continuation.dispatcherId.should.be.deep.equal(dispatcherId);
+
+        const savedTools = (await tools.orderBy("index").get()).docs;
+        const tool1 = savedTools[0]?.data();
+        if (undefined === tool1) {
+            throw new Error("Expecting saved tool 1");
+        }
+        tool1.should.deep.equal({
+            index: 1,
+            call: {
+                request: {
+                    toolCallId: "call1",
+                    toolName: "callOne",
+                    args: {a: 1}
+                },
+                response: {
+                    data: data2
+                }
+            }
+        });
+        const tool2 = savedTools[1]?.data();
+        if (undefined === tool2) {
+            throw new Error("Expecting saved tool 2");
+        }
+        tool2.should.deep.equal({
+            index: 2,
+            call: {
+                request: {
+                    toolCallId: "call2",
+                    toolName: "callTwo",
+                    args: {a: 2}
+                },
+                response: {
+                    result: data3
+                }
+            }
+        });
+
+        verify(tScheduler.schedule(queueName, command)).once();
+
+        const chatData = (await chatDoc.get()).data();
+        if (undefined === chatData) {
+            throw new Error("Expecting chat data");
+        }
+        chatData.data.should.deep.equal(data);
+    });
+
+    it("updates tool call with data", async function() {
         const command = await createCommand([getReducerSuccess(data2)]);
         when(tScheduler.schedule(anything(), anything(), anything())).thenResolve();
 
@@ -123,7 +170,6 @@ describe("Tool continuation scheduler", function() {
         }
 
         continuation.dispatcherId.should.be.deep.equal(dispatcherId);
-        continuation.data.should.be.deep.equal(data3);
 
         const savedTools = (await tools.orderBy("index").get()).docs;
         const tool1 = savedTools[0]?.data();
@@ -162,6 +208,32 @@ describe("Tool continuation scheduler", function() {
         });
 
         verify(tScheduler.schedule(queueName, command)).once();
+
+        const chatData = (await chatDoc.get()).data();
+        if (undefined === chatData) {
+            throw new Error("Expecting chat data");
+        }
+        chatData.data.should.deep.equal(data3);
+    });
+
+    it("does not update data if dispatched with another id", async function() {
+        let command = await createCommand([getReducerSuccess(data2)]);
+        command = {
+            ...command,
+            commonData: {
+                ...command.commonData,
+                dispatchId: "otherId"
+            }
+        };
+        when(tScheduler.schedule(anything(), anything(), anything())).thenResolve();
+
+        await cScheduler.continue(command, getReducerSuccess(data3));
+
+        const chatData = (await chatDoc.get()).data();
+        if (undefined === chatData) {
+            throw new Error("Expecting chat data");
+        }
+        chatData.data.should.deep.equal(data);
     });
 
     it("fails if tool call already updated", async function() {

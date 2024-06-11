@@ -1,10 +1,10 @@
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {
     ChatCommand,
-    ChatWorker,
+    ChatWorker, DispatchError,
     Meta,
     tagLogger,
-    TaskScheduler,
+    TaskScheduler, ToolCallRequest,
     ToolContinuationDispatcherFactory,
     toolContinuationDispatcherFactory,
     ToolsDispatcher
@@ -30,23 +30,31 @@ export class VertexAiChatWorker implements ChatWorker {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     private readonly instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>;
     private readonly getContinuationFactory: () => ToolContinuationDispatcherFactory;
+    private readonly logData: boolean;
 
     private getWorker(command: VertexAiChatCommand): ChatWorker | undefined {
         logger.d("Dispatching VertexAi command...");
 
         if (ContinuePostWorker.isSupportedCommand(command)) {
             logger.d("Action to be handled with ContinuePostWorker");
-            return new ContinuePostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+            return new ContinuePostWorker(
+                this.firestore,
+                this.scheduler,
+                this.wrapper,
+                this.instructions,
+                this.getContinuationFactory,
+                this.logData
+            );
         }
 
         const action = command.actionData[0];
         if (CloseWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with CloseWorker");
-            return new CloseWorker(this.firestore, this.scheduler, this.wrapper);
+            return new CloseWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         if (CreateWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with CreateWorker");
-            return new CreateWorker(this.firestore, this.scheduler, this.wrapper);
+            return new CreateWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         if (HandBackCleanupWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with HandBackCleanupWorker");
@@ -54,15 +62,15 @@ export class VertexAiChatWorker implements ChatWorker {
         }
         if (PostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with PostWorker");
-            return new PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+            return new PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, this.logData);
         }
         if (ExplicitPostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with ExplicitPostWorker");
-            return new ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+            return new ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, this.logData);
         }
         if (SwitchToUserWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with SwitchToUserWorker");
-            return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
+            return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
 
         logger.w("Unsupported command:", command);
@@ -75,7 +83,9 @@ export class VertexAiChatWorker implements ChatWorker {
         wrapper: AiWrapper,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>,
-        getContinuationFactory?: () => ToolContinuationDispatcherFactory
+        formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError,
+        logData: boolean,
+        getContinuationFactory?: () => ToolContinuationDispatcherFactory,
     ) {
         this.firestore = firestore;
         this.scheduler = scheduler;
@@ -93,9 +103,12 @@ export class VertexAiChatWorker implements ChatWorker {
             return toolContinuationDispatcherFactory(
                 this.firestore,
                 dispatchers,
-                this.scheduler
+                this.scheduler,
+                formatContinuationError,
+                logData
             );
         });
+        this.logData = logData;
     }
 
     async dispatch(

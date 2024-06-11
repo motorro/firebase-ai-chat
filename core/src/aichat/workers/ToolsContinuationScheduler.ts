@@ -1,5 +1,5 @@
 import {DispatchResult, isReducerSuccess} from "../ToolsDispatcher";
-import {ChatData} from "../data/ChatState";
+import {AssistantConfig, ChatData, ChatState} from "../data/ChatState";
 import {firestore} from "firebase-admin";
 import {tagLogger} from "../../logging";
 import {Collections} from "../data/Collections";
@@ -46,14 +46,16 @@ export interface ToolsContinuationSchedulerFactory {
 export class ToolsContinuationSchedulerFactoryImpl implements ToolsContinuationSchedulerFactory {
     private readonly firebase: FirebaseFirestore.Firestore;
     private readonly scheduler: TaskScheduler;
+    private readonly logData: boolean;
 
-    constructor(firebase: FirebaseFirestore.Firestore, scheduler: TaskScheduler) {
+    constructor(firebase: FirebaseFirestore.Firestore, scheduler: TaskScheduler, logData: boolean) {
         this.firebase = firebase;
         this.scheduler = scheduler;
+        this.logData = logData;
     }
 
     create<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {
-        return new ToolsContinuationSchedulerImpl(queueName, this.firebase, this.scheduler);
+        return new ToolsContinuationSchedulerImpl(queueName, this.firebase, this.scheduler, this.logData);
     }
 }
 
@@ -64,11 +66,13 @@ export class ToolsContinuationSchedulerImpl<in DATA extends ChatData> implements
     private readonly queueName: string;
     private readonly db: FirebaseFirestore.Firestore;
     private readonly scheduler: TaskScheduler;
+    private readonly logData: boolean;
 
-    constructor(queueName: string, db: FirebaseFirestore.Firestore, scheduler: TaskScheduler) {
+    constructor(queueName: string, db: FirebaseFirestore.Firestore, scheduler: TaskScheduler, logData = false) {
         this.queueName = queueName;
         this.db = db;
         this.scheduler = scheduler;
+        this.logData = logData;
     }
 
     async continue(
@@ -77,7 +81,9 @@ export class ToolsContinuationSchedulerImpl<in DATA extends ChatData> implements
     ): Promise<void> {
         logger.d("Dispatching continuation command:", JSON.stringify(command), JSON.stringify(response));
         // eslint-disable-next-line max-len
-        const continuationDocument = this.db.doc(command.commonData.chatDocumentPath).collection(Collections.continuations).doc(command.continuation.continuationId) as DocumentReference<ToolsContinuationData<DATA>>;
+        const chatDocument = this.db.doc(command.commonData.chatDocumentPath) as DocumentReference<ChatState<AssistantConfig, DATA>>;
+        // eslint-disable-next-line max-len
+        const continuationDocument = chatDocument.collection(Collections.continuations).doc(command.continuation.continuationId) as DocumentReference<ToolsContinuationData>;
         const toolCallsCollection = continuationDocument.collection(Collections.toolCalls) as CollectionReference<ToolCallData<DATA>>;
 
         const continuation = (await continuationDocument.get()).data();
@@ -97,14 +103,21 @@ export class ToolsContinuationSchedulerImpl<in DATA extends ChatData> implements
                 logger.w("Tool call already complete");
                 return Promise.reject(new ChatError("already-exists", true, "Inconsistent tool calls. Tool call already fulfilled"));
             }
-            tx.set(toolCallDoc, {...toolCallData, call: {...toolCallData.call, response: response}});
             if (isReducerSuccess(response)) {
-
+                const stateData = (await tx.get(chatDocument)).data();
+                if (command.commonData.dispatchId === stateData?.latestDispatchId) {
+                    if (this.logData) {
+                        tagLogger("DATA").d("Saving chat data: ", JSON.stringify(response.data));
+                    }
+                    tx.set(chatDocument, {data: response.data, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+                } else {
+                    logger.d("Document has dispatch another command. Data update cancelled");
+                }
             }
+            tx.set(toolCallDoc, {...toolCallData, call: {...toolCallData.call, response: response}});
             tx.set(
                 continuationDocument,
                 {
-                    ...(isReducerSuccess(response) ? {data: response.data} : {}),
                     updatedAt: FieldValue.serverTimestamp()
                 },
                 {merge: true}

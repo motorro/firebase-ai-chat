@@ -19,22 +19,26 @@ class ToolsContinuationDispatcherImpl {
      * @param dispatcherId Dispatcher to use
      * @param db Firestore reference
      * @param dispatchRunner Dispatch runner
+     * @param logData If true - logs data state
      * and thus fails continuation
      */
-    constructor(chatDocumentPath, dispatcherId, db, dispatchRunner) {
+    constructor(chatDocumentPath, dispatcherId, db, dispatchRunner, logData = false) {
         this.dispatcherId = dispatcherId;
         this.chatDocument = db.doc(chatDocumentPath);
         this.db = db;
         this.dispatchRunner = dispatchRunner;
+        this.logData = logData;
     }
-    async dispatch(soFar, toolCalls, getContinuationCommand) {
+    async dispatch(soFar, toolCalls, updateChatData, getContinuationCommand) {
         logger.d("Dispatching tool calls");
+        if (this.logData) {
+            (0, logging_1.tagLogger)("DATA").d("Data so far: ", JSON.stringify(soFar));
+        }
         const continuationDocument = this.chatDocument.collection(Collections_1.Collections.continuations).doc();
         const toolCallsCollection = continuationDocument.collection(Collections_1.Collections.toolCalls);
         const continuation = {
             dispatcherId: this.dispatcherId,
             state: "suspended",
-            data: soFar,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now()
         };
@@ -48,7 +52,7 @@ class ToolsContinuationDispatcherImpl {
             tools.push([doc, tool]);
             batch.set(doc, tool);
         });
-        const result = await this.doDispatch(batch, continuationDocument, continuation, tools, getContinuationCommand);
+        const result = await this.doDispatch(batch, updateChatData, continuationDocument, soFar, continuation, tools, getContinuationCommand);
         // Save only if suspended
         if (result.isSuspended()) {
             logger.d("Saving continuation to:", continuationDocument.path);
@@ -56,8 +60,11 @@ class ToolsContinuationDispatcherImpl {
         }
         return result;
     }
-    async dispatchCommand(command, getContinuationCommand) {
+    async dispatchCommand(soFar, command, updateChatData, getContinuationCommand) {
         logger.d("Continuation processing. Moving forward:", JSON.stringify(command));
+        if (this.logData) {
+            (0, logging_1.tagLogger)("DATA").d("Data so far: ", JSON.stringify(soFar));
+        }
         // eslint-disable-next-line max-len
         const continuationDocument = this.chatDocument.collection(Collections_1.Collections.continuations).doc(command.continuation.continuationId);
         const toolCallsCollection = continuationDocument.collection(Collections_1.Collections.toolCalls);
@@ -75,13 +82,13 @@ class ToolsContinuationDispatcherImpl {
             }
         });
         const batch = this.db.batch();
-        const result = await this.doDispatch(batch, continuationDocument, continuation, toolCalls, getContinuationCommand);
+        const result = await this.doDispatch(batch, updateChatData, continuationDocument, soFar, continuation, toolCalls, getContinuationCommand);
         logger.d("Saving continuation to:", continuationDocument.path);
         await batch.commit();
         return result;
     }
-    async doDispatch(batch, continuationDoc, continuation, toolCalls, getContinuationCommand) {
-        const dispatched = await this.dispatchRunner.dispatch(continuation, toolCalls, await this.getChatData(), (continuationToolCall) => getContinuationCommand({
+    async doDispatch(batch, updateChatData, continuationDoc, soFar, continuation, toolCalls, getContinuationCommand) {
+        const dispatched = await this.dispatchRunner.dispatch(soFar, continuation, toolCalls, await this.getChatData(), (continuationToolCall) => getContinuationCommand({
             continuationId: continuationDoc.id,
             tool: continuationToolCall
         }));
@@ -103,11 +110,14 @@ class ToolsContinuationDispatcherImpl {
         }
         batch.set(continuationDoc, {
             state: dispatched.suspended ? "suspended" : "resolved",
-            data: dispatched.data,
             updatedAt: FieldValue.serverTimestamp()
         }, { merge: true });
+        if (this.logData) {
+            (0, logging_1.tagLogger)("DATA").d("Saving chat data: ", JSON.stringify(dispatched.data));
+        }
+        await updateChatData(dispatched.data);
         if (dispatched.suspended) {
-            logger.d("Dispatch suspened");
+            logger.d("Dispatch suspended");
             return Continuation_1.Continuation.suspend();
         }
         else {

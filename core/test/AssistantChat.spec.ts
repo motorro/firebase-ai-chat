@@ -490,7 +490,7 @@ describe("Assistant Chat", function() {
         updatedState.should.deep.include({
             config: chatState.config,
             status: "userInput",
-            latestDispatchId: "dispatch"
+            latestDispatchId: "dispatchId"
         });
 
         const savedStateDocs = await chatDoc.collection(Collections.contextStack)

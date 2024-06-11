@@ -1,8 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.tagLogger = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
+exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.commonFormatContinuationError = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.tagLogger = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
 const ToolContinuationDispatcherFactory_1 = require("./aichat/workers/ToolContinuationDispatcherFactory");
 const ToolsContinuationScheduler_1 = require("./aichat/workers/ToolsContinuationScheduler");
+const ToolsContinuationDispatchRunner_1 = require("./aichat/workers/ToolsContinuationDispatchRunner");
+Object.defineProperty(exports, "commonFormatContinuationError", { enumerable: true, get: function () { return ToolsContinuationDispatchRunner_1.commonFormatContinuationError; } });
 var AiData_1 = require("./aichat/data/AiData");
 Object.defineProperty(exports, "isPermanentError", { enumerable: true, get: function () { return AiData_1.isPermanentError; } });
 Object.defineProperty(exports, "printAiExample", { enumerable: true, get: function () { return AiData_1.printAiExample; } });
@@ -46,22 +48,25 @@ Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: tru
  * @param db Firestore
  * @param dispatchers Tool dispatchers
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param formatContinuationError Formats continuation error
+ * @param logData If true, logs data when dispatching
  * @return Continuation tools factory
  */
 function toolContinuationDispatcherFactory(db, 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-dispatchers, taskScheduler) {
-    return new ToolContinuationDispatcherFactory_1.ToolContinuationDispatcherFactoryImpl(db, dispatchers, taskScheduler);
+dispatchers, taskScheduler, formatContinuationError = ToolsContinuationDispatchRunner_1.commonFormatContinuationError, logData = false) {
+    return new ToolContinuationDispatcherFactory_1.ToolContinuationDispatcherFactoryImpl(db, dispatchers, taskScheduler, formatContinuationError, logData);
 }
 exports.toolContinuationDispatcherFactory = toolContinuationDispatcherFactory;
 /**
  * Tools continuation scheduler factory
  * @param db Firestore
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param logData If true, logs data when dispatching
  * @return Continuation scheduler factory
  */
-function toolContinuationSchedulerFactory(db, taskScheduler) {
-    return new ToolsContinuationScheduler_1.ToolsContinuationSchedulerFactoryImpl(db, taskScheduler);
+function toolContinuationSchedulerFactory(db, taskScheduler, logData = false) {
+    return new ToolsContinuationScheduler_1.ToolsContinuationSchedulerFactoryImpl(db, taskScheduler, logData);
 }
 exports.toolContinuationSchedulerFactory = toolContinuationSchedulerFactory;
 //# sourceMappingURL=index.js.map

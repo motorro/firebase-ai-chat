@@ -6,7 +6,10 @@ import {
     FirebaseQueueTaskScheduler,
     TaskScheduler,
     ToolsContinuationScheduler,
-    toolContinuationSchedulerFactory
+    toolContinuationSchedulerFactory,
+    ToolCallRequest,
+    DispatchError,
+    commonFormatContinuationError
 } from "@motorro/firebase-ai-chat-core";
 import {Functions} from "firebase-admin/lib/functions";
 import {firestore} from "firebase-admin";
@@ -133,8 +136,10 @@ export interface AiChat {
  * @param functions Functions instance
  * @param location Function location
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param formatContinuationError Formats continuation error for AI
  * @param debugAi If true, raw AI input and output will be logged
- * @return Chat tools interface
+ * @param logData If true, logs chat data * @return Chat tools interface
+ * @returns AiChat instance
  */
 export function factory(
     firestore: Firestore,
@@ -142,7 +147,9 @@ export function factory(
     location: string,
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     taskScheduler?: TaskScheduler,
-    debugAi = false
+    formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError,
+    debugAi = false,
+    logData = false
 ): AiChat {
     const _taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
     const _continuationSchedulerFactory = toolContinuationSchedulerFactory(firestore, _taskScheduler);
@@ -169,7 +176,9 @@ export function factory(
                 firestore,
                 _taskScheduler,
                 new VertexAiWrapper(model, firestore, threadsPath, debugAi),
-                instructions
+                instructions,
+                formatContinuationError,
+                logData
             );
         },
         continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {

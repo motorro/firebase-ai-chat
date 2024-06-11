@@ -18,15 +18,18 @@ const logger = tagLogger("DispatchRunner");
 export class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData> {
     protected readonly db: FirebaseFirestore.Firestore;
     protected readonly scheduler: TaskScheduler;
+    protected readonly logData: boolean;
 
     /**
      * Constructor
      * @param firestore Firestore reference
-     * @param scheduler Task scheculer
+     * @param scheduler Task scheduler
+     * @param logData If true, logs data when dispatching
      */
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler) {
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, logData: boolean) {
         this.db = firestore;
         this.scheduler = scheduler;
+        this.logData = logData;
     }
 
     async dispatchWithCheck(
@@ -83,7 +86,9 @@ export class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData
             return await this.db.runTransaction(async (tx) => {
                 const stateData = (await tx.get(doc)).data();
                 if (command.commonData.dispatchId === stateData?.latestDispatchId) {
-                    logger.d(`Updating document state of ${doc.path}:`, JSON.stringify(state));
+                    if (this.logData) {
+                        tagLogger("DATA").d(`Updating document state of ${doc.path}:`, JSON.stringify(state));
+                    }
                     tx.set(doc, {...state, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
                     return true;
                 } else {

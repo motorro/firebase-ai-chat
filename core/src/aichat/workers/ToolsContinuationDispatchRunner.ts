@@ -3,7 +3,7 @@ import {
     ChatDispatchData,
     DispatchError,
     DispatchResult,
-    dispatchToContinuation, isDispatchError,
+    dispatchToContinuation, isDispatchError, isFunctionSuccess,
     isReducerSuccess,
     ToolsDispatcher
 } from "../ToolsDispatcher";
@@ -46,6 +46,7 @@ export interface DispatchData<DATA extends ChatData> {
 export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
     /**
      * Dispatches calls
+     * @param soFar Current chat data
      * @param continuationData Current continuation data
      * @param tools Tool calls
      * @param chatData Chat data to provide to dispatcher
@@ -53,7 +54,8 @@ export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM exten
      * @returns Updated continuation state
      */
     dispatch(
-        continuationData: ToolsContinuationData<DATA>,
+        soFar: DATA,
+        continuationData: ToolsContinuationData,
         tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>,
         chatData: ChatDispatchData<CM>,
         getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>
@@ -61,32 +63,37 @@ export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM exten
 }
 
 /**
- * Runs passed tools sequentially suspending continuation if suspended
+ * Runs passed tools sequentially suspending continuation if suspended.
  * If any call fails - also fails other subsequent calls
  */
+// eslint-disable-next-line max-len
 export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, CM> {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
     private readonly formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError;
+    private readonly logData: boolean;
 
     constructor(
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>,
-        formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError
+        formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError,
+        logData = false
     ) {
         this.dispatchers = dispatchers;
         this.formatContinuationError = formatContinuationError;
+        this.logData = logData;
     }
 
     async dispatch(
-        continuationData: ToolsContinuationData<DATA>,
+        soFar: DATA,
+        continuationData: ToolsContinuationData,
         tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>,
         chatData: ChatDispatchData<CM>,
         getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>
     ): Promise<DispatchData<DATA>> {
         let suspended = false;
         let failed: [ToolCallRequest, DispatchError] | null = null;
-        let currentData = continuationData.data;
+        let currentData = soFar;
         const dispatchedTools: Array<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]> = [];
 
         function pushResult(id: DocumentReference<ToolCallData<DATA>>, call: ToolCallData<DATA>, response: DispatchResult<DATA> | null) {
@@ -111,8 +118,10 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM
             }
 
             logger.d("Running tool:", callData.call.request.toolName);
-            logger.d("Data so far:", currentData);
-            logger.d("Arguments:", JSON.stringify(callData.call.request.args));
+            if (this.logData) {
+                tagLogger("DATA").d("Data so far:", currentData);
+                tagLogger("DATA").d("Arguments:", JSON.stringify(callData.call.request.args));
+            }
 
             const continuationCommand: ContinuationCommand<unknown> = getContinuationCommand({toolId: callId.id});
 
@@ -130,6 +139,14 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM
             if (result.isResolved()) {
                 logger.d("Resolved.");
                 response = result.value;
+                if (this.logData) {
+                    if (isReducerSuccess(response)) {
+                        tagLogger("DATA").d("Data after:", response.data);
+                    }
+                    if (isFunctionSuccess(response)) {
+                        tagLogger("DATA").d("Result after:", response.result);
+                    }
+                }
                 if (isDispatchError(response)) {
                     logger.w("Dispatch error. Failing calls:", response.error);
                     failed = [callData.call.request, response];

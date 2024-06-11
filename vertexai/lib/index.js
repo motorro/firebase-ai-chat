@@ -41,12 +41,14 @@ Object.defineProperty(exports, "isVertexAiChatCommand", { enumerable: true, get:
  * @param functions Functions instance
  * @param location Function location
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param formatContinuationError Formats continuation error for AI
  * @param debugAi If true, raw AI input and output will be logged
- * @return Chat tools interface
+ * @param logData If true, logs chat data * @return Chat tools interface
+ * @returns AiChat instance
  */
 function factory(firestore, functions, location, 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-taskScheduler, debugAi = false) {
+taskScheduler, formatContinuationError = firebase_ai_chat_core_1.commonFormatContinuationError, debugAi = false, logData = false) {
     const _taskScheduler = taskScheduler || new firebase_ai_chat_core_1.FirebaseQueueTaskScheduler(functions, location);
     const _continuationSchedulerFactory = (0, firebase_ai_chat_core_1.toolContinuationSchedulerFactory)(firestore, _taskScheduler);
     function defaultSchedulers(queueName, taskScheduler) {
@@ -60,7 +62,7 @@ taskScheduler, debugAi = false) {
         worker: function (model, threadsPath, 
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         instructions) {
-            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath, debugAi), instructions);
+            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath, debugAi), instructions, formatContinuationError, logData);
         },
         continuationScheduler(queueName) {
             return _continuationSchedulerFactory.create(queueName);

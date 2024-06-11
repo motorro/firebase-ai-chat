@@ -15,11 +15,13 @@ class DispatchRunner {
     /**
      * Constructor
      * @param firestore Firestore reference
-     * @param scheduler Task scheculer
+     * @param scheduler Task scheduler
+     * @param logData If true, logs data when dispatching
      */
-    constructor(firestore, scheduler) {
+    constructor(firestore, scheduler, logData) {
         this.db = firestore;
         this.scheduler = scheduler;
+        this.logData = logData;
     }
     async dispatchWithCheck(req, run) {
         const db = this.db;
@@ -63,7 +65,9 @@ class DispatchRunner {
             return await this.db.runTransaction(async (tx) => {
                 const stateData = (await tx.get(doc)).data();
                 if (command.commonData.dispatchId === (stateData === null || stateData === void 0 ? void 0 : stateData.latestDispatchId)) {
-                    logger.d(`Updating document state of ${doc.path}:`, JSON.stringify(state));
+                    if (this.logData) {
+                        (0, logging_1.tagLogger)("DATA").d(`Updating document state of ${doc.path}:`, JSON.stringify(state));
+                    }
                     tx.set(doc, Object.assign(Object.assign({}, state), { updatedAt: FieldValue.serverTimestamp() }), { merge: true });
                     return true;
                 }

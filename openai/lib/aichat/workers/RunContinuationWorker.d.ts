@@ -7,6 +7,6 @@ import { OpenAiContinuationCommand } from "../data/OpenAiChatCommand";
 export declare class RunContinuationWorker extends OpenAiQueueWorker {
     static isSupportedCommand(command: ChatCommand<unknown>): boolean;
     private readonly toolsDispatchFactory;
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, toolsDispatchFactory: ToolContinuationDispatcherFactory);
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, toolsDispatchFactory: ToolContinuationDispatcherFactory, logData: boolean);
     doDispatch(command: OpenAiContinuationCommand, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
 }

@@ -17,16 +17,16 @@ class VertexAiChatWorker {
         logger.d("Dispatching VertexAi command...");
         if (PostWorker_1.ContinuePostWorker.isSupportedCommand(command)) {
             logger.d("Action to be handled with ContinuePostWorker");
-            return new PostWorker_1.ContinuePostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+            return new PostWorker_1.ContinuePostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, this.logData);
         }
         const action = command.actionData[0];
         if (CloseWorker_1.CloseWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with CloseWorker");
-            return new CloseWorker_1.CloseWorker(this.firestore, this.scheduler, this.wrapper);
+            return new CloseWorker_1.CloseWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         if (CreateWorker_1.CreateWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with CreateWorker");
-            return new CreateWorker_1.CreateWorker(this.firestore, this.scheduler, this.wrapper);
+            return new CreateWorker_1.CreateWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         if (HandBackCleanupWorker_1.HandBackCleanupWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with HandBackCleanupWorker");
@@ -34,22 +34,22 @@ class VertexAiChatWorker {
         }
         if (PostWorker_1.PostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with PostWorker");
-            return new PostWorker_1.PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+            return new PostWorker_1.PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, this.logData);
         }
         if (PostWorker_1.ExplicitPostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with ExplicitPostWorker");
-            return new PostWorker_1.ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory);
+            return new PostWorker_1.ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, this.logData);
         }
         if (SwitchToUserWorker_1.SwitchToUserWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with SwitchToUserWorker");
-            return new SwitchToUserWorker_1.SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
+            return new SwitchToUserWorker_1.SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         logger.w("Unsupported command:", command);
         return undefined;
     }
     constructor(firestore, scheduler, wrapper, 
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    instructions, getContinuationFactory) {
+    instructions, formatContinuationError, logData, getContinuationFactory) {
         this.firestore = firestore;
         this.scheduler = scheduler;
         this.wrapper = wrapper;
@@ -64,8 +64,9 @@ class VertexAiChatWorker {
                     dispatchers[id] = dispatcher;
                 }
             });
-            return (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(this.firestore, dispatchers, this.scheduler);
+            return (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(this.firestore, dispatchers, this.scheduler, formatContinuationError, logData);
         });
+        this.logData = logData;
     }
     async dispatch(req, onQueueComplete) {
         if ((0, VertexAiChatCommand_1.isVertexAiChatReq)(req)) {

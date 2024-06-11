@@ -142,7 +142,7 @@ describe("Chat worker", function() {
         scheduler = imock<TaskScheduler>();
         ToolContinuationDispatcherFactory = imock<ToolContinuationDispatcherFactory>();
 
-        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper), instance(ToolContinuationDispatcherFactory));
+        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper), instance(ToolContinuationDispatcherFactory), false);
     });
 
     after(async function() {
@@ -330,7 +330,7 @@ describe("Chat worker", function() {
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
         // eslint-disable-next-line max-len
-        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenCall(async (data, calls, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _updateState, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
             const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
@@ -382,7 +382,7 @@ describe("Chat worker", function() {
         await createChat(threadId, "processing", dispatchId);
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
-        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenResolve(Continuation.suspend());
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenResolve(Continuation.suspend());
         when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
         when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(() => {
             return Promise.resolve(Continuation.suspend());
@@ -424,11 +424,11 @@ describe("Chat worker", function() {
         };
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
-        when(toolDispatcher.dispatchCommand(anything(), anything())).thenCall(async () => {
+        when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenCall(async () => {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
         // eslint-disable-next-line max-len
-        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenCall(async (data, calls, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _updateState, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
             const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
@@ -477,7 +477,7 @@ describe("Chat worker", function() {
         await createChat(threadId, "processing", dispatchId);
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
-        when(toolDispatcher.dispatchCommand(anything(), anything())).thenResolve(Continuation.suspend());
+        when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenResolve(Continuation.suspend());
         when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
         const request: Request<ChatCommand<unknown>> = {

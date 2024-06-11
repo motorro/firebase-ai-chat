@@ -1,7 +1,7 @@
 import { ChatData } from "../data/ChatState";
-import { ToolsDispatcher } from "../ToolsDispatcher";
+import { DispatchError, ToolsDispatcher } from "../ToolsDispatcher";
 import { ToolsContinuationDispatcher } from "./ToolsContinuationDispatcher";
-import { ContinuationCommand } from "../data/ContinuationCommand";
+import { ContinuationCommand, ToolCallRequest } from "../data/ContinuationCommand";
 import { TaskScheduler } from "../TaskScheduler";
 /**
  * Continuation dispatcher factory
@@ -19,6 +19,8 @@ export declare class ToolContinuationDispatcherFactoryImpl implements ToolContin
     readonly db: FirebaseFirestore.Firestore;
     readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
     readonly scheduler: TaskScheduler;
-    constructor(db: FirebaseFirestore.Firestore, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>, scheduler: TaskScheduler);
+    private readonly formatContinuationError;
+    private readonly logData;
+    constructor(db: FirebaseFirestore.Firestore, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>, scheduler: TaskScheduler, formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError, logData: boolean);
     getDispatcher<A, C extends ContinuationCommand<A>, DATA extends ChatData>(chatDocumentPath: string, dispatcherId: string): ToolsContinuationDispatcher<A, C, DATA>;
 }

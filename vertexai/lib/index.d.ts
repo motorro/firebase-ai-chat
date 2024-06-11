@@ -1,4 +1,4 @@
-import { AssistantChat, ChatData, ChatWorker, CommandScheduler, TaskScheduler, ToolsContinuationScheduler } from "@motorro/firebase-ai-chat-core";
+import { AssistantChat, ChatData, ChatWorker, CommandScheduler, TaskScheduler, ToolsContinuationScheduler, ToolCallRequest, DispatchError } from "@motorro/firebase-ai-chat-core";
 import { Functions } from "firebase-admin/lib/functions";
 import { firestore } from "firebase-admin";
 import { AiWrapper } from "./aichat/AiWrapper";
@@ -57,7 +57,9 @@ export interface AiChat {
  * @param functions Functions instance
  * @param location Function location
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param formatContinuationError Formats continuation error for AI
  * @param debugAi If true, raw AI input and output will be logged
- * @return Chat tools interface
+ * @param logData If true, logs chat data * @return Chat tools interface
+ * @returns AiChat instance
  */
-export declare function factory(firestore: Firestore, functions: Functions, location: string, taskScheduler?: TaskScheduler, debugAi?: boolean): AiChat;
+export declare function factory(firestore: Firestore, functions: Functions, location: string, taskScheduler?: TaskScheduler, formatContinuationError?: (failed: ToolCallRequest, error: DispatchError) => DispatchError, debugAi?: boolean, logData?: boolean): AiChat;

@@ -1,8 +1,8 @@
 import {ChatData} from "../data/ChatState";
-import {ToolsDispatcher} from "../ToolsDispatcher";
+import {DispatchError, ToolsDispatcher} from "../ToolsDispatcher";
 import {SequentialToolsContinuationDispatchRunner} from "./ToolsContinuationDispatchRunner";
 import {ToolsContinuationDispatcher, ToolsContinuationDispatcherImpl} from "./ToolsContinuationDispatcher";
-import {ContinuationCommand} from "../data/ContinuationCommand";
+import {ContinuationCommand, ToolCallRequest} from "../data/ContinuationCommand";
 import {TaskScheduler} from "../TaskScheduler";
 
 /**
@@ -26,16 +26,22 @@ export class ToolContinuationDispatcherFactoryImpl implements ToolContinuationDi
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
     readonly scheduler: TaskScheduler;
+    private readonly formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError;
+    private readonly logData: boolean;
 
     constructor(
         db: FirebaseFirestore.Firestore,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>,
-        scheduler: TaskScheduler
+        scheduler: TaskScheduler,
+        formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError,
+        logData: boolean
     ) {
         this.db = db;
         this.dispatchers = dispatchers;
         this.scheduler = scheduler;
+        this.formatContinuationError = formatContinuationError;
+        this.logData = logData;
     }
 
     getDispatcher<A, C extends ContinuationCommand<A>, DATA extends ChatData>(
@@ -46,7 +52,8 @@ export class ToolContinuationDispatcherFactoryImpl implements ToolContinuationDi
             chatDocumentPath,
             dispatcherId,
             this.db,
-            new SequentialToolsContinuationDispatchRunner(this.dispatchers)
+            new SequentialToolsContinuationDispatchRunner(this.dispatchers, this.formatContinuationError, this.logData),
+            this.logData
         );
     }
 }

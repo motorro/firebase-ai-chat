@@ -39,7 +39,7 @@ describe("VertexAI wrapper", function() {
         instructions: instructions1,
         tools: {
             dispatcher: () => ({error: "Unexpected instructions dispatch"}),
-                definition: toolsDefinition
+            definition: toolsDefinition
         }
     };
 

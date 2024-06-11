@@ -21,9 +21,7 @@ import {
     ContinuationCommand,
     ContinuationRequest,
     DispatchResult,
-    ReducerSuccess,
     getReducerSuccess,
-    isReducerSuccess,
     ToolCallsResult,
     ToolsDispatcher
 } from "../../src";
@@ -39,7 +37,7 @@ import FieldValue = firestore.FieldValue;
 
 const db = firestore();
 const chatDoc = db.collection(CHATS).doc() as DocumentReference<ChatState<AssistantConfig, Data>>;
-const continuations = chatDoc.collection(Collections.continuations) as CollectionReference<ToolsContinuationData<Data>>;
+const continuations = chatDoc.collection(Collections.continuations) as CollectionReference<ToolsContinuationData>;
 
 describe("Tool continuation dispatcher", function() {
     after(async function() {
@@ -66,6 +64,13 @@ describe("Tool continuation dispatcher", function() {
 
     describe("dispatch", function() {
         it("processes all tool calls", async function() {
+            let dataUpdated = false;
+            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+                dataUpdated = true;
+                data.should.deep.equal(data2);
+                return true;
+            };
+
             const results = [
                 {data: data2},
                 data3
@@ -81,6 +86,7 @@ describe("Tool continuation dispatcher", function() {
             const result = await runner.dispatch(
                 data,
                 [toolCall1.call.request, toolCall2.call.request],
+                updateChatData,
                 (request) => {
                     passedRequests.push(request);
                     return {
@@ -114,6 +120,7 @@ describe("Tool continuation dispatcher", function() {
                     }
                 ]
             });
+            dataUpdated.should.be.true;
 
             const continuation = (await continuations.doc(passedRequests[0].continuationId).get()).data();
             if (undefined !== continuation) {
@@ -122,6 +129,13 @@ describe("Tool continuation dispatcher", function() {
         });
 
         it("saves continuation if tools are suspended", async function() {
+            let dataUpdated = false;
+            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+                dataUpdated = true;
+                data.should.deep.equal(data2);
+                return true;
+            };
+
             const results: ReadonlyArray<Continuation<DispatchResult<Data>>> = [
                 Continuation.resolve(getReducerSuccess(data2)),
                 Continuation.suspend()
@@ -137,6 +151,7 @@ describe("Tool continuation dispatcher", function() {
             const result = await dispatcher.dispatch(
                 data,
                 [toolCall1.call.request, toolCall2.call.request],
+                updateChatData,
                 (request) => {
                     passedRequests.push(request);
                     return {
@@ -157,7 +172,7 @@ describe("Tool continuation dispatcher", function() {
 
             continuation.dispatcherId.should.be.deep.equal(dispatcherId);
             continuation.state.should.be.equal("suspended");
-            continuation.data.should.be.deep.equal(data2);
+            dataUpdated.should.be.true;
 
             const savedTools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
             const tool1 = (await savedTools.doc(passedRequests[0].tool.toolId).get()).data();
@@ -221,19 +236,9 @@ describe("Tool continuation dispatcher", function() {
                 throw new Error("No request");
             }
 
-            // Latest continuation data is set via scheduler
-            let latestSuccess: ReducerSuccess<Data> | null = null;
-            for (let i = results.length - 1; i >= 0; --i) {
-                const r = results[i];
-                if (isReducerSuccess(r)) {
-                    latestSuccess = r;
-                    break;
-                }
-            }
             await continuationDoc.set({
                 dispatcherId: dispatcherId,
                 state: "suspended",
-                data: latestSuccess ? latestSuccess.data : data,
                 createdAt: FieldValue.serverTimestamp(),
                 updatedAt: FieldValue.serverTimestamp()
             });
@@ -246,6 +251,13 @@ describe("Tool continuation dispatcher", function() {
         }
 
         it("processes all tool calls", async function() {
+            let dataUpdated = false;
+            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+                dataUpdated = true;
+                data.should.deep.equal(data2);
+                return true;
+            };
+
             const command = await createCommand();
             const results = [
                 {data: data2},
@@ -260,7 +272,9 @@ describe("Tool continuation dispatcher", function() {
             });
 
             const result = await dispatcher.dispatchCommand(
+                data,
                 command,
+                updateChatData,
                 (request) => {
                     passedRequests.push(request);
                     return {
@@ -302,7 +316,7 @@ describe("Tool continuation dispatcher", function() {
 
             continuation.dispatcherId.should.be.deep.equal(dispatcherId);
             continuation.state.should.be.equal("resolved");
-            continuation.data.should.be.deep.equal(data2);
+            dataUpdated.should.be.true;
 
             const savedTools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
             const tool1 = (await savedTools.doc(passedRequests[0].tool.toolId).get()).data();
@@ -342,6 +356,13 @@ describe("Tool continuation dispatcher", function() {
         });
 
         it("saves next tools when suspended", async function() {
+            let dataUpdated = false;
+            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+                dataUpdated = true;
+                data.should.deep.equal(data2);
+                return true;
+            };
+
             const command = await createCommand();
             const results: ReadonlyArray<Continuation<DispatchResult<Data>>> = [
                 Continuation.resolve(getReducerSuccess(data2)),
@@ -356,7 +377,9 @@ describe("Tool continuation dispatcher", function() {
             });
 
             const result = await runner.dispatchCommand(
+                data,
                 command,
+                updateChatData,
                 (request) => {
                     passedRequests.push(request);
                     return {
@@ -376,7 +399,7 @@ describe("Tool continuation dispatcher", function() {
 
             continuation.dispatcherId.should.be.deep.equal(dispatcherId);
             continuation.state.should.be.equal("suspended");
-            continuation.data.should.be.deep.equal(data2);
+            dataUpdated.should.be.true;
 
             const savedTools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
             const tool1 = (await savedTools.doc(passedRequests[0].tool.toolId).get()).data();
@@ -414,6 +437,13 @@ describe("Tool continuation dispatcher", function() {
         });
 
         it("completes and resolves continuation", async function() {
+            let dataUpdated = false;
+            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+                dataUpdated = true;
+                data.should.deep.equal(data3);
+                return true;
+            };
+
             const command = await createCommand([
                 {
                     data: data2
@@ -431,7 +461,9 @@ describe("Tool continuation dispatcher", function() {
             });
 
             const result = await runner.dispatchCommand(
+                data2,
                 command,
+                updateChatData,
                 (request) => {
                     passedRequests.push(request);
                     return {
@@ -473,7 +505,7 @@ describe("Tool continuation dispatcher", function() {
 
             continuation.dispatcherId.should.be.deep.equal(dispatcherId);
             continuation.state.should.be.equal("resolved");
-            continuation.data.should.be.deep.equal(data3);
+            dataUpdated.should.be.true;
 
             const savedTools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
             const tool2 = (await savedTools.doc(passedRequests[0].tool.toolId).get()).data();
@@ -496,6 +528,13 @@ describe("Tool continuation dispatcher", function() {
         });
 
         it("processes fully resolved continuation", async function() {
+            let dataUpdated = false;
+            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+                dataUpdated = true;
+                data.should.deep.equal(data3);
+                return true;
+            };
+
             const command = await createCommand([
                 {
                     data: data2
@@ -510,7 +549,9 @@ describe("Tool continuation dispatcher", function() {
             });
 
             const result = await runner.dispatchCommand(
+                data3,
                 command,
+                updateChatData,
                 (request) => {
                     return {
                         commonData: commandData,
@@ -543,9 +584,17 @@ describe("Tool continuation dispatcher", function() {
                     }
                 ]
             });
+            dataUpdated.should.be.true;
         });
 
         it("processes failed continuation", async function() {
+            let dataUpdated = false;
+            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+                dataUpdated = true;
+                data.should.deep.equal(data2);
+                return true;
+            };
+
             const command = await createCommand([
                 {
                     data: data2
@@ -560,7 +609,9 @@ describe("Tool continuation dispatcher", function() {
             });
 
             const result = await runner.dispatchCommand(
+                data2,
                 command,
+                updateChatData,
                 (request) => {
                     return {
                         commonData: commandData,
@@ -593,6 +644,7 @@ describe("Tool continuation dispatcher", function() {
                     }
                 ]
             });
+            dataUpdated.should.be.true;
         });
     });
 });

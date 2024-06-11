@@ -7,7 +7,11 @@ import {
     TaskScheduler,
     CommandScheduler,
     ToolsContinuationScheduler,
-    toolContinuationSchedulerFactory, toolContinuationDispatcherFactory
+    toolContinuationSchedulerFactory,
+    toolContinuationDispatcherFactory,
+    ToolCallRequest,
+    DispatchError,
+    commonFormatContinuationError
 } from "@motorro/firebase-ai-chat-core";
 import {AiWrapper} from "./aichat/AiWrapper";
 import {OpenAiChatWorker} from "./aichat/OpenAiChatWorker";
@@ -38,7 +42,8 @@ export {
     AiExample,
     AiResponseExample,
     AiFunctionCallExample,
-    printAiExample
+    printAiExample,
+    commonFormatContinuationError
 } from "@motorro/firebase-ai-chat-core";
 export {
     ChatDispatchData,
@@ -132,7 +137,9 @@ export interface AiChat {
  * @param functions Functions instance
  * @param location Function location
  * @param taskScheduler Task scheduler that puts tasks to queue
+ * @param formatContinuationError Formats continuation error for AI
  * @param debugAi If true, raw AI input and output will be logged
+ * @param logData If true, logs chat data
  * @return Chat tools interface
  */
 export function factory(
@@ -140,10 +147,12 @@ export function factory(
     functions: Functions,
     location: string,
     taskScheduler?: TaskScheduler,
-    debugAi = false
+    formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError,
+    debugAi = false,
+    logData = false
 ): AiChat {
     const _taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
-    const _continuationSchedulerFactory = toolContinuationSchedulerFactory(firestore, _taskScheduler);
+    const _continuationSchedulerFactory = toolContinuationSchedulerFactory(firestore, _taskScheduler, logData);
 
     function defaultSchedulers(queueName: string, taskScheduler: TaskScheduler): ReadonlyArray<CommandScheduler> {
         return [new OpenAICommandScheduler(queueName, taskScheduler)];
@@ -163,7 +172,8 @@ export function factory(
                 firestore,
                 _taskScheduler,
                 new OpenAiWrapper(openAi, debugAi),
-                toolContinuationDispatcherFactory(firestore, dispatchers, _taskScheduler)
+                toolContinuationDispatcherFactory(firestore, dispatchers, _taskScheduler, formatContinuationError, logData),
+                logData
             );
         },
         continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {

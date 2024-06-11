@@ -91,7 +91,7 @@ export interface ToolCallResponse<DATA extends ChatData> {
 }
 
 export interface ToolCallsResult<DATA extends ChatData> {
-    readonly data: DATA
+    readonly data: DATA,
     readonly responses: ReadonlyArray<ToolCallResponse<DATA>>
 }
 
@@ -100,10 +100,9 @@ export interface ToolCall<DATA extends ChatData> {
     readonly response: DispatchResult<DATA> | null
 }
 
-export interface ToolsContinuationData<DATA extends ChatData> {
+export interface ToolsContinuationData {
     readonly dispatcherId: string
     readonly state: "suspended" | "resolved"
-    readonly data: DATA
     readonly createdAt: Timestamp
     readonly updatedAt: Timestamp
 }

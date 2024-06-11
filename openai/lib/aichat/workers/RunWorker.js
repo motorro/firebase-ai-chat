@@ -8,8 +8,8 @@ class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
     static isSupportedAction(action) {
         return "run" === action;
     }
-    constructor(firestore, scheduler, wrapper, toolsDispatchFactory) {
-        super(firestore, scheduler, wrapper);
+    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, logData) {
+        super(firestore, scheduler, wrapper, logData);
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
     async doDispatch(command, state, control) {
@@ -24,7 +24,11 @@ class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
             const getContinuationCommand = (continuationRequest) => (Object.assign(Object.assign({}, command), { actionData: ["continueRun", ...command.actionData.slice(1)], continuation: continuationRequest, meta: {
                     runId: runId
                 } }));
-            return await dispatcher.dispatch(data, toolCalls, getContinuationCommand);
+            return await dispatcher.dispatch(data, toolCalls, async (data) => {
+                return control.updateChatState({
+                    data: data
+                });
+            }, getContinuationCommand);
         };
         const continuation = await this.wrapper.run(threadId, state.config.assistantConfig.assistantId, state.data, dispatch);
         if (continuation.isResolved()) {

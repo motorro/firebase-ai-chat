@@ -29,9 +29,10 @@ export class RunWorker extends OpenAiQueueWorker {
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
-        toolsDispatchFactory: ToolContinuationDispatcherFactory
+        toolsDispatchFactory: ToolContinuationDispatcherFactory,
+        logData: boolean
     ) {
-        super(firestore, scheduler, wrapper);
+        super(firestore, scheduler, wrapper, logData);
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
 
@@ -70,6 +71,11 @@ export class RunWorker extends OpenAiQueueWorker {
             return await dispatcher.dispatch(
                 data,
                 toolCalls,
+                async (data) => {
+                    return control.updateChatState({
+                        data: data
+                    });
+                },
                 getContinuationCommand
             );
         };
