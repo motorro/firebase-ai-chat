@@ -65,8 +65,9 @@ export {
     ToolCallsResult,
     isContinuationRequest,
     isContinuationCommand,
-    isContinuationCommandRequest
+    isContinuationCommandRequest,
 } from "./aichat/data/ContinuationCommand";
+export {commonFormatContinuationError}
 
 /**
  * Tools continuation dispatcher factory

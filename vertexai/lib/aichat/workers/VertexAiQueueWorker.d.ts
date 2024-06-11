@@ -12,8 +12,9 @@ export declare abstract class VertexAiQueueWorker extends BaseChatWorker<VertexA
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
+     * @param logData If true, logs chat data
      */
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper);
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, logData: boolean);
     /**
      * Checks if command passed in `req` is supported by this dispatcher
      * @param req Dispatch request

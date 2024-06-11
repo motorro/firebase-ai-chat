@@ -14,11 +14,12 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
      * @param wrapper AI wrapper
      * @param instructions System instructions
      * @param getDispatcherFactory Tool dispatch factory
+     * @param logData Logs chat data if true
      */
     constructor(firestore, scheduler, wrapper, 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    instructions, getDispatcherFactory) {
-        super(firestore, scheduler, wrapper);
+    instructions, getDispatcherFactory, logData) {
+        super(firestore, scheduler, wrapper, logData);
         this.instructions = instructions;
         this.getDispatcherFactory = getDispatcherFactory;
     }
@@ -26,14 +27,15 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
      * Creates a post dispatch function
      * @param command Command being processed
      * @param dispatcherId Dispatcher ID
+     * @param updateData Updates chat data
      * @returns Tools dispatching function
      * @protected
      */
-    getPostDispatch(command, dispatcherId) {
+    getPostDispatch(command, dispatcherId, updateData) {
         const dispatcher = this.getDispatcherFactory().getDispatcher(command.commonData.chatDocumentPath, dispatcherId);
         return async (data, toolCalls) => {
             const getContinuationCommand = (continuationRequest) => (Object.assign(Object.assign({}, command), { actionData: ["continuePost", ...command.actionData.slice(1)], continuation: continuationRequest }));
-            return await dispatcher.dispatch(data, toolCalls, getContinuationCommand);
+            return await dispatcher.dispatch(data, toolCalls, updateData, getContinuationCommand);
         };
     }
     async doDispatch(command, state, control) {
@@ -49,7 +51,11 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
             logger.e("Requested instructions are not found:", state.config.assistantConfig.instructionsId);
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Requested instructions not found"));
         }
-        const response = await this.doPost(command, threadId, state.config.assistantConfig.instructionsId, instructions, state.data);
+        const response = await this.doPost(command, threadId, state.config.assistantConfig.instructionsId, instructions, state.data, async (data) => {
+            return control.updateChatState({
+                data: data
+            });
+        });
         const messageCollectionRef = this.getMessageCollection(commonData.chatDocumentPath);
         const latestInBatchId = await this.getNextBatchSortIndex(commonData.chatDocumentPath, commonData.dispatchId);
         const batch = this.db.batch();
@@ -74,8 +80,8 @@ class PostWorker extends BasePostWorker {
     static isSupportedAction(action) {
         return "post" === action;
     }
-    async doPost(command, threadId, dispatcherId, instructions, soFar) {
-        return await this.wrapper.postMessage(threadId, instructions, (await this.getMessages(command.commonData.chatDocumentPath, command.commonData.dispatchId)).map((it) => it.text), soFar, this.getPostDispatch(command, dispatcherId));
+    async doPost(command, threadId, dispatcherId, instructions, soFar, updateStateData) {
+        return await this.wrapper.postMessage(threadId, instructions, (await this.getMessages(command.commonData.chatDocumentPath, command.commonData.dispatchId)).map((it) => it.text), soFar, this.getPostDispatch(command, dispatcherId, updateStateData));
     }
 }
 exports.PostWorker = PostWorker;
@@ -83,8 +89,8 @@ class ExplicitPostWorker extends BasePostWorker {
     static isSupportedAction(action) {
         return (0, VertexAiChatAction_1.isPostExplicitAction)(action);
     }
-    async doPost(command, threadId, dispatcherId, instructions, soFar) {
-        return await this.wrapper.postMessage(threadId, instructions, (0, VertexAiChatAction_1.isPostExplicitAction)(command.actionData[0]) ? (command.actionData[0].messages || []) : [], soFar, this.getPostDispatch(command, dispatcherId));
+    async doPost(command, threadId, dispatcherId, instructions, soFar, updateStateData) {
+        return await this.wrapper.postMessage(threadId, instructions, (0, VertexAiChatAction_1.isPostExplicitAction)(command.actionData[0]) ? (command.actionData[0].messages || []) : [], soFar, this.getPostDispatch(command, dispatcherId, updateStateData));
     }
 }
 exports.ExplicitPostWorker = ExplicitPostWorker;
@@ -92,12 +98,12 @@ class ContinuePostWorker extends BasePostWorker {
     static isSupportedCommand(command) {
         return (0, VertexAiChatCommand_1.isVertexAiContinuationCommand)(command);
     }
-    async doPost(command, threadId, dispatcherId, instructions) {
+    async doPost(command, threadId, dispatcherId, instructions, soFar, updateStateData) {
         const dispatcher = this.getDispatcherFactory().getDispatcher(command.commonData.chatDocumentPath, dispatcherId);
-        const dc = await dispatcher.dispatchCommand(command, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
+        const dc = await dispatcher.dispatchCommand(soFar, command, updateStateData, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
         if (dc.isResolved()) {
             const dispatch = async (data, toolCalls) => {
-                return await dispatcher.dispatch(data, toolCalls, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
+                return await dispatcher.dispatch(data, toolCalls, updateStateData, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
             };
             return await this.wrapper.processToolsResponse(threadId, instructions, {
                 toolsResult: dc.value.responses

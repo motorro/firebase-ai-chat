@@ -29,9 +29,10 @@ export class RunContinuationWorker extends OpenAiQueueWorker {
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
-        toolsDispatchFactory: ToolContinuationDispatcherFactory
+        toolsDispatchFactory: ToolContinuationDispatcherFactory,
+        logData: boolean
     ) {
-        super(firestore, scheduler, wrapper);
+        super(firestore, scheduler, wrapper, logData);
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
 
@@ -53,7 +54,13 @@ export class RunContinuationWorker extends OpenAiQueueWorker {
         );
 
         const dc = await dispatcher.dispatchCommand(
+            state.data,
             command,
+            async (data) => {
+                return control.updateChatState({
+                    data: data
+                });
+            },
             (continuationRequest: ContinuationRequest): OpenAiContinuationCommand => ({
                 // Already a continuation command so if suspended we use the same set of actions
                 // Alter continuation data and meta
@@ -71,6 +78,11 @@ export class RunContinuationWorker extends OpenAiQueueWorker {
                 return await dispatcher.dispatch(
                     data,
                     toolCalls,
+                    async (data) => {
+                        return control.updateChatState({
+                            data: data
+                        });
+                    },
                     (continuationRequest: ContinuationRequest): OpenAiContinuationCommand => ({
                         // Already a continuation command so if suspended we use the same set of actions
                         // Alter continuation data and meta

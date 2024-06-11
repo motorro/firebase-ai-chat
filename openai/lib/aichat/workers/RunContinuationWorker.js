@@ -9,8 +9,8 @@ class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
     static isSupportedCommand(command) {
         return (0, OpenAiChatCommand_1.isOpenAiContinuationCommand)(command);
     }
-    constructor(firestore, scheduler, wrapper, toolsDispatchFactory) {
-        super(firestore, scheduler, wrapper);
+    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, logData) {
+        super(firestore, scheduler, wrapper, logData);
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
     async doDispatch(command, state, control) {
@@ -21,10 +21,18 @@ class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at continuation running"));
         }
         const dispatcher = this.toolsDispatchFactory.getDispatcher(command.commonData.chatDocumentPath, state.config.assistantConfig.dispatcherId);
-        const dc = await dispatcher.dispatchCommand(command, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
+        const dc = await dispatcher.dispatchCommand(state.data, command, async (data) => {
+            return control.updateChatState({
+                data: data
+            });
+        }, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
         if (dc.isResolved()) {
             const dispatch = async (data, toolCalls, runId) => {
-                return await dispatcher.dispatch(data, toolCalls, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest, meta: {
+                return await dispatcher.dispatch(data, toolCalls, async (data) => {
+                    return control.updateChatState({
+                        data: data
+                    });
+                }, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest, meta: {
                         runId: runId
                     } })));
             };

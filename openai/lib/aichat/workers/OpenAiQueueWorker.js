@@ -9,9 +9,11 @@ class OpenAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
+     * @param logData If true, logs data when dispatching
+     *
      */
-    constructor(firestore, scheduler, wrapper) {
-        super(firestore, scheduler);
+    constructor(firestore, scheduler, wrapper, logData) {
+        super(firestore, scheduler, logData);
         this.wrapper = wrapper;
     }
     /**

@@ -9,9 +9,10 @@ class VertexAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
+     * @param logData If true, logs chat data
      */
-    constructor(firestore, scheduler, wrapper) {
-        super(firestore, scheduler);
+    constructor(firestore, scheduler, wrapper, logData) {
+        super(firestore, scheduler, logData);
         this.wrapper = wrapper;
     }
     /**

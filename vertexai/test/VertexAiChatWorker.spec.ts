@@ -18,7 +18,7 @@ import {
     ChatState,
     ChatStatus,
     ChatWorker,
-    Collections,
+    Collections, commonFormatContinuationError,
     Continuation,
     ContinuationRequest,
     Dispatch, getReducerSuccess,
@@ -142,9 +142,9 @@ describe("Chat worker", function() {
     function createWorker(ToolContinuationDispatcherFactory?: ToolContinuationDispatcherFactory) {
         let factory: ToolContinuationDispatcherFactory;
         if (undefined !== ToolContinuationDispatcherFactory) {
-            factory = ToolContinuationDispatcherFactory
+            factory = ToolContinuationDispatcherFactory;
         } else {
-            const f: ToolContinuationDispatcherFactory = imock()
+            const f: ToolContinuationDispatcherFactory = imock();
             const dispatcher: ToolsContinuationDispatcher<VertexAiChatActions, VertexAiContinuationCommand, Data> = imock();
             when(f.getDispatcher(anything(), anything())).thenReturn(dispatcher);
             factory = instance(f);
@@ -154,6 +154,8 @@ describe("Chat worker", function() {
             instance(scheduler),
             instance(wrapper),
             instructions,
+            commonFormatContinuationError,
+            false,
             () => factory
         );
     }
@@ -348,7 +350,8 @@ describe("Chat worker", function() {
         };
 
         const toolDispatcher: ToolsContinuationDispatcher<VertexAiChatActions, VertexAiContinuationCommand, Data> = imock();
-        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenCall(async (data, calls, getCommand: (continuationRequest: ContinuationRequest) => VertexAiContinuationCommand) => {
+        // eslint-disable-next-line max-len
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _saveData, getCommand: (continuationRequest: ContinuationRequest) => VertexAiContinuationCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
             const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
@@ -361,9 +364,10 @@ describe("Chat worker", function() {
             });
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
-        const continuationFactory: ToolContinuationDispatcherFactory = imock()
+        const continuationFactory: ToolContinuationDispatcherFactory = imock();
         when(continuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
+        // eslint-disable-next-line max-len
         when(wrapper.postMessage<Data>(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _messages, _dataSoFar, dispatch) => {
             const dispatchResult = await dispatch(data, [toolCall], runId);
             return Continuation.resolve({
@@ -498,10 +502,11 @@ describe("Chat worker", function() {
         };
 
         const toolDispatcher: ToolsContinuationDispatcher<VertexAiChatActions, VertexAiContinuationCommand, Data> = imock();
-        when(toolDispatcher.dispatchCommand(anything(), anything())).thenCall(async () => {
+        when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenCall(async () => {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
-        when(toolDispatcher.dispatch(anything(), anything(), anything())).thenCall(async (data, calls, getCommand: (continuationRequest: ContinuationRequest) => VertexAiContinuationCommand) => {
+        // eslint-disable-next-line max-len
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _saveData, getCommand: (continuationRequest: ContinuationRequest) => VertexAiContinuationCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
             const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
@@ -514,9 +519,10 @@ describe("Chat worker", function() {
             });
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
-        const continuationFactory: ToolContinuationDispatcherFactory = imock()
+        const continuationFactory: ToolContinuationDispatcherFactory = imock();
         when(continuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
+        // eslint-disable-next-line max-len
         when(wrapper.processToolsResponse(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _instructions, _request, _dataSoFar, dispatch) => {
             const dispatchResult = await dispatch(data, [toolCall], runId);
             return Continuation.resolve({

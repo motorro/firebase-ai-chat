@@ -17,27 +17,28 @@ const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiChatWorker");
  * Chat worker that dispatches chat commands and runs AI
  */
 class OpenAiChatWorker {
-    constructor(firestore, scheduler, wrapper, toolsDispatchFactory) {
+    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, logData) {
         this.firestore = firestore;
         this.firestore = firestore;
         this.scheduler = scheduler;
         this.wrapper = wrapper;
         this.toolsDispatchFactory = toolsDispatchFactory;
+        this.logData = logData;
     }
     getWorker(command) {
         logger.d("Dispatching OpenAi command...");
         if (RunContinuationWorker_1.RunContinuationWorker.isSupportedCommand(command)) {
             logger.d("Action to be handled with ContinuePostWorker");
-            return new RunContinuationWorker_1.RunContinuationWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory);
+            return new RunContinuationWorker_1.RunContinuationWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory, this.logData);
         }
         const action = command.actionData[0];
         if (CloseWorker_1.CloseWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with CloseWorker");
-            return new CloseWorker_1.CloseWorker(this.firestore, this.scheduler, this.wrapper);
+            return new CloseWorker_1.CloseWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         if (CreateWorker_1.CreateWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with CreateWorker");
-            return new CreateWorker_1.CreateWorker(this.firestore, this.scheduler, this.wrapper);
+            return new CreateWorker_1.CreateWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         if (HandBackCleanupWorker_1.HandBackCleanupWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with HandBackCleanupWorker");
@@ -45,23 +46,23 @@ class OpenAiChatWorker {
         }
         if (PostWorker_1.PostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with PostWorker");
-            return new PostWorker_1.PostWorker(this.firestore, this.scheduler, this.wrapper);
+            return new PostWorker_1.PostWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         if (PostExplicitWorker_1.PostExplicitWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with PostExplicitWorker");
-            return new PostExplicitWorker_1.PostExplicitWorker(this.firestore, this.scheduler, this.wrapper);
+            return new PostExplicitWorker_1.PostExplicitWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         if (RetrieveWorker_1.RetrieveWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with RetrieveWorker");
-            return new RetrieveWorker_1.RetrieveWorker(this.firestore, this.scheduler, this.wrapper);
+            return new RetrieveWorker_1.RetrieveWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         if (RunWorker_1.RunWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with RunWorker");
-            return new RunWorker_1.RunWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory);
+            return new RunWorker_1.RunWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory, this.logData);
         }
         if (SwitchToUserWorker_1.SwitchToUserWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with SwitchToUserWorker");
-            return new SwitchToUserWorker_1.SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper);
+            return new SwitchToUserWorker_1.SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
         }
         logger.w("Unsupported command:", command);
         return undefined;

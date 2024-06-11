@@ -1,6 +1,6 @@
 {
   "name": "@motorro/firebase-ai-chat-openai",
-  "version": "7.5.7",
+  "version": "8.0.0",
   "description": "A library to run OpenAI chats on Firebase",
   "publishConfig": {
     "access": "public"
@@ -35,7 +35,7 @@
     "url": "https://github.com/motorro/firebase-ai-chat/issues"
   },
   "peerDependencies": {
-    "@motorro/firebase-ai-chat-core": "^6.10.3",
+    "@motorro/firebase-ai-chat-core": "^7.0.2",
     "firebase-admin": "^10.0.0 || ^11.0.0 || ^12.1.1",
     "firebase-functions": "^4.9.0 || ^5.0.1",
     "openai": "^4.47.1"

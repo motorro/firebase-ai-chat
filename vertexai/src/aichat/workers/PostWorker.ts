@@ -37,6 +37,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
      * @param wrapper AI wrapper
      * @param instructions System instructions
      * @param getDispatcherFactory Tool dispatch factory
+     * @param logData Logs chat data if true
      */
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -44,9 +45,10 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
         wrapper: AiWrapper,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>,
-        getDispatcherFactory: () => ToolContinuationDispatcherFactory
+        getDispatcherFactory: () => ToolContinuationDispatcherFactory,
+        logData: boolean
     ) {
-        super(firestore, scheduler, wrapper);
+        super(firestore, scheduler, wrapper, logData);
         this.instructions = instructions;
         this.getDispatcherFactory = getDispatcherFactory;
     }
@@ -58,6 +60,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
      * @param dispatcherId Dispatcher ID
      * @param instructions AI instructions
      * @param soFar Data so far
+     * @param updateStateData Updates state data
      * @returns Continuation for post message result
      * @protected
      */
@@ -66,19 +69,22 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
         threadId: string,
         dispatcherId: string,
         instructions: VertexAiSystemInstructions<ChatData>,
-        soFar: ChatData
+        soFar: ChatData,
+        updateStateData: (data: ChatData) => Promise<boolean>
     ): Promise<Continuation<PostMessageResult<ChatData>>>;
 
     /**
      * Creates a post dispatch function
      * @param command Command being processed
      * @param dispatcherId Dispatcher ID
+     * @param updateData Updates chat data
      * @returns Tools dispatching function
      * @protected
      */
     protected getPostDispatch(
         command: VertexAiChatCommand,
-        dispatcherId: string
+        dispatcherId: string,
+        updateData: (data: ChatData) => Promise<boolean>
     ): (data: ChatData, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<ChatData>>> {
         const dispatcher = this.getDispatcherFactory().getDispatcher<VertexAiChatActions, VertexAiContinuationCommand, ChatData>(
             command.commonData.chatDocumentPath,
@@ -99,6 +105,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
             return await dispatcher.dispatch(
                 data,
                 toolCalls,
+                updateData,
                 getContinuationCommand
             );
         };
@@ -127,7 +134,12 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
             threadId,
             state.config.assistantConfig.instructionsId,
             instructions,
-            state.data
+            state.data,
+            async (data) => {
+                return control.updateChatState({
+                    data: data
+                });
+            }
         );
 
         const messageCollectionRef = this.getMessageCollection(commonData.chatDocumentPath);
@@ -171,14 +183,15 @@ export class PostWorker extends BasePostWorker {
         threadId: string,
         dispatcherId: string,
         instructions: VertexAiSystemInstructions<ChatData>,
-        soFar: ChatData
+        soFar: ChatData,
+        updateStateData: (data: ChatData) => Promise<boolean>
     ): Promise<Continuation<PostMessageResult<ChatData>>> {
         return await this.wrapper.postMessage(
             threadId,
             instructions,
             (await this.getMessages(command.commonData.chatDocumentPath, command.commonData.dispatchId)).map((it) => it.text),
             soFar,
-            this.getPostDispatch(command, dispatcherId)
+            this.getPostDispatch(command, dispatcherId, updateStateData)
         );
     }
 }
@@ -194,13 +207,14 @@ export class ExplicitPostWorker extends BasePostWorker {
         dispatcherId: string,
         instructions: VertexAiSystemInstructions<ChatData>,
         soFar: ChatData,
+        updateStateData: (data: ChatData) => Promise<boolean>
     ): Promise<Continuation<PostMessageResult<ChatData>>> {
         return await this.wrapper.postMessage(
             threadId,
             instructions,
             isPostExplicitAction(command.actionData[0]) ? (command.actionData[0].messages || []) : [],
             soFar,
-            this.getPostDispatch(command, dispatcherId)
+            this.getPostDispatch(command, dispatcherId, updateStateData)
         );
     }
 }
@@ -214,7 +228,9 @@ export class ContinuePostWorker extends BasePostWorker {
         command: VertexAiContinuationCommand,
         threadId: string,
         dispatcherId: string,
-        instructions: VertexAiSystemInstructions<ChatData>
+        instructions: VertexAiSystemInstructions<ChatData>,
+        soFar: ChatData,
+        updateStateData: (data: ChatData) => Promise<boolean>
     ): Promise<Continuation<PostMessageResult<ChatData>>> {
         const dispatcher = this.getDispatcherFactory().getDispatcher<VertexAiChatActions, VertexAiContinuationCommand, ChatData>(
             command.commonData.chatDocumentPath,
@@ -222,7 +238,9 @@ export class ContinuePostWorker extends BasePostWorker {
         );
 
         const dc = await dispatcher.dispatchCommand(
+            soFar,
             command,
+            updateStateData,
             (continuationRequest: ContinuationRequest): VertexAiContinuationCommand => ({
                 // Already a continuation command so if suspended we use the same set of actions
                 // Alter continuation data and meta
@@ -239,6 +257,7 @@ export class ContinuePostWorker extends BasePostWorker {
                 return await dispatcher.dispatch(
                     data,
                     toolCalls,
+                    updateStateData,
                     (continuationRequest: ContinuationRequest): VertexAiContinuationCommand => ({
                         // Already a continuation command so if suspended we use the same set of actions
                         // Alter continuation data and meta
