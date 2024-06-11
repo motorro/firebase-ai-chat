@@ -79,7 +79,11 @@ export class ToolsContinuationSchedulerImpl<in DATA extends ChatData> implements
         command: ContinuationCommand<unknown>,
         response: DispatchResult<DATA>
     ): Promise<void> {
-        logger.d("Dispatching continuation command:", JSON.stringify(command), JSON.stringify(response));
+        if (this.logData) {
+            logger.d("Dispatching continuation command:", JSON.stringify(command), JSON.stringify(response));
+        } else {
+            logger.d("Dispatching continuation command:", JSON.stringify(command));
+        }
         // eslint-disable-next-line max-len
         const chatDocument = this.db.doc(command.commonData.chatDocumentPath) as DocumentReference<ChatState<AssistantConfig, DATA>>;
         // eslint-disable-next-line max-len
