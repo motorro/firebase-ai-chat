@@ -11,10 +11,15 @@ export interface ChatDispatchData<CM extends ChatMeta = ChatMeta> {
 }
 
 /**
+ * Some arbitrary data to return from function
+ */
+export type FunctionSuccessResult = Record<string, unknown> | Record<string, unknown>[] | null
+
+/**
  * Function Dispatch was successful. Contains function result
  */
 export interface FunctionSuccess {
-    readonly result: Record<string, unknown> | null;
+    readonly result: FunctionSuccessResult;
     readonly comment?: string;
 }
 
@@ -81,7 +86,7 @@ export interface ToolsDispatcher<DATA extends ChatData, CM extends ChatMeta = Ch
  * @param comment Comment to supplement evaluated data
  * @returns Reducer success result
  */
-export function getFunctionSuccess(result: Record<string, unknown>, comment?:string): FunctionSuccess {
+export function getFunctionSuccess(result: FunctionSuccessResult, comment?:string): FunctionSuccess {
     return {
         result: result,
         ...(undefined !== comment ? {comment: comment} : {})
@@ -116,7 +121,7 @@ export function isReducerSuccess<DATA extends ChatData>(data: unknown): data is 
  * @return True if `data' is `FunctionSuccess`
  */
 export function isFunctionSuccess(data: unknown): data is FunctionSuccess {
-    return "object" === typeof data && null !== data && "result" in data && "object" === typeof data.result && null !== data.result;
+    return "object" === typeof data && null !== data && "result" in data && "object" === typeof data.result;
 }
 
 /**

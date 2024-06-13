@@ -27,6 +27,7 @@ export {Meta, ChatMeta} from "./aichat/data/Meta";
 export {Logger, logger, setLogger, tagLogger} from "./logging";
 export {
     ChatDispatchData,
+    FunctionSuccessResult,
     FunctionSuccess,
     ReducerSuccess,
     DispatchError,
@@ -65,9 +66,9 @@ export {
     ToolCallsResult,
     isContinuationRequest,
     isContinuationCommand,
-    isContinuationCommandRequest,
+    isContinuationCommandRequest
 } from "./aichat/data/ContinuationCommand";
-export {commonFormatContinuationError}
+export {commonFormatContinuationError};
 
 /**
  * Tools continuation dispatcher factory

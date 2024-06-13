@@ -12,7 +12,7 @@ export { ChatError } from "./aichat/data/ChatError";
 export { Dispatch, Run, RunStatus } from "./aichat/data/Dispatch";
 export { Meta, ChatMeta } from "./aichat/data/Meta";
 export { Logger, logger, setLogger, tagLogger } from "./logging";
-export { ChatDispatchData, FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolDispatcherReturnValue, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess } from "./aichat/ToolsDispatcher";
+export { ChatDispatchData, FunctionSuccessResult, FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolDispatcherReturnValue, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess } from "./aichat/ToolsDispatcher";
 export { AssistantChat } from "./aichat/AssistantChat";
 export { HandOverResult } from "./aichat/data/HandOverResult";
 export { DispatchControl, ChatWorker } from "./aichat/workers/ChatWorker";

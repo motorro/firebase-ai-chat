@@ -30,7 +30,12 @@ class ToolsContinuationSchedulerImpl {
         this.logData = logData;
     }
     async continue(command, response) {
-        logger.d("Dispatching continuation command:", JSON.stringify(command), JSON.stringify(response));
+        if (this.logData) {
+            logger.d("Dispatching continuation command:", JSON.stringify(command), JSON.stringify(response));
+        }
+        else {
+            logger.d("Dispatching continuation command:", JSON.stringify(command));
+        }
         // eslint-disable-next-line max-len
         const chatDocument = this.db.doc(command.commonData.chatDocumentPath);
         // eslint-disable-next-line max-len

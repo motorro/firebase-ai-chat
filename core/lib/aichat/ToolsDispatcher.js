@@ -46,7 +46,7 @@ exports.isReducerSuccess = isReducerSuccess;
  * @return True if `data' is `FunctionSuccess`
  */
 function isFunctionSuccess(data) {
-    return "object" === typeof data && null !== data && "result" in data && "object" === typeof data.result && null !== data.result;
+    return "object" === typeof data && null !== data && "result" in data && "object" === typeof data.result;
 }
 exports.isFunctionSuccess = isFunctionSuccess;
 /**

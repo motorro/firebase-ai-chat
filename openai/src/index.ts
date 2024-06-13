@@ -47,6 +47,7 @@ export {
 } from "@motorro/firebase-ai-chat-core";
 export {
     ChatDispatchData,
+    FunctionSuccessResult,
     FunctionSuccess,
     ReducerSuccess,
     DispatchError,

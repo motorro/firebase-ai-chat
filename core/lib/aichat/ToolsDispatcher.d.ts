@@ -9,10 +9,14 @@ export interface ChatDispatchData<CM extends ChatMeta = ChatMeta> {
     readonly meta: CM | null;
 }
 /**
+ * Some arbitrary data to return from function
+ */
+export type FunctionSuccessResult = Record<string, unknown> | Record<string, unknown>[] | null;
+/**
  * Function Dispatch was successful. Contains function result
  */
 export interface FunctionSuccess {
-    readonly result: Record<string, unknown> | null;
+    readonly result: FunctionSuccessResult;
     readonly comment?: string;
 }
 /**
@@ -64,7 +68,7 @@ export interface ToolsDispatcher<DATA extends ChatData, CM extends ChatMeta = Ch
  * @param comment Comment to supplement evaluated data
  * @returns Reducer success result
  */
-export declare function getFunctionSuccess(result: Record<string, unknown>, comment?: string): FunctionSuccess;
+export declare function getFunctionSuccess(result: FunctionSuccessResult, comment?: string): FunctionSuccess;
 /**
  * Creates a reducer success result
  * @param data Result data
