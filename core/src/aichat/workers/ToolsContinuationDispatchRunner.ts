@@ -141,10 +141,10 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM
                 response = result.value;
                 if (this.logData) {
                     if (isReducerSuccess(response)) {
-                        tagLogger("DATA").d("Data after:", response.data);
+                        tagLogger("DATA").d("Data after:", JSON.stringify(response.data));
                     }
                     if (isFunctionSuccess(response)) {
-                        tagLogger("DATA").d("Result after:", response.result);
+                        tagLogger("DATA").d("Result after:", JSON.stringify(response.result));
                     }
                 }
                 if (isDispatchError(response)) {
