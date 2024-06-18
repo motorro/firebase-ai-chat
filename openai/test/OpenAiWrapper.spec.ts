@@ -142,6 +142,23 @@ describe("OpenAI wrapper", function() {
         ).once();
     });
 
+    it("posts structured message with default mapper", async function() {
+        when(messages.create(anything(), anything())).thenResolve(message1);
+
+        await wrapper.postMessage(threadId, {text: "M1", meta: {a: "b"}});
+
+        verify(
+            messages.create(
+                strictEqual(threadId),
+                deepEqual({
+                    role: "user",
+                    content: "M1",
+                    metadata: {a: "b"}
+                })
+            )
+        ).once();
+    });
+
     it("runs AI", async function() {
         const run1: Run = imock();
         when(run1.id).thenReturn("r1");
@@ -328,7 +345,7 @@ describe("OpenAI wrapper", function() {
 
         const result = await wrapper.getMessages(threadId, "m1");
         result.should.deep.equal({
-            messages: [["m1", "Message 1"], ["m2", "Message 2"]],
+            messages: [["m1", {text: "Message 1", meta: null}], ["m2", {text: "Message 2", meta: null}]],
             latestMessageId: "m2"
         });
 

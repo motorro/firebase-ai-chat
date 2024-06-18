@@ -1,4 +1,4 @@
-import { ChatData, Continuation, ToolCallRequest, ToolCallsResult } from "@motorro/firebase-ai-chat-core";
+import { ChatData, Continuation, NewMessage, ToolCallRequest, ToolCallsResult } from "@motorro/firebase-ai-chat-core";
 import { VertexAiSystemInstructions } from "./data/VertexAiSystemInstructions";
 import { ChatThreadMessage } from "./data/ThreadMessage";
 import { RunContinuationRequest } from "./data/RunResponse";
@@ -28,7 +28,7 @@ export interface AiWrapper {
      * @param dispatch Tool dispatch function
      * @return New data state and new chat thread messages
      */
-    postMessage<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, messages: ReadonlyArray<string>, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
+    postMessage<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, messages: ReadonlyArray<NewMessage>, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
     /**
      * Processes AI tools response
      * @param threadId Thread ID

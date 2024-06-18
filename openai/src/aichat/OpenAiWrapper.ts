@@ -4,7 +4,7 @@ import {
     Continuation,
     isDispatchError,
     isReducerSuccess,
-    Messages,
+    NewMessage,
     tagLogger,
     ToolCallRequest,
     ToolCallsResult
@@ -16,6 +16,8 @@ import {MessagesPage, RequiredActionFunctionToolCall, RunSubmitToolOutputsParams
 import {AiWrapper} from "./AiWrapper";
 import {RunContinuationRequest} from "./data/RunResponse";
 import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
+import {DefaultMessageMapper, OpenAiMessageMapper} from "./OpenAiMessageMapper";
+import {AiMessages} from "./data/AiMessages";
 
 const logger = tagLogger("OpenAiWrapper");
 
@@ -26,10 +28,12 @@ const logger = tagLogger("OpenAiWrapper");
 export class OpenAiWrapper implements AiWrapper {
     private readonly openAi: OpenAI;
     private readonly debugAi: boolean;
+    private readonly messageMapper: OpenAiMessageMapper
 
-    constructor(openAi: OpenAI, debugAi = false) {
+    constructor(openAi: OpenAI, debugAi = false, messageMapper: OpenAiMessageMapper = DefaultMessageMapper) {
         this.openAi = openAi;
         this.debugAi = debugAi;
+        this.messageMapper = messageMapper
     }
 
     async createThread(meta: Readonly<Record<string, string>>): Promise<string> {
@@ -41,7 +45,7 @@ export class OpenAiWrapper implements AiWrapper {
         return thread.id;
     }
 
-    async postMessage(threadId: string, message: string): Promise<string> {
+    async postMessage(threadId: string, message: NewMessage): Promise<string> {
         logger.d("Posting message...");
         if (this.debugAi) {
             tagLogger("AI").d("About to send message to AI. Message:", JSON.stringify(message));
@@ -51,7 +55,7 @@ export class OpenAiWrapper implements AiWrapper {
                 threadId,
                 {
                     role: "user",
-                    content: message
+                    ...this.messageMapper.toAi(message)
                 }
             );
             return created.id;
@@ -213,11 +217,11 @@ export class OpenAiWrapper implements AiWrapper {
         );
     }
 
-    async getMessages(threadId: string, from: string | undefined): Promise<Messages> {
+    async getMessages(threadId: string, from: string | undefined): Promise<AiMessages> {
         logger.d("Getting messages from: ", threadId);
         return await this.runAi(async (ai) => {
             let cursor = from;
-            const messages: Array<[string, string]> = [];
+            const messages: Array<[string, NewMessage]> = [];
 
             const list: MessagesPage = await ai.beta.threads.messages.list(
                 threadId,
@@ -227,15 +231,10 @@ export class OpenAiWrapper implements AiWrapper {
             for await (const page of list.iterPages()) {
                 page.getPaginatedItems().forEach((message) => {
                     cursor = message.id;
-                    message.content.forEach((content) => {
-                        switch (content.type) {
-                            case "text":
-                                messages.push([message.id, content.text.value]);
-                                break;
-                            default:
-                                throw new Error(`Unsupported message type: ${content.type}`);
-                        }
-                    });
+                    const mappedMessage = this.messageMapper.fromAi(message);
+                    if (mappedMessage) {
+                        messages.push([message.id, mappedMessage]);
+                    }
                 });
             }
 

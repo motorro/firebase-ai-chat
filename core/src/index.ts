@@ -9,7 +9,6 @@ import {DispatchError, ToolsDispatcher} from "./aichat/ToolsDispatcher";
 import {commonFormatContinuationError} from "./aichat/workers/ToolsContinuationDispatchRunner";
 
 export {
-    Messages,
     AiError,
     isPermanentError,
     AiExample,
@@ -69,6 +68,7 @@ export {
     isContinuationCommandRequest
 } from "./aichat/data/ContinuationCommand";
 export {commonFormatContinuationError};
+export {NewMessage, StructuredMessage, isStructuredMessage} from "./aichat/data/NewMessage";
 
 /**
  * Tools continuation dispatcher factory

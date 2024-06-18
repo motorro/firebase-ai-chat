@@ -10,14 +10,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OpenAiWrapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const core_1 = require("openai/core");
+const OpenAiMessageMapper_1 = require("./OpenAiMessageMapper");
 const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiWrapper");
 /**
  * Wraps Open AI assistant use
  */
 class OpenAiWrapper {
-    constructor(openAi, debugAi = false) {
+    constructor(openAi, debugAi = false, messageMapper = OpenAiMessageMapper_1.DefaultMessageMapper) {
         this.openAi = openAi;
         this.debugAi = debugAi;
+        this.messageMapper = messageMapper;
     }
     async createThread(meta) {
         logger.d("Creating thread...", meta);
@@ -33,10 +35,7 @@ class OpenAiWrapper {
             (0, firebase_ai_chat_core_1.tagLogger)("AI").d("About to send message to AI. Message:", JSON.stringify(message));
         }
         return this.runAi(async (ai) => {
-            const created = await ai.beta.threads.messages.create(threadId, {
-                role: "user",
-                content: message
-            });
+            const created = await ai.beta.threads.messages.create(threadId, Object.assign({ role: "user" }, this.messageMapper.toAi(message)));
             return created.id;
         });
     }
@@ -155,15 +154,10 @@ class OpenAiWrapper {
                         const page = _c;
                         page.getPaginatedItems().forEach((message) => {
                             cursor = message.id;
-                            message.content.forEach((content) => {
-                                switch (content.type) {
-                                    case "text":
-                                        messages.push([message.id, content.text.value]);
-                                        break;
-                                    default:
-                                        throw new Error(`Unsupported message type: ${content.type}`);
-                                }
-                            });
+                            const mappedMessage = this.messageMapper.fromAi(message);
+                            if (mappedMessage) {
+                                messages.push([message.id, mappedMessage]);
+                            }
                         });
                     }
                     finally {

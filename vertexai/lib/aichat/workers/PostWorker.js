@@ -61,8 +61,35 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
         const batch = this.db.batch();
         if (response.isResolved()) {
             response.value.messages.forEach((message, index) => {
-                var _a;
-                batch.set(messageCollectionRef.doc(), Object.assign({ userId: commonData.ownerId, dispatchId: commonData.dispatchId, author: message.author, text: message.text, inBatchSortIndex: latestInBatchId + index, createdAt: message.createdAt }, (((_a = state.meta) === null || _a === void 0 ? void 0 : _a.aiMessageMeta) ? { meta: state.meta.aiMessageMeta } : {})));
+                var _a, _b;
+                let text;
+                let data = null;
+                let meta = ("ai" === message.author ? (_a = state.meta) === null || _a === void 0 ? void 0 : _a.aiMessageMeta : (_b = state.meta) === null || _b === void 0 ? void 0 : _b.userMessageMeta) || null;
+                if ((0, firebase_ai_chat_core_1.isStructuredMessage)(message)) {
+                    text = message.text;
+                    data = message.data || null;
+                    if (message.meta) {
+                        if (null != meta) {
+                            meta = Object.assign(Object.assign({}, meta), message.meta);
+                        }
+                        else {
+                            meta = message.meta;
+                        }
+                    }
+                }
+                else {
+                    text = String(message);
+                }
+                batch.set(messageCollectionRef.doc(), {
+                    userId: commonData.ownerId,
+                    dispatchId: commonData.dispatchId,
+                    author: message.author,
+                    text: text,
+                    data: data,
+                    inBatchSortIndex: latestInBatchId + index,
+                    createdAt: message.createdAt,
+                    meta: meta
+                });
             });
             await batch.commit();
             await control.updateChatState({

@@ -247,6 +247,33 @@ describe("Assistant Chat", function() {
         );
     });
 
+    it("posts a message with complex message", async function() {
+        await chatDoc.set(chatState);
+        when(scheduler.postAndRun(anything())).thenReturn(Promise.resolve());
+
+        await chat.postMessage(
+            chatDoc,
+            userId,
+            [{text: "Message with meta", meta: {a: "b"}, data: {c: "d"}}]
+        );
+
+        const insertedMessages = await chatMessages.get();
+        insertedMessages.docs.should.have.lengthOf(1);
+        const insertedData = insertedMessages.docs
+            .map((doc: QueryDocumentSnapshot<DocumentData>) => doc.data())
+            .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
+        insertedData[0].should.deep.include({
+            userId: userId,
+            author: "user",
+            text: "Message with meta",
+            data: {c: "d"},
+            meta: {
+                name: "Vasya",
+                a: "b"
+            }
+        });
+    });
+
     it("does not post a message to the chat if not found", async function() {
         return chat.postMessage(chatDoc, userId, messages).should
             .eventually

@@ -21,7 +21,8 @@ class PostExplicitWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
             const messages = postExplicit.messages;
             let latestMessageId = undefined;
             for (const message of messages) {
-                latestMessageId = await this.wrapper.postMessage(threadId, message);
+                const text = (0, firebase_ai_chat_core_1.isStructuredMessage)(message) ? message.text : message;
+                latestMessageId = await this.wrapper.postMessage(threadId, text);
             }
             if (undefined !== latestMessageId) {
                 await this.updateConfig(control, state, () => ({ lastMessageId: latestMessageId }));

@@ -5,13 +5,14 @@ import { AiWrapper } from "./aichat/AiWrapper";
 import { VertexAiSystemInstructions } from "./aichat/data/VertexAiSystemInstructions";
 import { GenerativeModel } from "@google-cloud/vertexai";
 import Firestore = firestore.Firestore;
+import { VertexAiMessageMapper } from "./aichat/VertexAiMessageMapper";
 export { AssistantChat, HandOverResult, ChatData, ChatState, ChatStatus, ChatMessage, Meta, ChatMeta, Logger, setLogger, tagLogger, TaskScheduler, CommandScheduler, Collections, SystemInstructions, AiExample, AiResponseExample, AiFunctionCallExample, printAiExample } from "@motorro/firebase-ai-chat-core";
-export { ChatDispatchData, FunctionSuccessResult, FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolDispatcherReturnValue, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess } from "@motorro/firebase-ai-chat-core";
+export { ChatDispatchData, FunctionSuccessResult, FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolDispatcherReturnValue, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess, NewMessage, StructuredMessage, isStructuredMessage } from "@motorro/firebase-ai-chat-core";
 export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from "@motorro/firebase-ai-chat-core";
 export { FirebaseQueueTaskScheduler } from "@motorro/firebase-ai-chat-core";
 export { Continuation, SuspendedContinuation, ResolvedContinuation } from "@motorro/firebase-ai-chat-core";
 export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "@motorro/firebase-ai-chat-core";
-export { AiWrapper, VertexAiSystemInstructions };
+export { AiWrapper, VertexAiSystemInstructions, VertexAiMessageMapper };
 export { VertexAiTools } from "./aichat/data/VertexAiSystemInstructions";
 export { VertexAiAssistantConfig } from "./aichat/data/VertexAiAssistantConfig";
 export { VertexAiChatCommand, isVertexAiChatReq, isVertexAiChatCommand } from "./aichat/data/VertexAiChatCommand";
@@ -41,9 +42,10 @@ export interface AiChat {
      * @param model Common model setup
      * @param threadsPath Firestore path for internal thread data storage
      * @param instructions Model instructions
+     * @param messageMapper Maps messages to/from VertexAI
      * @return Worker interface
      */
-    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>): ChatWorker;
+    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>, messageMapper?: VertexAiMessageMapper): ChatWorker;
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
      * @param queueName The name of the queue the dispatch will be continued on

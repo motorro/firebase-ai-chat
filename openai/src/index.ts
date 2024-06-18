@@ -22,6 +22,7 @@ import {OpenAiAssistantConfig} from "./aichat/data/OpenAiAssistantConfig";
 import {OpenAICommandScheduler} from "./aichat/OpenAICommandScheduler";
 import OpenAI from "openai";
 import {OpenAiWrapper} from "./aichat/OpenAiWrapper";
+import {OpenAiMessageMapper} from "./aichat/OpenAiMessageMapper";
 
 export {
     AssistantChat,
@@ -60,7 +61,10 @@ export {
     getFunctionSuccess,
     getReducerSuccess,
     isFunctionSuccess,
-    isReducerSuccess
+    isReducerSuccess,
+    NewMessage,
+    StructuredMessage,
+    isStructuredMessage
 } from "@motorro/firebase-ai-chat-core";
 export {ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand} from "@motorro/firebase-ai-chat-core";
 export {FirebaseQueueTaskScheduler} from "@motorro/firebase-ai-chat-core";
@@ -80,7 +84,8 @@ export {
 
 export {
     AiWrapper,
-    OpenAiChatWorker
+    OpenAiChatWorker,
+    OpenAiMessageMapper
 };
 export {OpenAiAssistantConfig} from "./aichat/data/OpenAiAssistantConfig";
 export {OpenAiChatCommand, isOpenAiChatReq, isOpenAiChatCommand} from "./aichat/data/OpenAiChatCommand";
@@ -119,10 +124,11 @@ export interface AiChat {
      * Chat worker to use in Firebase tasks
      * @param openAi OpenAI instance
      * @param dispatchers Tools dispatchers
+     * @param messageMapper Maps messages to/from OpenAI
      * @return Worker interface
      */
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>): OpenAiChatWorker
+    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>, messageMapper?: OpenAiMessageMapper): OpenAiChatWorker
 
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
@@ -168,11 +174,11 @@ export function factory(
             return new AssistantChat<DATA>(firestore, commandSchedulers(queueName, _taskScheduler));
         },
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>): OpenAiChatWorker {
+        worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>, messageMapper?: OpenAiMessageMapper): OpenAiChatWorker {
             return new OpenAiChatWorker(
                 firestore,
                 _taskScheduler,
-                new OpenAiWrapper(openAi, debugAi),
+                new OpenAiWrapper(openAi, debugAi, messageMapper),
                 toolContinuationDispatcherFactory(firestore, dispatchers, _taskScheduler, formatContinuationError, logData),
                 logData
             );

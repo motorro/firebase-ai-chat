@@ -2,7 +2,7 @@ import {
     ChatData,
     ChatError,
     ChatState,
-    DispatchControl,
+    DispatchControl, isStructuredMessage,
     tagLogger
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
@@ -33,7 +33,8 @@ export class PostExplicitWorker extends OpenAiQueueWorker {
             const messages = postExplicit.messages;
             let latestMessageId: string | undefined = undefined;
             for (const message of messages) {
-                latestMessageId = await this.wrapper.postMessage(threadId, message);
+                const text = isStructuredMessage(message) ? message.text : <string>message
+                latestMessageId = await this.wrapper.postMessage(threadId, text);
             }
 
             if (undefined !== latestMessageId) {

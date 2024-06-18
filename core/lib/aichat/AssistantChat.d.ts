@@ -6,6 +6,7 @@ import Firestore = firestore.Firestore;
 import { ChatMeta, Meta } from "./data/Meta";
 import { CommandScheduler } from "./CommandScheduler";
 import { HandOverResult } from "./data/HandOverResult";
+import { NewMessage } from "./data/NewMessage";
 /**
  * Front-facing assistant chat
  * Runs AI chat saving state in the database
@@ -35,7 +36,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param workerMeta Metadata to pass to chat worker
      * @param chatMeta Metadata saved to chat state
      */
-    create(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, messages?: ReadonlyArray<string>, workerMeta?: WM, chatMeta?: CM): Promise<ChatStateUpdate<DATA>>;
+    create(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, messages?: ReadonlyArray<NewMessage>, workerMeta?: WM, chatMeta?: CM): Promise<ChatStateUpdate<DATA>>;
     /**
      * Runs AI once and cleans up afterward
      * For tasks like analyzing some text once and getting results with function call
@@ -48,7 +49,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param chatMeta Metadata saved to chat state
      * @return Chat state update
      */
-    singleRun(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, messages: ReadonlyArray<string>, workerMeta?: WM, chatMeta?: CM): Promise<ChatStateUpdate<DATA>>;
+    singleRun(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, data: DATA, assistantConfig: AssistantConfig, messages: ReadonlyArray<NewMessage>, workerMeta?: WM, chatMeta?: CM): Promise<ChatStateUpdate<DATA>>;
     /**
      * Hands over chat to another assistant
      * @param document Document reference
@@ -59,7 +60,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param chatMeta Chat meta to set for switched chat
      * @return Chat stack update
      */
-    handOver(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, assistantConfig: AssistantConfig, handOverMessages: ReadonlyArray<string>, workerMeta?: WM, chatMeta?: CM): Promise<HandOverResult>;
+    handOver(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, assistantConfig: AssistantConfig, handOverMessages: ReadonlyArray<NewMessage>, workerMeta?: WM, chatMeta?: CM): Promise<HandOverResult>;
     /**
      * Hands chat back to the next popped assistant
      * @param document Document reference
@@ -77,7 +78,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param workerMeta Metadata to pass to chat worker
      * @return Chat state update
      */
-    postMessage(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, messages: ReadonlyArray<string>, workerMeta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    postMessage(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, messages: ReadonlyArray<NewMessage>, workerMeta?: Meta): Promise<ChatStateUpdate<DATA>>;
     /**
      * Adds user messages
      * @param batch Write batch
@@ -85,7 +86,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
-     * @param meta User message meta if any
+     * @param chatMeta Common message meta
      * @return Write batch
      * @private
      */

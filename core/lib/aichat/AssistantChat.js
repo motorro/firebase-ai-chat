@@ -6,6 +6,7 @@ const Collections_1 = require("./data/Collections");
 const https_1 = require("firebase-functions/v2/https");
 var Timestamp = firebase_admin_1.firestore.Timestamp;
 const logging_1 = require("../logging");
+const NewMessage_1 = require("./data/NewMessage");
 const logger = (0, logging_1.tagLogger)("AssistantChat");
 /**
  * Front-facing assistant chat
@@ -247,14 +248,43 @@ class AssistantChat {
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
-     * @param meta User message meta if any
+     * @param chatMeta Common message meta
      * @return Write batch
      * @private
      */
-    insertMessages(batch, document, userId, dispatchId, messages, meta) {
+    insertMessages(batch, document, userId, dispatchId, messages, chatMeta) {
         const messageList = document.collection(Collections_1.Collections.messages);
         messages.forEach((message, index) => {
-            batch.create(messageList.doc(), Object.assign({ userId: userId, dispatchId: dispatchId, author: "user", text: message, inBatchSortIndex: index, createdAt: Timestamp.now() }, (meta ? { meta: meta } : {})));
+            let text;
+            let meta = chatMeta || null;
+            let data = null;
+            if ((0, NewMessage_1.isStructuredMessage)(message)) {
+                text = message.text;
+                if (message.meta) {
+                    if (null != meta) {
+                        meta = Object.assign(Object.assign({}, meta), message.meta);
+                    }
+                    else {
+                        meta = message.meta;
+                    }
+                }
+                if (message.data) {
+                    data = message.data;
+                }
+            }
+            else {
+                text = String(message);
+            }
+            batch.create(messageList.doc(), {
+                userId: userId,
+                dispatchId: dispatchId,
+                author: "user",
+                text: text,
+                data: data,
+                inBatchSortIndex: index,
+                createdAt: Timestamp.now(),
+                meta: meta
+            });
         });
         return batch;
     }

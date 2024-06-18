@@ -1,5 +1,12 @@
-import {ChatData, Continuation, Messages, ToolCallRequest, ToolCallsResult} from "@motorro/firebase-ai-chat-core";
+import {
+    ChatData,
+    Continuation,
+    NewMessage,
+    ToolCallRequest,
+    ToolCallsResult
+} from "@motorro/firebase-ai-chat-core";
 import {RunContinuationRequest} from "./data/RunResponse";
+import {AiMessages} from "./data/AiMessages";
 
 /**
  * Wraps OpenAI Assistant
@@ -18,7 +25,7 @@ export interface AiWrapper {
      * @param message Message to post
      * @return Created message ID. Use in pagination
      */
-    postMessage(threadId: string, message: string): Promise<string>
+    postMessage(threadId: string, message: NewMessage): Promise<string>
 
     /**
      * Runs assistant
@@ -58,7 +65,7 @@ export interface AiWrapper {
      * @param from Message ID to start from
      * @return A batch of new messages
      */
-    getMessages(threadId: string, from: string | undefined): Promise<Messages>
+    getMessages(threadId: string, from: string | undefined): Promise<AiMessages>
 
     /**
      * Deletes thread

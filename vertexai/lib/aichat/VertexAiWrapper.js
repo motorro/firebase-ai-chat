@@ -4,6 +4,7 @@ exports.VertexAiWrapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const firebase_admin_1 = require("firebase-admin");
 var Timestamp = firebase_admin_1.firestore.Timestamp;
+const VertexAiMessageMapper_1 = require("./VertexAiMessageMapper");
 const logger = (0, firebase_ai_chat_core_1.tagLogger)("VertexAiWrapper");
 /**
  * Wraps Open AI assistant use
@@ -15,12 +16,14 @@ class VertexAiWrapper {
      * @param firestore Firebase firestore
      * @param threadsPath Threads collection path
      * @param debugAi If true - will log AI request and response
+     * @param messageMapper Maps messages from/to AI
      */
-    constructor(model, firestore, threadsPath, debugAi = false) {
+    constructor(model, firestore, threadsPath, debugAi = false, messageMapper = VertexAiMessageMapper_1.DefaultMessageMapper) {
         this.model = model;
         this.firestore = firestore;
         this.threads = firestore.collection(threadsPath);
         this.debugAi = debugAi;
+        this.messageMapper = messageMapper;
     }
     /**
      * Generates system instructions
@@ -87,9 +90,7 @@ class VertexAiWrapper {
     }
     async postMessage(threadId, instructions, messages, dataSoFar, dispatch) {
         logger.d("Posting messages...");
-        return await this.doPost(threadId, instructions, messages.map((it) => ({
-            text: it
-        })), dataSoFar, dispatch);
+        return await this.doPost(threadId, instructions, messages.map((it) => this.messageMapper.toAi(it)).flat(), dataSoFar, dispatch);
     }
     /**
      * Maintains conversation data
@@ -113,20 +114,9 @@ class VertexAiWrapper {
             const mDoc = this.getThreadMessageCollection(threadId).doc();
             batch.set(mDoc, threadMessage);
             if ("model" === threadMessage.content.role) {
-                let message = undefined;
-                threadMessage.content.parts.forEach((part) => {
-                    const text = part.text;
-                    if (undefined !== text) {
-                        message = (message && message + "\n" + text) || text;
-                    }
-                });
-                if (undefined !== message) {
-                    resultMessages.push({
-                        id: mDoc.id,
-                        createdAt: threadMessage.createdAt,
-                        author: "ai",
-                        text: message
-                    });
+                const mapped = this.messageMapper.fromAi(threadMessage.content);
+                if (mapped) {
+                    resultMessages.push(Object.assign({ id: mDoc.id, createdAt: threadMessage.createdAt, author: "ai" }, ((0, firebase_ai_chat_core_1.isStructuredMessage)(mapped) ? mapped : { text: String(mapped) })));
                 }
             }
         });

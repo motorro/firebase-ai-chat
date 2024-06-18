@@ -22,6 +22,7 @@ import Transaction = firestore.Transaction;
 import Timestamp = firestore.Timestamp;
 import {HandOverResult} from "./data/HandOverResult";
 import {tagLogger} from "../logging";
+import {isStructuredMessage, NewMessage} from "./data/NewMessage";
 
 const logger = tagLogger("AssistantChat");
 
@@ -71,7 +72,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         userId: string,
         data: DATA,
         assistantConfig: AssistantConfig,
-        messages?: ReadonlyArray<string>,
+        messages?: ReadonlyArray<NewMessage>,
         workerMeta?: WM,
         chatMeta?: CM
     ): Promise<ChatStateUpdate<DATA>> {
@@ -138,7 +139,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         userId: string,
         data: DATA,
         assistantConfig: AssistantConfig,
-        messages: ReadonlyArray<string>,
+        messages: ReadonlyArray<NewMessage>,
         workerMeta?: WM,
         chatMeta?: CM
     ): Promise<ChatStateUpdate<DATA>> {
@@ -192,7 +193,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         assistantConfig: AssistantConfig,
-        handOverMessages: ReadonlyArray<string>,
+        handOverMessages: ReadonlyArray<NewMessage>,
         workerMeta?: WM,
         chatMeta?: CM
     ): Promise<HandOverResult> {
@@ -321,7 +322,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
     async postMessage(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
-        messages: ReadonlyArray<string>,
+        messages: ReadonlyArray<NewMessage>,
         workerMeta?: Meta
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Posting user messages to: ", document.path);
@@ -363,7 +364,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
-     * @param meta User message meta if any
+     * @param chatMeta Common message meta
      * @return Write batch
      * @private
      */
@@ -372,21 +373,40 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         dispatchId: string,
-        messages: ReadonlyArray<string>,
-        meta?: Meta
+        messages: ReadonlyArray<NewMessage>,
+        chatMeta?: Meta
     ): FirebaseFirestore.WriteBatch {
         const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
         messages.forEach((message, index) => {
+            let text: string;
+            let meta: Meta | null = chatMeta || null;
+            let data: Readonly<Record<string, unknown>> | null = null;
+            if (isStructuredMessage(message)) {
+                text = message.text;
+                if (message.meta) {
+                    if (null != meta) {
+                        meta = {...meta, ...message.meta};
+                    } else {
+                        meta = message.meta;
+                    }
+                }
+                if (message.data) {
+                    data = message.data;
+                }
+            } else {
+                text = String(message);
+            }
             batch.create(
                 messageList.doc(),
                 {
                     userId: userId,
                     dispatchId: dispatchId,
                     author: "user",
-                    text: message,
+                    text: text,
+                    data: data,
                     inBatchSortIndex: index,
                     createdAt: Timestamp.now(),
-                    ...(meta ? {meta: meta} : {})
+                    meta: meta
                 }
             );
         });

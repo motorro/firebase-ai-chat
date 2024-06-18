@@ -56,10 +56,10 @@ class SequentialToolsContinuationDispatchRunner {
                 response = result.value;
                 if (this.logData) {
                     if ((0, ToolsDispatcher_1.isReducerSuccess)(response)) {
-                        (0, logging_1.tagLogger)("DATA").d("Data after:", response.data);
+                        (0, logging_1.tagLogger)("DATA").d("Data after:", JSON.stringify(response.data));
                     }
                     if ((0, ToolsDispatcher_1.isFunctionSuccess)(response)) {
-                        (0, logging_1.tagLogger)("DATA").d("Result after:", response.result);
+                        (0, logging_1.tagLogger)("DATA").d("Result after:", JSON.stringify(response.result));
                     }
                 }
                 if ((0, ToolsDispatcher_1.isDispatchError)(response)) {

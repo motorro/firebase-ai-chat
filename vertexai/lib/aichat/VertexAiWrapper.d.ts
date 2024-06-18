@@ -1,4 +1,4 @@
-import { ChatData, Continuation, ToolCallRequest, ToolCallsResult } from "@motorro/firebase-ai-chat-core";
+import { ChatData, Continuation, NewMessage, ToolCallRequest, ToolCallsResult } from "@motorro/firebase-ai-chat-core";
 import { GenerativeModel } from "@google-cloud/vertexai";
 import { VertexAiSystemInstructions } from "./data/VertexAiSystemInstructions";
 import { firestore } from "firebase-admin";
@@ -6,6 +6,7 @@ import { AiWrapper, PostMessageResult } from "./AiWrapper";
 import { ThreadMessage } from "./data/ThreadMessage";
 import { RunContinuationRequest } from "./data/RunResponse";
 import CollectionReference = firestore.CollectionReference;
+import { VertexAiMessageMapper } from "./VertexAiMessageMapper";
 /**
  * Wraps Open AI assistant use
  */
@@ -14,14 +15,16 @@ export declare class VertexAiWrapper implements AiWrapper {
     private readonly firestore;
     private readonly threads;
     private readonly debugAi;
+    private readonly messageMapper;
     /**
      * Constructor
      * @param model Pre-configured `GenerativeModel`
      * @param firestore Firebase firestore
      * @param threadsPath Threads collection path
      * @param debugAi If true - will log AI request and response
+     * @param messageMapper Maps messages from/to AI
      */
-    constructor(model: GenerativeModel, firestore: FirebaseFirestore.Firestore, threadsPath: string, debugAi?: boolean);
+    constructor(model: GenerativeModel, firestore: FirebaseFirestore.Firestore, threadsPath: string, debugAi?: boolean, messageMapper?: VertexAiMessageMapper);
     /**
      * Generates system instructions
      * @param config System instructions config
@@ -53,7 +56,7 @@ export declare class VertexAiWrapper implements AiWrapper {
      */
     getThreadMessages(threadId: string): Promise<ReadonlyArray<[string, ThreadMessage]>>;
     createThread(meta: Readonly<Record<string, string>>): Promise<string>;
-    postMessage<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, messages: ReadonlyArray<string>, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
+    postMessage<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, messages: ReadonlyArray<NewMessage>, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
     /**
      * Maintains conversation data
      * @param threadId Thread ID

@@ -1,5 +1,6 @@
 import {ChatCommandData} from "./data/ChatCommandData";
 import {AssistantConfig} from "./data/ChatState";
+import {NewMessage} from "./data/NewMessage";
 
 /**
  * Schedules common chat commands
@@ -41,7 +42,7 @@ export interface CommandScheduler {
      * @param common Common command data
      * @param handOverMessages Messages used to hand-over chat
      */
-    handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<string>): Promise<void>
+    handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void>
 
     /**
      * Cleanup after chat hand-over

@@ -21,9 +21,36 @@ class RetrieveWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         const latestInBatchId = await this.getNextBatchSortIndex(command.commonData.chatDocumentPath, command.commonData.dispatchId);
         const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         const batch = this.db.batch();
-        newMessages.messages.forEach((message, index) => {
+        newMessages.messages.forEach(([id, message], index) => {
             var _a;
-            batch.set(messageCollectionRef.doc(), Object.assign({ userId: command.commonData.ownerId, dispatchId: command.commonData.dispatchId, author: "ai", text: message[1], inBatchSortIndex: latestInBatchId + index, createdAt: FieldValue.serverTimestamp() }, (((_a = state.meta) === null || _a === void 0 ? void 0 : _a.aiMessageMeta) ? { meta: state.meta.aiMessageMeta } : {})));
+            let text;
+            let data = null;
+            let meta = ((_a = state.meta) === null || _a === void 0 ? void 0 : _a.aiMessageMeta) || null;
+            if ((0, firebase_ai_chat_core_1.isStructuredMessage)(message)) {
+                text = message.text;
+                data = message.data || null;
+                if (message.meta) {
+                    if (null != meta) {
+                        meta = Object.assign(Object.assign({}, meta), message.meta);
+                    }
+                    else {
+                        meta = message.meta;
+                    }
+                }
+            }
+            else {
+                text = String(message);
+            }
+            batch.set(messageCollectionRef.doc(), {
+                userId: command.commonData.ownerId,
+                dispatchId: command.commonData.dispatchId,
+                author: "ai",
+                text: text,
+                data: data,
+                inBatchSortIndex: latestInBatchId + index,
+                createdAt: FieldValue.serverTimestamp(),
+                meta: meta
+            });
         });
         await batch.commit();
         await this.updateConfig(control, state, () => ({ lastMessageId: newMessages.latestMessageId }));

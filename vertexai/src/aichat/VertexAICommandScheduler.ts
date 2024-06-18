@@ -1,4 +1,4 @@
-import {AssistantConfig, CommandScheduler, tagLogger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
+import {AssistantConfig, CommandScheduler, NewMessage, tagLogger, TaskScheduler} from "@motorro/firebase-ai-chat-core";
 import {ChatCommandData} from "@motorro/firebase-ai-chat-core/lib/aichat/data/ChatCommandQueue";
 import {VertexAiChatActions} from "./data/VertexAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
@@ -45,7 +45,7 @@ export class VertexAICommandScheduler implements CommandScheduler {
         logger.d("Scheduling postAndRun: ", JSON.stringify(common));
         await this.schedule(common, ["post", "switchToUserInput"]);
     }
-    async handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<string>): Promise<void> {
+    async handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void> {
         logger.d("Scheduling hand-over: ", JSON.stringify(common));
         await this.schedule(common, ["create", {name: "postExplicit", messages: handOverMessages}, "switchToUserInput"]);
     }

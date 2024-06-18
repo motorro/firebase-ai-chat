@@ -20,6 +20,23 @@ const options: CallableOptions = {
 };
 ```
 
+### Optional custom message mapper
+By default, the library uses only text messages as-is. But if you want custom message processing, say image processing 
+or adding some metadata, you could create your own AI message processor and supply it to chat factory `worker` method. 
+Default message mapper could be found [here](src/aichat/OpenAiMessageMapper.ts).
+
+```typescript
+const myMessageMapper: OpenAiMessageMapper = {
+    toAi(message: NewMessage): UserMessageParts {
+        throw new Error("TODO: Implement mapping from Chat to OpenAI");
+    },
+
+    fromAi(message: Message): NewMessage | undefined {
+        throw new Error("TODO: Implement OpenAI to Chat message mapping")
+    }
+}
+```
+
 Refer to [Configure your environment](https://firebase.google.com/docs/functions/config-env) article for more
 information on setting environment and secret variables for your functions.
 
@@ -51,7 +68,7 @@ export const calculator = onTaskDispatched(
     async (req) => {
       // Create and run a worker
       // See the `dispatchers` definitions below
-      await chatFactory.worker(new OpenAI({apiKey: openAiApiKey.value()}), dispatchers).dispatch(
+      await chatFactory.worker(new OpenAI({apiKey: openAiApiKey.value()}), dispatchers, myMessageMapper).dispatch(
           req,
           (chatDocumentPath: string, meta: Meta) => {
              // Optional task completion handler

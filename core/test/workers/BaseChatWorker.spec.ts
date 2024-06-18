@@ -94,7 +94,9 @@ describe("Base chat worker", function() {
             createdAt: Timestamp.now(),
             inBatchSortIndex: index,
             dispatchId: dispatchId,
-            text: message
+            text: message,
+            data: null,
+            meta: null
         }));
         for (const message of toInsert) {
             await chatMessages.doc().set(message);

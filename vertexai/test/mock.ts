@@ -25,8 +25,10 @@ export const userMessage: ChatMessage = {
     dispatchId: runId,
     author: "user",
     text: "A message from user",
+    data: null,
     inBatchSortIndex: 1,
-    createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23))
+    createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 23)),
+    meta: null
 };
 
 export const aiMessage: ChatMessage = {
@@ -34,8 +36,10 @@ export const aiMessage: ChatMessage = {
     dispatchId: runId,
     author: "ai",
     text: "A message from AI",
+    data: null,
     inBatchSortIndex: 1,
-    createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 24))
+    createdAt: Timestamp.fromDate(new Date(2024, 1, 13, 20, 24)),
+    meta: null
 };
 
 export const data: Data = {

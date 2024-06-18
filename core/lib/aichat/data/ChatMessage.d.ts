@@ -6,7 +6,8 @@ export interface ChatMessage {
     readonly dispatchId: string;
     readonly author: "user" | "ai";
     readonly text: string;
+    readonly data: Readonly<Record<string, unknown>> | null;
     readonly inBatchSortIndex: number;
     readonly createdAt: Timestamp;
-    readonly meta?: Meta;
+    readonly meta: Meta | null;
 }

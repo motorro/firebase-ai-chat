@@ -4,7 +4,7 @@ import { ToolsContinuationSchedulerFactory } from "./aichat/workers/ToolsContinu
 import { ToolCallRequest } from "./aichat/data/ContinuationCommand";
 import { DispatchError, ToolsDispatcher } from "./aichat/ToolsDispatcher";
 import { commonFormatContinuationError } from "./aichat/workers/ToolsContinuationDispatchRunner";
-export { Messages, AiError, isPermanentError, AiExample, AiResponseExample, AiFunctionCallExample, SystemInstructions, printAiExample } from "./aichat/data/AiData";
+export { AiError, isPermanentError, AiExample, AiResponseExample, AiFunctionCallExample, SystemInstructions, printAiExample } from "./aichat/data/AiData";
 export { AssistantConfig, ChatData, ChatState, ChatStatus } from "./aichat/data/ChatState";
 export { ChatCommandData } from "./aichat/data/ChatCommandData";
 export { ChatMessage } from "./aichat/data/ChatMessage";
@@ -27,8 +27,9 @@ export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from
 export { FirebaseQueueTaskScheduler } from "./aichat/FirebaseQueueTaskScheduler";
 export { Collections } from "./aichat/data/Collections";
 export { Continuation, SuspendedContinuation, ResolvedContinuation } from "./aichat/data/Continuation";
-export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest, } from "./aichat/data/ContinuationCommand";
+export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "./aichat/data/ContinuationCommand";
 export { commonFormatContinuationError };
+export { NewMessage, StructuredMessage, isStructuredMessage } from "./aichat/data/NewMessage";
 /**
  * Tools continuation dispatcher factory
  * @param db Firestore

@@ -2,7 +2,7 @@ import {
     ChatData,
     ChatError,
     Continuation,
-    DispatchError,
+    DispatchError, isStructuredMessage, NewMessage,
     printAiExample,
     tagLogger,
     ToolCallRequest,
@@ -18,6 +18,7 @@ import {ChatThreadMessage, ThreadMessage} from "./data/ThreadMessage";
 import {RunContinuationRequest} from "./data/RunResponse";
 import CollectionReference = firestore.CollectionReference;
 import Timestamp = firestore.Timestamp;
+import {DefaultMessageMapper, VertexAiMessageMapper} from "./VertexAiMessageMapper";
 
 const logger = tagLogger("VertexAiWrapper");
 
@@ -34,6 +35,7 @@ export class VertexAiWrapper implements AiWrapper {
     private readonly firestore: FirebaseFirestore.Firestore;
     private readonly threads: CollectionReference<Thread>;
     private readonly debugAi: boolean;
+    private readonly messageMapper: VertexAiMessageMapper;
 
     /**
      * Constructor
@@ -41,17 +43,20 @@ export class VertexAiWrapper implements AiWrapper {
      * @param firestore Firebase firestore
      * @param threadsPath Threads collection path
      * @param debugAi If true - will log AI request and response
+     * @param messageMapper Maps messages from/to AI
      */
     constructor(
         model: GenerativeModel,
         firestore: FirebaseFirestore.Firestore,
         threadsPath: string,
-        debugAi = false
+        debugAi = false,
+        messageMapper: VertexAiMessageMapper = DefaultMessageMapper
     ) {
         this.model = model;
         this.firestore = firestore;
         this.threads = firestore.collection(threadsPath) as CollectionReference<Thread>;
         this.debugAi = debugAi;
+        this.messageMapper = messageMapper;
     }
 
     /**
@@ -127,7 +132,7 @@ export class VertexAiWrapper implements AiWrapper {
     async postMessage<DATA extends ChatData>(
         threadId: string,
         instructions: VertexAiSystemInstructions<DATA>,
-        messages: ReadonlyArray<string>,
+        messages: ReadonlyArray<NewMessage>,
         dataSoFar: DATA,
         dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>
     ): Promise<Continuation<PostMessageResult<DATA>>> {
@@ -135,9 +140,7 @@ export class VertexAiWrapper implements AiWrapper {
         return await this.doPost(
             threadId,
             instructions,
-            messages.map((it) => ({
-                text: it
-            })),
+            messages.map((it) => this.messageMapper.toAi(it)).flat(),
             dataSoFar,
             dispatch
         );
@@ -184,19 +187,13 @@ export class VertexAiWrapper implements AiWrapper {
             batch.set(mDoc, threadMessage);
 
             if ("model" === threadMessage.content.role) {
-                let message: string | undefined = undefined;
-                threadMessage.content.parts.forEach((part) => {
-                    const text = part.text;
-                    if (undefined !== text) {
-                        message = (message && message + "\n" + text) || text;
-                    }
-                });
-                if (undefined !== message) {
+                const mapped = this.messageMapper.fromAi(threadMessage.content);
+                if (mapped) {
                     resultMessages.push({
                         id: mDoc.id,
                         createdAt: threadMessage.createdAt,
                         author: "ai",
-                        text: message
+                        ...(isStructuredMessage(mapped) ? mapped : {text: String(mapped)})
                     });
                 }
             }

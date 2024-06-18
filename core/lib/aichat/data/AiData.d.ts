@@ -1,17 +1,4 @@
 /**
- * AI Messages response
- */
-export interface Messages {
-    /**
-     * A list of messages
-     */
-    readonly messages: ReadonlyArray<[string, string]>;
-    /**
-     * The ID of latest message to optimize retrievals
-     */
-    readonly latestMessageId?: string;
-}
-/**
  * AI processing error
  */
 export interface AiError {

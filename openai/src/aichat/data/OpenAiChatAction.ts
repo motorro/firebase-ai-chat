@@ -1,9 +1,10 @@
 import {isOpenAiAssistantConfig, OpenAiAssistantConfig} from "./OpenAiAssistantConfig";
 import {OpenAiChatCommand} from "./OpenAiChatCommand";
+import {NewMessage} from "@motorro/firebase-ai-chat-core";
 
 export interface PostExplicit {
     name: "postExplicit",
-    messages: ReadonlyArray<string>
+    messages: ReadonlyArray<NewMessage>
 }
 
 export function isPostExplicitAction(data: unknown): data is PostExplicit {

@@ -1,7 +1,8 @@
 import { VertexAiAssistantConfig } from "./VertexAiAssistantConfig";
+import { NewMessage } from "@motorro/firebase-ai-chat-core";
 export interface PostExplicit {
     name: "postExplicit";
-    messages: ReadonlyArray<string>;
+    messages: ReadonlyArray<NewMessage>;
 }
 export declare function isPostExplicitAction(data: unknown): data is PostExplicit;
 export interface HandBackCleanup {

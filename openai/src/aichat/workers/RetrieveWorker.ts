@@ -3,7 +3,7 @@ import {
     ChatData,
     DispatchControl,
     ChatError,
-    tagLogger
+    tagLogger, Meta, isStructuredMessage
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
@@ -36,17 +36,34 @@ export class RetrieveWorker extends OpenAiQueueWorker {
 
         const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         const batch = this.db.batch();
-        newMessages.messages.forEach((message, index) => {
+        newMessages.messages.forEach(([id, message], index) => {
+            let text: string;
+            let data: Readonly<Record<string, unknown>> | null = null;
+            let meta: Meta | null = state.meta?.aiMessageMeta || null;
+            if (isStructuredMessage(message)) {
+                text = message.text;
+                data = message.data || null;
+                if (message.meta) {
+                    if (null != meta) {
+                        meta = {...meta, ...message.meta};
+                    } else {
+                        meta = message.meta;
+                    }
+                }
+            } else {
+                text = String(message);
+            }
             batch.set(
                 messageCollectionRef.doc(),
                 {
                     userId: command.commonData.ownerId,
                     dispatchId: command.commonData.dispatchId,
                     author: "ai",
-                    text: message[1],
+                    text: text,
+                    data: data,
                     inBatchSortIndex: latestInBatchId + index,
                     createdAt: FieldValue.serverTimestamp(),
-                    ...(state.meta?.aiMessageMeta ? {meta: state.meta.aiMessageMeta} : {})
+                    meta: meta
                 }
             );
         });

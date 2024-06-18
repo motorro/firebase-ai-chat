@@ -5,7 +5,7 @@ import {
     ChatState,
     Continuation,
     ContinuationRequest,
-    DispatchControl,
+    DispatchControl, isStructuredMessage, Meta,
     tagLogger,
     TaskScheduler,
     ToolCallRequest,
@@ -148,16 +148,34 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
 
         if (response.isResolved()) {
             response.value.messages.forEach((message, index) => {
+                let text: string;
+                let data: Readonly<Record<string, unknown>> | null = null;
+                let meta: Meta | null = ("ai" === message.author ? state.meta?.aiMessageMeta : state.meta?.userMessageMeta) || null;
+                if (isStructuredMessage(message)) {
+                    text = message.text;
+                    data = message.data || null;
+                    if (message.meta) {
+                        if (null != meta) {
+                            meta = {...meta, ...message.meta};
+                        } else {
+                            meta = message.meta;
+                        }
+                    }
+                } else {
+                    text = String(message);
+                }
+
                 batch.set(
                     messageCollectionRef.doc(),
                     {
                         userId: commonData.ownerId,
                         dispatchId: commonData.dispatchId,
                         author: message.author,
-                        text: message.text,
+                        text: text,
+                        data: data,
                         inBatchSortIndex: latestInBatchId + index,
                         createdAt: message.createdAt,
-                        ...(state.meta?.aiMessageMeta ? {meta: state.meta.aiMessageMeta} : {})
+                        meta: meta
                     }
                 );
             });

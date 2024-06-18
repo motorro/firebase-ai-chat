@@ -40,6 +40,23 @@ const options: CallableOptions = {
 };
 ```
 
+### Optional custom message mapper
+By default, the library uses only text messages as-is. But if you want custom message processing, say image processing
+or adding some metadata, you could create your own AI message processor and supply it to chat factory `worker` method.
+Default message mapper could be found [here](src/aichat/VertexAiMessageMapper.ts).
+
+```typescript
+const myMessageMapper: VertexAiMessageMapper = {
+    toAi(message: NewMessage): Array<Part> {
+        throw new Error("TODO: Implement mapping from Chat to OpenAI");
+    },
+
+    fromAi(message: Content): NewMessage | undefined {
+        throw new Error("TODO: Implement OpenAI to Chat message mapping")
+    }
+}
+```
+
 ### Command dispatcher configuration
 The requests to front-facing functions return to user as fast as possible after changing the chat state in Firestore.
 As soon as the AI run could take a considerable time, we run theme in a Cloud Task "offline" from the client request.
@@ -89,7 +106,7 @@ export const calculator = onTaskDispatched(
       );
 
       // Dispatch request  
-      await chatFactory.worker(model, VERTEXAI_THREADS, instructions).dispatch(
+      await chatFactory.worker(model, VERTEXAI_THREADS, instructions, myMessageMapper).dispatch(
           req,
           (chatDocumentPath: string, meta: Meta) => {
              // Optional task completion handler

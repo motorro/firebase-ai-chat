@@ -20,6 +20,7 @@ import {GenerativeModel} from "@google-cloud/vertexai";
 import {VertexAiWrapper} from "./aichat/VertexAiWrapper";
 import {VertexAiChatWorker} from "./aichat/VertexAiChatWorker";
 import Firestore = firestore.Firestore;
+import {VertexAiMessageMapper} from "./aichat/VertexAiMessageMapper";
 
 export {
     AssistantChat,
@@ -57,7 +58,10 @@ export {
     getFunctionSuccess,
     getReducerSuccess,
     isFunctionSuccess,
-    isReducerSuccess
+    isReducerSuccess,
+    NewMessage,
+    StructuredMessage,
+    isStructuredMessage
 } from "@motorro/firebase-ai-chat-core";
 export {ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand} from "@motorro/firebase-ai-chat-core";
 export {FirebaseQueueTaskScheduler} from "@motorro/firebase-ai-chat-core";
@@ -77,7 +81,8 @@ export {
 
 export {
     AiWrapper,
-    VertexAiSystemInstructions
+    VertexAiSystemInstructions,
+    VertexAiMessageMapper
 };
 export {VertexAiTools} from "./aichat/data/VertexAiSystemInstructions";
 export {VertexAiAssistantConfig} from "./aichat/data/VertexAiAssistantConfig";
@@ -114,13 +119,15 @@ export interface AiChat {
      * @param model Common model setup
      * @param threadsPath Firestore path for internal thread data storage
      * @param instructions Model instructions
+     * @param messageMapper Maps messages to/from VertexAI
      * @return Worker interface
      */
     worker(
         model: GenerativeModel,
         threadsPath: string,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>
+        instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>,
+        messageMapper?: VertexAiMessageMapper
     ): ChatWorker
 
     /**
@@ -150,7 +157,7 @@ export function factory(
     taskScheduler?: TaskScheduler,
     formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError,
     debugAi = false,
-    logData = false
+    logData = false,
 ): AiChat {
     const _taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
     const _continuationSchedulerFactory = toolContinuationSchedulerFactory(firestore, _taskScheduler);
@@ -171,12 +178,13 @@ export function factory(
             model: GenerativeModel,
             threadsPath: string,
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-            instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>
+            instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>,
+            messageMapper?: VertexAiMessageMapper
         ): ChatWorker {
             return new VertexAiChatWorker(
                 firestore,
                 _taskScheduler,
-                new VertexAiWrapper(model, firestore, threadsPath, debugAi),
+                new VertexAiWrapper(model, firestore, threadsPath, debugAi, messageMapper),
                 instructions,
                 formatContinuationError,
                 logData
