@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DefaultMessageMapper = void 0;
+exports.DefaultOpenAiMessageMapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
-exports.DefaultMessageMapper = {
+exports.DefaultOpenAiMessageMapper = {
     toAi(message) {
         if ((0, firebase_ai_chat_core_1.isStructuredMessage)(message)) {
             return {

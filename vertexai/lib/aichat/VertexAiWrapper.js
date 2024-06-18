@@ -18,7 +18,7 @@ class VertexAiWrapper {
      * @param debugAi If true - will log AI request and response
      * @param messageMapper Maps messages from/to AI
      */
-    constructor(model, firestore, threadsPath, debugAi = false, messageMapper = VertexAiMessageMapper_1.DefaultMessageMapper) {
+    constructor(model, firestore, threadsPath, debugAi = false, messageMapper = VertexAiMessageMapper_1.DefaultVertexAiMessageMapper) {
         this.model = model;
         this.firestore = firestore;
         this.threads = firestore.collection(threadsPath);

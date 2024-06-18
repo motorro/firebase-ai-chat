@@ -17,6 +17,7 @@ export { VertexAiTools } from "./aichat/data/VertexAiSystemInstructions";
 export { VertexAiAssistantConfig } from "./aichat/data/VertexAiAssistantConfig";
 export { VertexAiChatCommand, isVertexAiChatReq, isVertexAiChatCommand } from "./aichat/data/VertexAiChatCommand";
 export { VertexAiChatState } from "./aichat/data/VertexAiChatState";
+export { DefaultVertexAiMessageMapper } from "./aichat/VertexAiMessageMapper";
 /**
  * AI chat components to build Firestore functions
  */

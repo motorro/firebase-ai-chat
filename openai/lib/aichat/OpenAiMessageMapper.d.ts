@@ -21,4 +21,4 @@ export interface OpenAiMessageMapper {
      */
     fromAi(message: Message): NewMessage | undefined;
 }
-export declare const DefaultMessageMapper: OpenAiMessageMapper;
+export declare const DefaultOpenAiMessageMapper: OpenAiMessageMapper;

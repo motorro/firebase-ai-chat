@@ -18,7 +18,7 @@ import {ChatThreadMessage, ThreadMessage} from "./data/ThreadMessage";
 import {RunContinuationRequest} from "./data/RunResponse";
 import CollectionReference = firestore.CollectionReference;
 import Timestamp = firestore.Timestamp;
-import {DefaultMessageMapper, VertexAiMessageMapper} from "./VertexAiMessageMapper";
+import {DefaultVertexAiMessageMapper, VertexAiMessageMapper} from "./VertexAiMessageMapper";
 
 const logger = tagLogger("VertexAiWrapper");
 
@@ -50,7 +50,7 @@ export class VertexAiWrapper implements AiWrapper {
         firestore: FirebaseFirestore.Firestore,
         threadsPath: string,
         debugAi = false,
-        messageMapper: VertexAiMessageMapper = DefaultMessageMapper
+        messageMapper: VertexAiMessageMapper = DefaultVertexAiMessageMapper
     ) {
         this.model = model;
         this.firestore = firestore;

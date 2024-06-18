@@ -16,7 +16,7 @@ const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiWrapper");
  * Wraps Open AI assistant use
  */
 class OpenAiWrapper {
-    constructor(openAi, debugAi = false, messageMapper = OpenAiMessageMapper_1.DefaultMessageMapper) {
+    constructor(openAi, debugAi = false, messageMapper = OpenAiMessageMapper_1.DefaultOpenAiMessageMapper) {
         this.openAi = openAi;
         this.debugAi = debugAi;
         this.messageMapper = messageMapper;

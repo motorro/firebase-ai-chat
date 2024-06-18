@@ -16,7 +16,7 @@ import {MessagesPage, RequiredActionFunctionToolCall, RunSubmitToolOutputsParams
 import {AiWrapper} from "./AiWrapper";
 import {RunContinuationRequest} from "./data/RunResponse";
 import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
-import {DefaultMessageMapper, OpenAiMessageMapper} from "./OpenAiMessageMapper";
+import {DefaultOpenAiMessageMapper, OpenAiMessageMapper} from "./OpenAiMessageMapper";
 import {AiMessages} from "./data/AiMessages";
 
 const logger = tagLogger("OpenAiWrapper");
@@ -30,7 +30,7 @@ export class OpenAiWrapper implements AiWrapper {
     private readonly debugAi: boolean;
     private readonly messageMapper: OpenAiMessageMapper
 
-    constructor(openAi: OpenAI, debugAi = false, messageMapper: OpenAiMessageMapper = DefaultMessageMapper) {
+    constructor(openAi: OpenAI, debugAi = false, messageMapper: OpenAiMessageMapper = DefaultOpenAiMessageMapper) {
         this.openAi = openAi;
         this.debugAi = debugAi;
         this.messageMapper = messageMapper

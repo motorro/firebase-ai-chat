@@ -1,0 +1,14 @@
+import { Meta } from "./Meta";
+/**
+ * New message to post
+ */
+export type NewMessage = string | StructuredMessage;
+/**
+ * Message with metadata
+ */
+export interface StructuredMessage {
+    readonly text: string;
+    readonly data?: Readonly<Record<string, unknown>> | null;
+    readonly meta?: Meta | null;
+}
+export declare function isStructuredMessage(data: unknown): data is StructuredMessage;

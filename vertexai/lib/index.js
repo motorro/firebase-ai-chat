@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.factory = exports.isVertexAiChatCommand = exports.isVertexAiChatReq = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isStructuredMessage = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
+exports.factory = exports.DefaultVertexAiMessageMapper = exports.isVertexAiChatCommand = exports.isVertexAiChatReq = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isStructuredMessage = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const VertexAICommandScheduler_1 = require("./aichat/VertexAICommandScheduler");
 const VertexAiWrapper_1 = require("./aichat/VertexAiWrapper");
@@ -36,6 +36,8 @@ Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: tru
 var VertexAiChatCommand_1 = require("./aichat/data/VertexAiChatCommand");
 Object.defineProperty(exports, "isVertexAiChatReq", { enumerable: true, get: function () { return VertexAiChatCommand_1.isVertexAiChatReq; } });
 Object.defineProperty(exports, "isVertexAiChatCommand", { enumerable: true, get: function () { return VertexAiChatCommand_1.isVertexAiChatCommand; } });
+var VertexAiMessageMapper_1 = require("./aichat/VertexAiMessageMapper");
+Object.defineProperty(exports, "DefaultVertexAiMessageMapper", { enumerable: true, get: function () { return VertexAiMessageMapper_1.DefaultVertexAiMessageMapper; } });
 /**
  * Chat tools factory
  * @param firestore Firestore instance

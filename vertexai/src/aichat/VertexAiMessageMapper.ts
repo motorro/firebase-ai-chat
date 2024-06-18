@@ -21,7 +21,7 @@ export interface VertexAiMessageMapper {
     fromAi(message: Content): NewMessage | undefined
 }
 
-export const DefaultMessageMapper: VertexAiMessageMapper = {
+export const DefaultVertexAiMessageMapper: VertexAiMessageMapper = {
     toAi(message: NewMessage): Array<Part> {
         if (isStructuredMessage(message)) {
             return [{

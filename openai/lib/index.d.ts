@@ -16,6 +16,7 @@ export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequest
 export { AiWrapper, OpenAiChatWorker, OpenAiMessageMapper };
 export { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
 export { OpenAiChatCommand, isOpenAiChatReq, isOpenAiChatCommand } from "./aichat/data/OpenAiChatCommand";
+export { UserMessageParts, DefaultOpenAiMessageMapper } from "./aichat/OpenAiMessageMapper";
 /**
  * Chat state for OpenAI chats
  */

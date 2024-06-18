@@ -25,7 +25,7 @@ export interface OpenAiMessageMapper {
     fromAi(message: Message): NewMessage | undefined
 }
 
-export const DefaultMessageMapper: OpenAiMessageMapper = {
+export const DefaultOpenAiMessageMapper: OpenAiMessageMapper = {
     toAi(message: NewMessage): UserMessageParts {
         if (isStructuredMessage(message)) {
             return {

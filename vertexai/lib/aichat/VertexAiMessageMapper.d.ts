@@ -18,4 +18,4 @@ export interface VertexAiMessageMapper {
      */
     fromAi(message: Content): NewMessage | undefined;
 }
-export declare const DefaultMessageMapper: VertexAiMessageMapper;
+export declare const DefaultVertexAiMessageMapper: VertexAiMessageMapper;
