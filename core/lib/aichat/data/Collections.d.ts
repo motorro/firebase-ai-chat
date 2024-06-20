@@ -5,4 +5,5 @@ export declare const Collections: {
     contextStack: string;
     continuations: string;
     toolCalls: string;
+    cleanup: string;
 };

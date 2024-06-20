@@ -4,6 +4,7 @@ exports.AssistantChat = void 0;
 const firebase_admin_1 = require("firebase-admin");
 const Collections_1 = require("./data/Collections");
 const https_1 = require("firebase-functions/v2/https");
+const CommandScheduler_1 = require("./CommandScheduler");
 var Timestamp = firebase_admin_1.firestore.Timestamp;
 const logging_1 = require("../logging");
 const NewMessage_1 = require("./data/NewMessage");
@@ -19,20 +20,18 @@ const logger = (0, logging_1.tagLogger)("AssistantChat");
  */
 class AssistantChat {
     getScheduler(config) {
-        const scheduler = this.schedulers.find((it) => it.isSupported(config));
-        if (undefined === scheduler) {
-            throw new https_1.HttpsError("unimplemented", "Chat configuration not supported");
-        }
-        return scheduler;
+        return (0, CommandScheduler_1.getScheduler)(this.schedulers, config);
     }
     /**
      * Constructor
      * @param db Firestore
      * @param scheduler Command scheduler
+     * @param cleaner Chat cleaner
      */
-    constructor(db, scheduler) {
+    constructor(db, scheduler, cleaner) {
         this.db = db;
         this.schedulers = Array.isArray(scheduler) ? scheduler : [scheduler];
+        this.cleaner = cleaner;
     }
     /**
      * Creates new chat thread
@@ -179,12 +178,11 @@ class AssistantChat {
      * @param document Document reference
      * @param userId Chat owner
      * @param workerMeta Metadata to pass to chat worker
-     * @param cleanup If true, cleans-up the current chat internals after hand-back, e.g: deletes underlying thread
      * @return Chat stack update
      */
-    async handBack(document, userId, workerMeta, cleanup = true) {
+    async handBack(document, userId, workerMeta) {
         logger.d("Popping chat state: ", document.path);
-        const [state, newState] = await this.db.runTransaction(async (tx) => {
+        const state = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
             const stackEntryQuery = document.collection(Collections_1.Collections.contextStack)
                 .orderBy("createdAt", "desc")
@@ -197,18 +195,8 @@ class AssistantChat {
             const newState = Object.assign(Object.assign({}, state), { config: stackEntryData.config, status: stackEntryData.status, latestDispatchId: stackEntryData.latestDispatchId, updatedAt: Timestamp.now(), meta: stackEntryData.meta });
             tx.set(document, newState);
             tx.delete(stackEntry.ref);
-            return [state, newState];
+            return state;
         });
-        if (cleanup) {
-            logger.d("Scheduling cleanup command");
-            const command = {
-                ownerId: userId,
-                chatDocumentPath: document.path,
-                dispatchId: newState.latestDispatchId,
-                meta: workerMeta || null
-            };
-            await this.getScheduler(state.config.assistantConfig).handBackCleanup(command, state.config.assistantConfig);
-        }
         return {
             formerAssistantConfig: state.config.assistantConfig,
             formerChatMeta: state.meta
@@ -292,18 +280,11 @@ class AssistantChat {
      * Closes chats
      * @param document Chat document reference
      * @param userId Owner user ID
-     * @param meta Metadata to pass to chat worker
      */
-    async closeChat(document, userId, meta) {
-        const state = await this.prepareDispatchWithChecks(document, userId, (current) => false === ["closing", "complete", "failed"].includes(current), "closing", async (state) => {
-            logger.d("Closing chat: ", document.path);
-            const command = {
-                ownerId: userId,
-                chatDocumentPath: document.path,
-                dispatchId: state.latestDispatchId,
-                meta: meta || null
-            };
-            await this.getScheduler(state.config.assistantConfig).close(command);
+    async closeChat(document, userId) {
+        const state = await this.prepareDispatchWithChecks(document, userId, (current) => false === ["closing", "complete", "failed"].includes(current), "complete", async (state) => {
+            logger.d("Chat closed: ", document.path);
+            await this.cleaner.cleanup(document.path);
             return state;
         });
         return {

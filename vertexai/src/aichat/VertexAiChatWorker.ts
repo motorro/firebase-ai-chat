@@ -1,5 +1,7 @@
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {
+    ChatCleaner,
+    ChatCleanupRegistrar,
     ChatCommand,
     ChatWorker, DispatchError,
     Meta,
@@ -10,12 +12,11 @@ import {
     ToolsDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {CreateWorker} from "./workers/CreateWorker";
-import {CloseWorker} from "./workers/CloseWorker";
 import {ContinuePostWorker, ExplicitPostWorker, PostWorker} from "./workers/PostWorker";
 import {SwitchToUserWorker} from "./workers/SwitchToUserWorker";
 import {AiWrapper} from "./AiWrapper";
 import {VertexAiSystemInstructions} from "./data/VertexAiSystemInstructions";
-import {HandBackCleanupWorker} from "./workers/HandBackCleanupWorker";
+import {CleanupWorker} from "./workers/CleanupWorker";
 import {isVertexAiChatReq, VertexAiChatCommand} from "./data/VertexAiChatCommand";
 
 const logger = tagLogger("VertexAiChatWorker");
@@ -30,10 +31,14 @@ export class VertexAiChatWorker implements ChatWorker {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     private readonly instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>;
     private readonly getContinuationFactory: () => ToolContinuationDispatcherFactory;
+    private readonly chatCleanerFactory: (queueName: string) => ChatCleaner;
+    private readonly chatCleanupRegistrar: ChatCleanupRegistrar;
     private readonly logData: boolean;
 
-    private getWorker(command: VertexAiChatCommand): ChatWorker | undefined {
+    private getWorker(command: VertexAiChatCommand, queueName: string): ChatWorker | undefined {
         logger.d("Dispatching VertexAi command...");
+
+        const cleaner: ChatCleaner = this.chatCleanerFactory(queueName);
 
         if (ContinuePostWorker.isSupportedCommand(command)) {
             logger.d("Action to be handled with ContinuePostWorker");
@@ -43,34 +48,31 @@ export class VertexAiChatWorker implements ChatWorker {
                 this.wrapper,
                 this.instructions,
                 this.getContinuationFactory,
+                cleaner,
                 this.logData
             );
         }
 
         const action = command.actionData[0];
-        if (CloseWorker.isSupportedAction(action)) {
-            logger.d("Action to be handled with CloseWorker");
-            return new CloseWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
-        }
         if (CreateWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with CreateWorker");
-            return new CreateWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
+            return new CreateWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.chatCleanupRegistrar);
         }
-        if (HandBackCleanupWorker.isSupportedAction(action)) {
-            logger.d("Action to be handled with HandBackCleanupWorker");
-            return new HandBackCleanupWorker(this.wrapper);
+        if (CleanupWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with CleanupWorker");
+            return new CleanupWorker(this.wrapper);
         }
         if (PostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with PostWorker");
-            return new PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, this.logData);
+            return new PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData);
         }
         if (ExplicitPostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with ExplicitPostWorker");
-            return new ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, this.logData);
+            return new ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData);
         }
         if (SwitchToUserWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with SwitchToUserWorker");
-            return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
+            return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
 
         logger.w("Unsupported command:", command);
@@ -84,6 +86,8 @@ export class VertexAiChatWorker implements ChatWorker {
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>,
         formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError,
+        chatCleanupRegistrar: ChatCleanupRegistrar,
+        chatCleanerFactory: (queueName: string) => ChatCleaner,
         logData: boolean,
         getContinuationFactory?: () => ToolContinuationDispatcherFactory,
     ) {
@@ -108,6 +112,8 @@ export class VertexAiChatWorker implements ChatWorker {
                 logData
             );
         });
+        this.chatCleanerFactory = chatCleanerFactory;
+        this.chatCleanupRegistrar = chatCleanupRegistrar;
         this.logData = logData;
     }
 
@@ -116,7 +122,7 @@ export class VertexAiChatWorker implements ChatWorker {
         onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>
     ): Promise<boolean> {
         if (isVertexAiChatReq(req)) {
-            const worker = this.getWorker(req.data);
+            const worker = this.getWorker(req.data, req.queueName);
             if (undefined !== worker) {
                 return await worker.dispatch(req, onQueueComplete);
             }

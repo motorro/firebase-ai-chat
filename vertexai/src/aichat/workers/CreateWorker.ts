@@ -1,14 +1,37 @@
-import {ChatData, ChatState, DispatchControl, tagLogger} from "@motorro/firebase-ai-chat-core";
+import {
+    ChatCleaner,
+    ChatCleanupRegistrar,
+    ChatData,
+    ChatState,
+    DispatchControl,
+    tagLogger,
+    TaskScheduler
+} from "@motorro/firebase-ai-chat-core";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
 import {VertexAiChatActions} from "../data/VertexAiChatAction";
 import {VertexAiQueueWorker} from "./VertexAiQueueWorker";
 import {VertexAiChatCommand} from "../data/VertexAiChatCommand";
+import {AiWrapper} from "../AiWrapper";
 
 const logger = tagLogger("CreateWorker");
 
 export class CreateWorker extends VertexAiQueueWorker {
+    private readonly cleanupRegistrar: ChatCleanupRegistrar;
+
     static isSupportedAction(action: unknown): action is "create" {
         return "create" === action;
+    }
+
+    constructor(
+        firestore: FirebaseFirestore.Firestore,
+        scheduler: TaskScheduler,
+        wrapper: AiWrapper,
+        cleaner: ChatCleaner,
+        logData: boolean,
+        cleanupRegistrar: ChatCleanupRegistrar
+    ) {
+        super(firestore, scheduler, wrapper, cleaner, logData);
+        this.cleanupRegistrar = cleanupRegistrar;
     }
 
     async doDispatch(
@@ -24,11 +47,15 @@ export class CreateWorker extends VertexAiQueueWorker {
                 chat: command.commonData.chatDocumentPath
             });
             logger.d("Thread created:", threadId);
-            await this.updateConfig(
+            const newConfig = await this.updateConfig(
                 control,
                 state,
                 () => ({threadId: threadId})
             );
+            await this.cleanupRegistrar.register({
+                ...command,
+                actionData: {name: "cleanup", config: newConfig}
+            });
         }
         await this.continueNextInQueue(control, command);
     }

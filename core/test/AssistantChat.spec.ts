@@ -10,6 +10,7 @@ import {ChatState, AssistantChat, Meta, Collections, CommandScheduler} from "../
 import {AssistantConfig} from "../lib";
 import {ChatContextStackEntry} from "../src/aichat/data/ChatState";
 import {beforeEach} from "mocha";
+import {ChatCleaner} from "../src/aichat/workers/ChatCleaner";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 
@@ -18,11 +19,13 @@ describe("Assistant Chat", function() {
     const chatDoc = chats.doc();
     const chatMessages = chatDoc.collection(Collections.messages);
     let scheduler: CommandScheduler;
+    let cleaner: ChatCleaner;
     let chat: AssistantChat<Data>;
 
     before(async function() {
         scheduler = imock();
-        chat = new AssistantChat<Data>(db, instance(scheduler));
+        cleaner = imock();
+        chat = new AssistantChat<Data>(db, instance(scheduler), instance(cleaner));
     });
 
     after(async function() {
@@ -35,6 +38,7 @@ describe("Assistant Chat", function() {
 
     afterEach(async function() {
         reset(scheduler);
+        reset(cleaner);
         await db.recursiveDelete(chats);
     });
 
@@ -326,12 +330,12 @@ describe("Assistant Chat", function() {
 
     it("closes chat", async function() {
         await chatDoc.set(chatState);
-        when(scheduler.close(anything())).thenReturn(Promise.resolve());
+        when(cleaner.cleanup(anything())).thenReturn(Promise.resolve());
 
         const update = await chat.closeChat(chatDoc, userId);
 
         update.should.deep.include({
-            status: "closing",
+            status: "complete",
             data: data
         });
         const updatedState: ChatState<AiConfig, Data> | undefined = (await chatDoc.get()).data();
@@ -341,17 +345,10 @@ describe("Assistant Chat", function() {
         const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(updatedState.latestDispatchId);
         (await dispatchDoc.get()).exists.should.be.true;
         updatedState.should.deep.include({
-            status: "closing"
+            status: "complete"
         });
 
-        const [command] = capture(scheduler.close).last();
-        command.should.deep.include(
-            {
-                ownerId: userId,
-                chatDocumentPath: chatDoc.path,
-                dispatchId: dispatchDoc.id
-            }
-        );
+        verify(cleaner.cleanup(chatDoc.path)).once();
     });
 
     it("does not close a chat of another user", async function() {
@@ -369,17 +366,6 @@ describe("Assistant Chat", function() {
         await chatDoc.set({
             ...chatState,
             status: "complete"
-        });
-
-        return chat.closeChat(chatDoc, userId).should
-            .eventually
-            .be.rejectedWith("Can't perform this operation due to current chat state");
-    });
-
-    it("does not close a closing chat", async function() {
-        await chatDoc.set({
-            ...chatState,
-            status: "closing"
         });
 
         return chat.closeChat(chatDoc, userId).should
@@ -468,17 +454,6 @@ describe("Assistant Chat", function() {
             .be.rejectedWith("Can't perform this operation due to current chat state");
     });
 
-    it("does not hand over a closing chat", async function() {
-        await chatDoc.set({
-            ...chatState,
-            status: "closing"
-        });
-
-        return chat.handOver(chatDoc, userId, {engine: "other"}, []).should
-            .eventually
-            .be.rejectedWith("Can't perform this operation due to current chat state");
-    });
-
     it("does not hand over a failed chat", async function() {
         await chatDoc.set({
             ...chatState,
@@ -493,7 +468,6 @@ describe("Assistant Chat", function() {
     it("hands back chat", async function() {
         await chatDoc.set(chatState);
         when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
-        when(scheduler.handBackCleanup(anything(), anything())).thenReturn(Promise.resolve());
 
         const config: AssistantConfig = {engine: "other"};
         const messages = ["Please help me with this"];
@@ -526,8 +500,7 @@ describe("Assistant Chat", function() {
             .get();
         savedStateDocs.docs.length.should.equal(0);
 
-        verify(scheduler.isSupported(deepEqual(config))).twice();
-        verify(scheduler.handBackCleanup(anything(), deepEqual(config))).once();
+        verify(scheduler.isSupported(deepEqual(config))).once();
     });
 
     it("does not hand back a closed chat", async function() {
@@ -535,17 +508,6 @@ describe("Assistant Chat", function() {
         await chatDoc.set(chatState);
         await chat.handOver(chatDoc, userId, {}, []);
         await chatDoc.set({status: "complete"}, {merge: true});
-
-        return chat.handBack(chatDoc, userId).should
-            .eventually
-            .be.rejectedWith("Can't perform this operation due to current chat state");
-    });
-
-    it("does not hand over a closing chat", async function() {
-        when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
-        await chatDoc.set(chatState);
-        await chat.handOver(chatDoc, userId, {}, []);
-        await chatDoc.set({status: "closing"}, {merge: true});
 
         return chat.handBack(chatDoc, userId).should
             .eventually

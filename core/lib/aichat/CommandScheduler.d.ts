@@ -37,15 +37,11 @@ export interface CommandScheduler {
      * @param handOverMessages Messages used to hand-over chat
      */
     handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void>;
-    /**
-     * Cleanup after chat hand-over
-     * @param common Common command data
-     * @param config Assistant config who has lost the chat
-     */
-    handBackCleanup(common: ChatCommandData, config: AssistantConfig): Promise<void>;
-    /**
-     * Closes chat and cleans-up
-     * @param common Common command data
-     */
-    close(common: ChatCommandData): Promise<void>;
 }
+/**
+ * Returns a scheduler to schedule a command
+ * @param schedulers A list of supported schedulers
+ * @param config Config that scheduler should support
+ * @returns Appropriate scheduler or throws an error
+ */
+export declare function getScheduler(schedulers: ReadonlyArray<CommandScheduler>, config: AssistantConfig): CommandScheduler;

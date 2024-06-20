@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.isStructuredMessage = exports.commonFormatContinuationError = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.tagLogger = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
+exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.CommonChatCleanupRegistrar = exports.CommonChatCleaner = exports.isStructuredMessage = exports.commonFormatContinuationError = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.tagLogger = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
 const ToolContinuationDispatcherFactory_1 = require("./aichat/workers/ToolContinuationDispatcherFactory");
 const ToolsContinuationScheduler_1 = require("./aichat/workers/ToolsContinuationScheduler");
 const ToolsContinuationDispatchRunner_1 = require("./aichat/workers/ToolsContinuationDispatchRunner");
@@ -45,6 +45,9 @@ Object.defineProperty(exports, "isContinuationCommand", { enumerable: true, get:
 Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: true, get: function () { return ContinuationCommand_1.isContinuationCommandRequest; } });
 var NewMessage_1 = require("./aichat/data/NewMessage");
 Object.defineProperty(exports, "isStructuredMessage", { enumerable: true, get: function () { return NewMessage_1.isStructuredMessage; } });
+var ChatCleaner_1 = require("./aichat/workers/ChatCleaner");
+Object.defineProperty(exports, "CommonChatCleaner", { enumerable: true, get: function () { return ChatCleaner_1.CommonChatCleaner; } });
+Object.defineProperty(exports, "CommonChatCleanupRegistrar", { enumerable: true, get: function () { return ChatCleaner_1.CommonChatCleanupRegistrar; } });
 /**
  * Tools continuation dispatcher factory
  * @param db Firestore

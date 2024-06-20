@@ -5,15 +5,15 @@ export interface PostExplicit {
     messages: ReadonlyArray<NewMessage>;
 }
 export declare function isPostExplicitAction(data: unknown): data is PostExplicit;
-export interface HandBackCleanup {
-    name: "handBackCleanup";
+export interface Cleanup {
+    name: "cleanup";
     config: VertexAiAssistantConfig;
 }
-export declare function isHandBackCleanupAction(data: unknown): data is HandBackCleanup;
+export declare function isCleanupAction(data: unknown): data is Cleanup;
 /**
  * VertexAI Assistant chat actions
  */
-export type VertexAiChatAction = "create" | "post" | "continuePost" | PostExplicit | "switchToUserInput" | "close" | HandBackCleanup;
+export type VertexAiChatAction = "create" | "post" | "continuePost" | PostExplicit | "switchToUserInput" | "close" | Cleanup;
 /**
  * VertexAI Assistant chat actions
  */

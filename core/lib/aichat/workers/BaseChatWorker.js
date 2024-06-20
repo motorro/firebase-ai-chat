@@ -14,12 +14,13 @@ class BaseChatWorker {
      * Constructor
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
+     * @param cleaner Chat cleaner
      * @param logData If true, logs data when dispatching
      */
-    constructor(firestore, scheduler, logData) {
+    constructor(firestore, scheduler, cleaner, logData) {
         this.db = firestore;
         this.scheduler = scheduler;
-        this.runner = new DispatchRunner_1.DispatchRunner(firestore, scheduler, logData);
+        this.runner = new DispatchRunner_1.DispatchRunner(firestore, scheduler, cleaner, logData);
     }
     /**
      * Dispatches command

@@ -13,6 +13,7 @@ import {
 } from "@johanblumenberg/ts-mockito";
 import {assistantId, chatState, Data, data, dispatcherId, threadId, userId} from "./mock";
 import {
+    ChatCleaner, ChatCleanupRegistrar,
     ChatCommand,
     ChatCommandData,
     ChatError,
@@ -39,6 +40,7 @@ import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
 import {OpenAiChatActions} from "../lib/aichat/data/OpenAiChatAction";
 import {OpenAiContinuationCommand} from "../lib/aichat/data/OpenAiChatCommand";
+import {beforeEach} from "mocha";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -115,45 +117,59 @@ describe("Chat worker", function() {
         commonData: commandData,
         actionData: ["switchToUserInput"]
     };
-    const closeCommand: OpenAiChatCommand = {
-        engine: "openai",
-        commonData: commandData,
-        actionData: ["close"]
-    };
     const config: OpenAiAssistantConfig = {
         engine: "openai",
         assistantId,
         dispatcherId: dispatcherId,
         threadId: threadId
     };
-    const handBackCommand: OpenAiChatCommand = {
+    const cleanupCommand: OpenAiChatCommand = {
         engine: "openai",
         commonData: commandData,
-        actionData: [{name: "handBackCleanup", config: config}]
+        actionData: [{name: "cleanup", config: config}]
     };
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
-    let ToolContinuationDispatcherFactory: ToolContinuationDispatcherFactory;
+    let toolContinuationDispatcherFactory: ToolContinuationDispatcherFactory;
+    let cleaner: ChatCleaner;
+    let cleanupRegistrar: ChatCleanupRegistrar;
     let worker: ChatWorker;
 
     before(async function() {
         wrapper = imock<AiWrapper>();
         scheduler = imock<TaskScheduler>();
-        ToolContinuationDispatcherFactory = imock<ToolContinuationDispatcherFactory>();
+        toolContinuationDispatcherFactory = imock<ToolContinuationDispatcherFactory>();
+        cleaner = imock();
+        cleanupRegistrar = imock();
 
-        worker = new OpenAiChatWorker(db, instance(scheduler), instance(wrapper), instance(ToolContinuationDispatcherFactory), false);
+        worker = new OpenAiChatWorker(
+            db,
+            instance(scheduler),
+            instance(wrapper),
+            instance(toolContinuationDispatcherFactory),
+            instance(cleanupRegistrar),
+            () => instance(cleaner),
+            false
+        );
     });
 
     after(async function() {
         test.cleanup();
     });
 
+    beforeEach(function() {
+        when(cleaner.cleanup(anything())).thenResolve();
+        when(cleanupRegistrar.register(anything())).thenResolve();
+    });
+
     afterEach(async function() {
         await db.recursiveDelete(chats);
         reset(wrapper);
         reset(scheduler);
-        reset(ToolContinuationDispatcherFactory);
+        reset(toolContinuationDispatcherFactory);
+        reset(cleaner);
+        reset(cleanupRegistrar);
     });
 
     async function createChat(thread?: string, status?: ChatStatus, dispatch?: string) {
@@ -226,6 +242,10 @@ describe("Chat worker", function() {
         });
 
         verify(wrapper.createThread(anything())).once();
+        verify(cleanupRegistrar.register(deepEqual({
+            ...createCommand,
+            actionData: {name: "cleanup", config: {...chatState.config.assistantConfig, threadId: threadId}}
+        })));
     });
 
     it("skips thread creation if already created", async function() {
@@ -349,7 +369,7 @@ describe("Chat worker", function() {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
 
-        when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(toolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
         when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _dataSoFar, dispatch) => {
             const dispatchResult = await dispatch(data, [toolCall], runId);
@@ -385,7 +405,7 @@ describe("Chat worker", function() {
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
         when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenResolve(Continuation.suspend());
-        when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(toolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
         when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(() => {
             return Promise.resolve(Continuation.suspend());
         });
@@ -447,7 +467,7 @@ describe("Chat worker", function() {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
 
-        when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(toolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
         // eslint-disable-next-line max-len
         when(wrapper.processToolsResponse(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _dataSoFar, dispatch) => {
@@ -480,7 +500,7 @@ describe("Chat worker", function() {
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
         when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenResolve(Continuation.suspend());
-        when(ToolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+        when(toolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 
         const request: Request<ChatCommand<unknown>> = {
             ...context,
@@ -556,36 +576,12 @@ describe("Chat worker", function() {
         });
     });
 
-    it("processes close command", async function() {
-        await createChat(threadId, "closing", dispatchId);
-
-        when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
-
-        const request: Request<ChatCommand<unknown>> = {
-            ...context,
-            data: closeCommand
-        };
-
-        await worker.dispatch(request);
-
-        const chatStateUpdate = await chatDoc.get();
-        const updatedChatState = chatStateUpdate.data() as ChatState<OpenAiAssistantConfig, Data>;
-        if (undefined === updatedChatState) {
-            throw new Error("Should have chat status");
-        }
-        updatedChatState.should.deep.include({
-            status: "complete"
-        });
-
-        verify(wrapper.deleteThread(threadId)).once();
-    });
-
-    it("runs hand back cleanup handler", async function() {
+    it("runs cleanup handler", async function() {
         when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve(threadId));
 
         const request: Request<OpenAiChatCommand> = {
             ...context,
-            data: handBackCommand
+            data: cleanupCommand
         };
 
         let handlerCalled = false;

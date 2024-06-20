@@ -1,5 +1,5 @@
 import {
-    BaseChatWorker, ChatCommand,
+    BaseChatWorker, ChatCleaner, ChatCommand,
     ChatData,
     ChatState, DispatchControl,
     tagLogger,
@@ -24,6 +24,7 @@ export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
+     * @param cleaner Chat cleaner
      * @param logData If true, logs data when dispatching
      *
      */
@@ -31,9 +32,10 @@ export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
+        cleaner: ChatCleaner,
         logData: boolean
     ) {
-        super(firestore, scheduler, logData);
+        super(firestore, scheduler, cleaner, logData);
         this.wrapper = wrapper;
     }
 
@@ -105,16 +107,18 @@ export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions
         control: OpenAiDispatchControl,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
         update: (soFar: OpenAiAssistantConfig) => Partial<OpenAiAssistantConfig>
-    ): Promise<void> {
+    ): Promise<OpenAiAssistantConfig> {
+        const assistantConfig = {
+            ...state.config.assistantConfig,
+            ...(update(state.config.assistantConfig))
+        };
         const config: ChatConfig<OpenAiAssistantConfig> = {
             ...state.config,
-            assistantConfig: {
-                ...state.config.assistantConfig,
-                ...(update(state.config.assistantConfig))
-            }
+            assistantConfig: assistantConfig
         };
         await control.updateChatState({
             config: config
         });
+        return assistantConfig;
     }
 }

@@ -9,6 +9,7 @@ import {tagLogger} from "../../logging";
 import {isPermanentError} from "../data/ChatError";
 import FieldValue = firestore.FieldValue;
 import {AssistantConfig, ChatData, ChatState} from "../data/ChatState";
+import {ChatCleaner} from "./ChatCleaner";
 
 const logger = tagLogger("DispatchRunner");
 
@@ -18,17 +19,20 @@ const logger = tagLogger("DispatchRunner");
 export class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData> {
     protected readonly db: FirebaseFirestore.Firestore;
     protected readonly scheduler: TaskScheduler;
+    protected readonly cleaner: ChatCleaner;
     protected readonly logData: boolean;
 
     /**
      * Constructor
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
+     * @param cleaner Chat cleaner
      * @param logData If true, logs data when dispatching
      */
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, logData: boolean) {
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, cleaner: ChatCleaner, logData: boolean) {
         this.db = firestore;
         this.scheduler = scheduler;
+        this.cleaner = cleaner;
         this.logData = logData;
     }
 
@@ -103,6 +107,7 @@ export class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData
                 status: "failed",
                 lastError: String(e)
             });
+            await this.cleaner.cleanup(command.commonData.chatDocumentPath);
             await updateRun("complete");
         };
 

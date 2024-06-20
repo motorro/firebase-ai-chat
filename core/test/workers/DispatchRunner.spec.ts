@@ -1,9 +1,10 @@
 import * as admin from "firebase-admin";
 import {firestore} from "firebase-admin";
 import {db, test} from "../functionsTest";
-import {anything, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
+import {anything, imock, instance, reset, strictEqual, verify, when} from "@johanblumenberg/ts-mockito";
 import {AiConfig, chatState, data, Data, DispatchAction, userId} from "../mock";
 import {
+    ChatCleaner,
     ChatCommand,
     ChatCommandData,
     ChatError,
@@ -58,11 +59,14 @@ describe("Dispatch runner", function() {
     };
 
     let scheduler: TaskScheduler;
+    let cleaner: ChatCleaner;
     let runner: DispatchRunner<DispatchAction, AiConfig, Data>;
 
     before(async function() {
         scheduler = imock<TaskScheduler>();
-        runner = new DispatchRunner(db, instance(scheduler), false);
+        cleaner = imock();
+        when(cleaner.cleanup(anything())).thenResolve();
+        runner = new DispatchRunner(db, instance(scheduler), instance(cleaner), false);
     });
 
     beforeEach(function() {
@@ -180,6 +184,7 @@ describe("Dispatch runner", function() {
         updatedChatState.should.deep.include({
             status: "failed"
         });
+        verify(cleaner.cleanup(strictEqual(chatDoc.path))).once();
     });
 
     it("completes run on success", async function() {

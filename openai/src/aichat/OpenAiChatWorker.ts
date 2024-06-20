@@ -1,5 +1,7 @@
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {
+    ChatCleaner,
+    ChatCleanupRegistrar,
     ChatCommand,
     ChatWorker,
     Meta,
@@ -8,14 +10,13 @@ import {
     ToolContinuationDispatcherFactory
 } from "@motorro/firebase-ai-chat-core";
 import {CreateWorker} from "./workers/CreateWorker";
-import {CloseWorker} from "./workers/CloseWorker";
 import {PostWorker} from "./workers/PostWorker";
 import {RetrieveWorker} from "./workers/RetrieveWorker";
 import {RunWorker} from "./workers/RunWorker";
 import {SwitchToUserWorker} from "./workers/SwitchToUserWorker";
 import {AiWrapper} from "./AiWrapper";
 import {PostExplicitWorker} from "./workers/PostExplicitWorker";
-import {HandBackCleanupWorker} from "./workers/HandBackCleanupWorker";
+import {CleanupWorker} from "./workers/CleanupWorker";
 import {RunContinuationWorker} from "./workers/RunContinuationWorker";
 import {isOpenAiChatReq, OpenAiChatCommand} from "./data/OpenAiChatCommand";
 
@@ -29,6 +30,8 @@ export class OpenAiChatWorker implements ChatWorker {
     private readonly scheduler: TaskScheduler;
     private readonly wrapper: AiWrapper;
     private readonly toolsDispatchFactory: ToolContinuationDispatcherFactory;
+    private readonly chatCleanerFactory: (queueName: string) => ChatCleaner;
+    private readonly chatCleanupRegistrar: ChatCleanupRegistrar;
     private readonly logData: boolean;
 
     constructor(
@@ -36,6 +39,8 @@ export class OpenAiChatWorker implements ChatWorker {
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
         toolsDispatchFactory: ToolContinuationDispatcherFactory,
+        chatCleanupRegistrar: ChatCleanupRegistrar,
+        chatCleanerFactory: (queueName: string) => ChatCleaner,
         logData: boolean
     ) {
         this.firestore = firestore;
@@ -43,11 +48,15 @@ export class OpenAiChatWorker implements ChatWorker {
         this.scheduler = scheduler;
         this.wrapper = wrapper;
         this.toolsDispatchFactory = toolsDispatchFactory;
+        this.chatCleanerFactory = chatCleanerFactory;
+        this.chatCleanupRegistrar = chatCleanupRegistrar;
         this.logData = logData;
     }
 
-    private getWorker(command: OpenAiChatCommand): ChatWorker | undefined {
+    private getWorker(command: OpenAiChatCommand, queueName: string): ChatWorker | undefined {
         logger.d("Dispatching OpenAi command...");
+
+        const cleaner: ChatCleaner = this.chatCleanerFactory(queueName);
 
         if (RunContinuationWorker.isSupportedCommand(command)) {
             logger.d("Action to be handled with ContinuePostWorker");
@@ -56,42 +65,39 @@ export class OpenAiChatWorker implements ChatWorker {
                 this.scheduler,
                 this.wrapper,
                 this.toolsDispatchFactory,
+                cleaner,
                 this.logData
             );
         }
 
         const action = command.actionData[0];
-        if (CloseWorker.isSupportedAction(action)) {
-            logger.d("Action to be handled with CloseWorker");
-            return new CloseWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
-        }
         if (CreateWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with CreateWorker");
-            return new CreateWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
+            return new CreateWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.chatCleanupRegistrar);
         }
-        if (HandBackCleanupWorker.isSupportedAction(action)) {
-            logger.d("Action to be handled with HandBackCleanupWorker");
-            return new HandBackCleanupWorker(this.wrapper);
+        if (CleanupWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with CleanupWorker");
+            return new CleanupWorker(this.wrapper);
         }
         if (PostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with PostWorker");
-            return new PostWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
+            return new PostWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
         if (PostExplicitWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with PostExplicitWorker");
-            return new PostExplicitWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
+            return new PostExplicitWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
         if (RetrieveWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with RetrieveWorker");
-            return new RetrieveWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
+            return new RetrieveWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
         if (RunWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with RunWorker");
-            return new RunWorker(this.firestore, this.scheduler, this.wrapper, this.toolsDispatchFactory, this.logData);
+            return new RunWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.toolsDispatchFactory, this.logData);
         }
         if (SwitchToUserWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with SwitchToUserWorker");
-            return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, this.logData);
+            return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
 
         logger.w("Unsupported command:", command);
@@ -104,7 +110,7 @@ export class OpenAiChatWorker implements ChatWorker {
         onQueueComplete?: (chatDocumentPath: string, meta: Meta | null) => void | Promise<void>
     ): Promise<boolean> {
         if (isOpenAiChatReq(req)) {
-            const worker = this.getWorker(req.data);
+            const worker = this.getWorker(req.data, req.queueName);
             if (undefined !== worker) {
                 return await worker.dispatch(req, onQueueComplete);
             }

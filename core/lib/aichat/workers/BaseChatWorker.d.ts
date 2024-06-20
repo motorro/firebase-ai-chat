@@ -7,6 +7,7 @@ import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { Meta } from "../data/Meta";
 import { ChatCommand } from "../data/ChatCommand";
 import { ChatWorker, DispatchControl } from "./ChatWorker";
+import { ChatCleaner } from "./ChatCleaner";
 /**
  * Basic `OpenAiChatWorker` implementation that maintains chat state and dispatch runs
  */
@@ -18,9 +19,10 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * Constructor
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
+     * @param cleaner Chat cleaner
      * @param logData If true, logs data when dispatching
      */
-    protected constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, logData: boolean);
+    protected constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, cleaner: ChatCleaner, logData: boolean);
     /**
      * Dispatches command
      * @param req Dispatch request

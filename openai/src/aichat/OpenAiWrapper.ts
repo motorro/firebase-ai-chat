@@ -28,12 +28,12 @@ const logger = tagLogger("OpenAiWrapper");
 export class OpenAiWrapper implements AiWrapper {
     private readonly openAi: OpenAI;
     private readonly debugAi: boolean;
-    private readonly messageMapper: OpenAiMessageMapper
+    private readonly messageMapper: OpenAiMessageMapper;
 
     constructor(openAi: OpenAI, debugAi = false, messageMapper: OpenAiMessageMapper = DefaultOpenAiMessageMapper) {
         this.openAi = openAi;
         this.debugAi = debugAi;
-        this.messageMapper = messageMapper
+        this.messageMapper = messageMapper;
     }
 
     async createThread(meta: Readonly<Record<string, string>>): Promise<string> {

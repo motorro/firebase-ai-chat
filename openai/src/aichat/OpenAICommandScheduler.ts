@@ -3,13 +3,12 @@ import {ChatCommandData} from "@motorro/firebase-ai-chat-core/lib/aichat/data/Ch
 import {OpenAiChatActions} from "./data/OpenAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
 import {OpenAiChatCommand} from "./data/OpenAiChatCommand";
-import {isOpenAiAssistantConfig, OpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
+import {isOpenAiAssistantConfig} from "./data/OpenAiAssistantConfig";
 import {engineId} from "../engineId";
 
 /**
  * Close command delay to settle down AI runs
  */
-const SCHEDULE_CLOSE_AFTER = 3 * 60;
 const logger = tagLogger("OpenAICommandScheduler");
 
 /**
@@ -47,14 +46,6 @@ export class OpenAICommandScheduler implements CommandScheduler {
     async handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void> {
         logger.d("Scheduling hand-over: ", JSON.stringify(common));
         await this.schedule(common, ["create", {name: "postExplicit", messages: handOverMessages}, "run", "retrieve", "switchToUserInput"]);
-    }
-    async handBackCleanup(common: ChatCommandData, config: AssistantConfig): Promise<void> {
-        logger.d("Scheduling hand-back cleanup: ", JSON.stringify(common));
-        await this.schedule(common, [{name: "handBackCleanup", config: <OpenAiAssistantConfig>config}]);
-    }
-    async close(common: ChatCommandData): Promise<void> {
-        logger.d("Scheduling close: ", JSON.stringify(common));
-        await this.schedule(common, ["close"], {scheduleDelaySeconds: SCHEDULE_CLOSE_AFTER});
     }
 
     private async schedule(common: ChatCommandData, actions: OpenAiChatActions, schedule?: DeliverySchedule): Promise<void> {

@@ -1,4 +1,4 @@
-import { ChatCommand, ChatData, ChatState, Continuation, DispatchControl, TaskScheduler, ToolCallRequest, ToolCallsResult, ToolContinuationDispatcherFactory } from "@motorro/firebase-ai-chat-core";
+import { ChatCleaner, ChatCommand, ChatData, ChatState, Continuation, DispatchControl, TaskScheduler, ToolCallRequest, ToolCallsResult, ToolContinuationDispatcherFactory } from "@motorro/firebase-ai-chat-core";
 import { VertexAiAssistantConfig } from "../data/VertexAiAssistantConfig";
 import { PostExplicit, VertexAiChatActions } from "../data/VertexAiChatAction";
 import { VertexAiQueueWorker } from "./VertexAiQueueWorker";
@@ -15,9 +15,10 @@ declare abstract class BasePostWorker extends VertexAiQueueWorker {
      * @param wrapper AI wrapper
      * @param instructions System instructions
      * @param getDispatcherFactory Tool dispatch factory
+     * @param cleaner Chat cleaner
      * @param logData Logs chat data if true
      */
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>, getDispatcherFactory: () => ToolContinuationDispatcherFactory, logData: boolean);
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>, getDispatcherFactory: () => ToolContinuationDispatcherFactory, cleaner: ChatCleaner, logData: boolean);
     /**
      * Runs post action
      * @param command Command being processed

@@ -7,6 +7,7 @@ exports.Collections = {
     runs: "runs",
     contextStack: "contextStack",
     continuations: "continuations",
-    toolCalls: "toolCalls"
+    toolCalls: "toolCalls",
+    cleanup: "cleanup"
 };
 //# sourceMappingURL=Collections.js.map

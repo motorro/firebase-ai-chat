@@ -1,4 +1,5 @@
 import {
+    ChatCleaner,
     ChatCommand,
     ChatData,
     ChatError,
@@ -37,6 +38,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
      * @param wrapper AI wrapper
      * @param instructions System instructions
      * @param getDispatcherFactory Tool dispatch factory
+     * @param cleaner Chat cleaner
      * @param logData Logs chat data if true
      */
     constructor(
@@ -46,9 +48,10 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>,
         getDispatcherFactory: () => ToolContinuationDispatcherFactory,
+        cleaner: ChatCleaner,
         logData: boolean
     ) {
-        super(firestore, scheduler, wrapper, logData);
+        super(firestore, scheduler, wrapper, cleaner, logData);
         this.instructions = instructions;
         this.getDispatcherFactory = getDispatcherFactory;
     }

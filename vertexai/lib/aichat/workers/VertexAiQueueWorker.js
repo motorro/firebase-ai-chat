@@ -9,10 +9,11 @@ class VertexAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
+     * @param cleaner Chat cleaner
      * @param logData If true, logs chat data
      */
-    constructor(firestore, scheduler, wrapper, logData) {
-        super(firestore, scheduler, logData);
+    constructor(firestore, scheduler, wrapper, cleaner, logData) {
+        super(firestore, scheduler, cleaner, logData);
         this.wrapper = wrapper;
     }
     /**
@@ -72,10 +73,12 @@ class VertexAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      * @protected
      */
     async updateConfig(control, state, update) {
-        const config = Object.assign(Object.assign({}, state.config), { assistantConfig: Object.assign(Object.assign({}, state.config.assistantConfig), (update(state.config.assistantConfig))) });
+        const assistantConfig = Object.assign(Object.assign({}, state.config.assistantConfig), (update(state.config.assistantConfig)));
+        const config = Object.assign(Object.assign({}, state.config), { assistantConfig: assistantConfig });
         await control.updateChatState({
             config: config
         });
+        return assistantConfig;
     }
 }
 exports.VertexAiQueueWorker = VertexAiQueueWorker;

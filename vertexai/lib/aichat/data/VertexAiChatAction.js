@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isHandBackCleanupAction = exports.isPostExplicitAction = void 0;
+exports.isCleanupAction = exports.isPostExplicitAction = void 0;
 const VertexAiAssistantConfig_1 = require("./VertexAiAssistantConfig");
 function isPostExplicitAction(data) {
     return "object" === typeof data && null !== data
@@ -8,10 +8,10 @@ function isPostExplicitAction(data) {
         && "messages" in data && Array.isArray(data.messages);
 }
 exports.isPostExplicitAction = isPostExplicitAction;
-function isHandBackCleanupAction(data) {
+function isCleanupAction(data) {
     return "object" === typeof data && null !== data
-        && "name" in data && "handBackCleanup" === data.name
+        && "name" in data && "cleanup" === data.name
         && "config" in data && (0, VertexAiAssistantConfig_1.isVertexAiAssistantConfig)(data.config);
 }
-exports.isHandBackCleanupAction = isHandBackCleanupAction;
+exports.isCleanupAction = isCleanupAction;
 //# sourceMappingURL=VertexAiChatAction.js.map

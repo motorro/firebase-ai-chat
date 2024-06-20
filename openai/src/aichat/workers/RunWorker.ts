@@ -8,7 +8,7 @@ import {
     ToolCallRequest,
     Continuation,
     ToolCallsResult,
-    ContinuationRequest, tagLogger
+    ContinuationRequest, tagLogger, ChatCleaner
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
@@ -29,10 +29,11 @@ export class RunWorker extends OpenAiQueueWorker {
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
+        chatCleaner: ChatCleaner,
         toolsDispatchFactory: ToolContinuationDispatcherFactory,
         logData: boolean
     ) {
-        super(firestore, scheduler, wrapper, logData);
+        super(firestore, scheduler, wrapper, chatCleaner, logData);
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
 

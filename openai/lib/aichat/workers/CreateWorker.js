@@ -5,6 +5,10 @@ const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiQueueWorker_1 = require("./OpenAiQueueWorker");
 const logger = (0, firebase_ai_chat_core_1.tagLogger)("CreateWorker");
 class CreateWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
+    constructor(firestore, scheduler, wrapper, cleaner, logData, cleanupRegistrar) {
+        super(firestore, scheduler, wrapper, cleaner, logData);
+        this.cleanupRegistrar = cleanupRegistrar;
+    }
     static isSupportedAction(action) {
         return "create" === action;
     }
@@ -18,7 +22,8 @@ class CreateWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
                 chat: command.commonData.chatDocumentPath
             });
             logger.d("Thread created:", threadId);
-            await this.updateConfig(control, state, () => ({ threadId: threadId }));
+            const newConfig = await this.updateConfig(control, state, () => ({ threadId: threadId }));
+            await this.cleanupRegistrar.register(Object.assign(Object.assign({}, command), { actionData: { name: "cleanup", config: newConfig } }));
         }
         await this.continueNextInQueue(control, command);
     }

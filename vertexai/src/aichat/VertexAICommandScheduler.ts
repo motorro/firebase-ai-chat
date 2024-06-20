@@ -3,15 +3,10 @@ import {ChatCommandData} from "@motorro/firebase-ai-chat-core/lib/aichat/data/Ch
 import {VertexAiChatActions} from "./data/VertexAiChatAction";
 import {DeliverySchedule} from "firebase-admin/lib/functions";
 import {VertexAiChatCommand} from "./data/VertexAiChatCommand";
-import {isVertexAiAssistantConfig, VertexAiAssistantConfig} from "./data/VertexAiAssistantConfig";
+import {isVertexAiAssistantConfig} from "./data/VertexAiAssistantConfig";
 import {engineId} from "../engineId";
 
 const logger = tagLogger("VertexAICommandScheduler");
-
-/**
- * Close command delay to settle down AI runs
- */
-const SCHEDULE_CLOSE_AFTER = 3 * 60;
 
 /**
  * Schedules OpenAI actions
@@ -48,14 +43,6 @@ export class VertexAICommandScheduler implements CommandScheduler {
     async handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void> {
         logger.d("Scheduling hand-over: ", JSON.stringify(common));
         await this.schedule(common, ["create", {name: "postExplicit", messages: handOverMessages}, "switchToUserInput"]);
-    }
-    async handBackCleanup(common: ChatCommandData, config: AssistantConfig): Promise<void> {
-        logger.d("Scheduling hand-back cleanup: ", JSON.stringify(common));
-        await this.schedule(common, [{name: "handBackCleanup", config: <VertexAiAssistantConfig>config}]);
-    }
-    async close(common: ChatCommandData): Promise<void> {
-        logger.d("Scheduling close: ", JSON.stringify(common));
-        await this.schedule(common, ["close"], {scheduleDelaySeconds: SCHEDULE_CLOSE_AFTER});
     }
 
     private async schedule(common: ChatCommandData, actions: VertexAiChatActions, schedule?: DeliverySchedule): Promise<void> {

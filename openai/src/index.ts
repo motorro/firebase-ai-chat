@@ -11,7 +11,10 @@ import {
     toolContinuationDispatcherFactory,
     ToolCallRequest,
     DispatchError,
-    commonFormatContinuationError
+    commonFormatContinuationError,
+    ChatCleaner,
+    CommonChatCleaner,
+    CommonChatCleanupRegistrar
 } from "@motorro/firebase-ai-chat-core";
 import {AiWrapper} from "./aichat/AiWrapper";
 import {OpenAiChatWorker} from "./aichat/OpenAiChatWorker";
@@ -64,7 +67,8 @@ export {
     isReducerSuccess,
     NewMessage,
     StructuredMessage,
-    isStructuredMessage
+    isStructuredMessage,
+    ChatCleaner
 } from "@motorro/firebase-ai-chat-core";
 export {ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand} from "@motorro/firebase-ai-chat-core";
 export {FirebaseQueueTaskScheduler} from "@motorro/firebase-ai-chat-core";
@@ -89,7 +93,7 @@ export {
 };
 export {OpenAiAssistantConfig} from "./aichat/data/OpenAiAssistantConfig";
 export {OpenAiChatCommand, isOpenAiChatReq, isOpenAiChatCommand} from "./aichat/data/OpenAiChatCommand";
-export {UserMessageParts, DefaultOpenAiMessageMapper} from "./aichat/OpenAiMessageMapper"
+export {UserMessageParts, DefaultOpenAiMessageMapper} from "./aichat/OpenAiMessageMapper";
 
 /**
  * Chat state for OpenAI chats
@@ -112,13 +116,15 @@ export interface AiChat {
      * Chat user-facing callable functions
      * @param queueName Chat dispatcher function (queue) name to dispatch work
      * @param commandSchedulers Creates a list of command schedulers. Should return schedulers for each platform
+     * @param chatCleaner Optional chat resource cleaner extension
      * @return Chat interface
      * @see worker
      * @see createDefaultCommandSchedulers
      */
     chat<DATA extends ChatData>(
         queueName: string,
-        commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>
+        commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>,
+        chatCleaner?: ChatCleaner
     ): AssistantChat<DATA>
 
     /**
@@ -126,10 +132,16 @@ export interface AiChat {
      * @param openAi OpenAI instance
      * @param dispatchers Tools dispatchers
      * @param messageMapper Maps messages to/from OpenAI
+     * @param chatCleaner Optional chat resource cleaner extension
      * @return Worker interface
      */
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>, messageMapper?: OpenAiMessageMapper): OpenAiChatWorker
+    worker(
+        openAi: OpenAI,
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>,
+        messageMapper?: OpenAiMessageMapper,
+        chatCleaner?: ChatCleaner
+    ): OpenAiChatWorker
 
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
@@ -157,10 +169,20 @@ export function factory(
     taskScheduler?: TaskScheduler,
     formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError,
     debugAi = false,
-    logData = false
+    logData = false,
 ): AiChat {
     const _taskScheduler = taskScheduler || new FirebaseQueueTaskScheduler(functions, location);
     const _continuationSchedulerFactory = toolContinuationSchedulerFactory(firestore, _taskScheduler, logData);
+    const _chatCleanupRegistrar = new CommonChatCleanupRegistrar(firestore);
+    const _chatCleanerFactory = (queueName: string, chatCleaner?: ChatCleaner) => {
+        const commonCleaner = new CommonChatCleaner(firestore, _taskScheduler, queueName);
+        return undefined === chatCleaner ? commonCleaner : {
+            cleanup: async (chatDocumentPath: string) => {
+                await commonCleaner.cleanup(chatDocumentPath);
+                await chatCleaner.cleanup(chatDocumentPath);
+            }
+        };
+    };
 
     function defaultSchedulers(queueName: string, taskScheduler: TaskScheduler): ReadonlyArray<CommandScheduler> {
         return [new OpenAICommandScheduler(queueName, taskScheduler)];
@@ -170,18 +192,31 @@ export function factory(
         createDefaultCommandSchedulers: defaultSchedulers,
         chat: function<DATA extends ChatData>(
             queueName: string,
-            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers
+            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers,
+            chatCleaner?: ChatCleaner
         ): AssistantChat<DATA> {
-            return new AssistantChat<DATA>(firestore, commandSchedulers(queueName, _taskScheduler));
+            return new AssistantChat<DATA>(
+                firestore,
+                commandSchedulers(queueName, _taskScheduler),
+                _chatCleanerFactory(queueName, chatCleaner)
+            );
         },
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>, messageMapper?: OpenAiMessageMapper): OpenAiChatWorker {
+        worker(
+            openAi: OpenAI,
+            dispatchers: Readonly<Record<string,
+            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+            ToolsDispatcher<any, any>>>,
+            messageMapper?: OpenAiMessageMapper,
+            chatCleaner?: ChatCleaner
+        ): OpenAiChatWorker {
             return new OpenAiChatWorker(
                 firestore,
                 _taskScheduler,
                 new OpenAiWrapper(openAi, debugAi, messageMapper),
                 toolContinuationDispatcherFactory(firestore, dispatchers, _taskScheduler, formatContinuationError, logData),
-                logData
+                _chatCleanupRegistrar,
+                (queueName) => _chatCleanerFactory(queueName, chatCleaner),
+                logData,
             );
         },
         continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {

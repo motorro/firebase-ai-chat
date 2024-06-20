@@ -510,7 +510,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
             control: DispatchControl<DispatchAction, AiConfig, Data>
         ) => Promise<void>
     ) {
-        super(firestore, scheduler, false);
+        super(firestore, scheduler, instance(imock()), false);
         this.isSupportedCommandImpl = isSupportedCommand;
         this.doDispatchImpl = doDispatch;
     }
