@@ -68,10 +68,9 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * Hands chat back to the next popped assistant
      * @param document Document reference
      * @param userId Chat owner
-     * @param workerMeta Metadata to pass to chat worker
      * @return Chat stack update
      */
-    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, workerMeta?: Meta): Promise<HandOverResult>;
+    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string): Promise<HandOverResult>;
     /**
      * Posts messages to the thread
      * @param document Chat document

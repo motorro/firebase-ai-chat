@@ -177,10 +177,9 @@ class AssistantChat {
      * Hands chat back to the next popped assistant
      * @param document Document reference
      * @param userId Chat owner
-     * @param workerMeta Metadata to pass to chat worker
      * @return Chat stack update
      */
-    async handBack(document, userId, workerMeta) {
+    async handBack(document, userId) {
         logger.d("Popping chat state: ", document.path);
         const state = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));

@@ -250,13 +250,11 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
      * Hands chat back to the next popped assistant
      * @param document Document reference
      * @param userId Chat owner
-     * @param workerMeta Metadata to pass to chat worker
      * @return Chat stack update
      */
     async handBack(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
-        userId: string,
-        workerMeta?: Meta
+        userId: string
     ): Promise<HandOverResult> {
         logger.d("Popping chat state: ", document.path);
         const state = await this.db.runTransaction(async (tx) => {
