@@ -21,7 +21,7 @@ class RetrieveWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         const latestInBatchId = await this.getNextBatchSortIndex(command.commonData.chatDocumentPath, command.commonData.dispatchId);
         const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         const batch = this.db.batch();
-        newMessages.messages.forEach(([id, message], index) => {
+        newMessages.messages.forEach(([, message], index) => {
             var _a;
             let text;
             let data = null;

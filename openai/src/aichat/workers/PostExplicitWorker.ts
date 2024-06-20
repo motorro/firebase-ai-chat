@@ -33,7 +33,7 @@ export class PostExplicitWorker extends OpenAiQueueWorker {
             const messages = postExplicit.messages;
             let latestMessageId: string | undefined = undefined;
             for (const message of messages) {
-                const text = isStructuredMessage(message) ? message.text : <string>message
+                const text = isStructuredMessage(message) ? message.text : <string>message;
                 latestMessageId = await this.wrapper.postMessage(threadId, text);
             }
 

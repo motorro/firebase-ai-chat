@@ -69,6 +69,7 @@ export {
 } from "./aichat/data/ContinuationCommand";
 export {commonFormatContinuationError};
 export {NewMessage, StructuredMessage, isStructuredMessage} from "./aichat/data/NewMessage";
+export {ChatCleaner, ChatCleanupRegistrar, CommonChatCleaner, CommonChatCleanupRegistrar} from "./aichat/workers/ChatCleaner";
 
 /**
  * Tools continuation dispatcher factory

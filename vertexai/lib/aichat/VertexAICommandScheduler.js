@@ -6,10 +6,6 @@ const VertexAiAssistantConfig_1 = require("./data/VertexAiAssistantConfig");
 const engineId_1 = require("../engineId");
 const logger = (0, firebase_ai_chat_core_1.tagLogger)("VertexAICommandScheduler");
 /**
- * Close command delay to settle down AI runs
- */
-const SCHEDULE_CLOSE_AFTER = 3 * 60;
-/**
  * Schedules OpenAI actions
  */
 class VertexAICommandScheduler {
@@ -39,14 +35,6 @@ class VertexAICommandScheduler {
     async handOver(common, handOverMessages) {
         logger.d("Scheduling hand-over: ", JSON.stringify(common));
         await this.schedule(common, ["create", { name: "postExplicit", messages: handOverMessages }, "switchToUserInput"]);
-    }
-    async handBackCleanup(common, config) {
-        logger.d("Scheduling hand-back cleanup: ", JSON.stringify(common));
-        await this.schedule(common, [{ name: "handBackCleanup", config: config }]);
-    }
-    async close(common) {
-        logger.d("Scheduling close: ", JSON.stringify(common));
-        await this.schedule(common, ["close"], { scheduleDelaySeconds: SCHEDULE_CLOSE_AFTER });
     }
     async schedule(common, actions, schedule) {
         const command = {

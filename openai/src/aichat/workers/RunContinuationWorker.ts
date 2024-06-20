@@ -1,4 +1,5 @@
 import {
+    ChatCleaner,
     ChatCommand,
     ChatData,
     ChatError,
@@ -30,9 +31,10 @@ export class RunContinuationWorker extends OpenAiQueueWorker {
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
         toolsDispatchFactory: ToolContinuationDispatcherFactory,
+        cleaner: ChatCleaner,
         logData: boolean
     ) {
-        super(firestore, scheduler, wrapper, logData);
+        super(firestore, scheduler, wrapper, cleaner, logData);
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
 

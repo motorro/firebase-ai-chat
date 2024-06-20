@@ -1,17 +1,16 @@
 import {ChatCommand, ChatWorker, tagLogger} from "@motorro/firebase-ai-chat-core";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {AiWrapper} from "../AiWrapper";
-import {HandBackCleanup, isHandBackCleanupAction} from "../data/VertexAiChatAction";
-import {engineId} from "../../engineId";
+import {Cleanup, isCleanupAction, OpenAiChatAction} from "../data/OpenAiChatAction";
 
-const logger = tagLogger("HandBackCleanupWorker");
+const logger = tagLogger("CleanupWorker");
 
 /**
  * Cleans-up OpenAI thread on hand-back
  */
-export class HandBackCleanupWorker implements ChatWorker {
-    static isSupportedAction(action: unknown): action is HandBackCleanup {
-        return isHandBackCleanupAction(action);
+export class CleanupWorker implements ChatWorker {
+    static isSupportedAction(action: unknown): action is OpenAiChatAction {
+        return isCleanupAction(action);
     }
 
     protected readonly wrapper: AiWrapper;
@@ -24,12 +23,12 @@ export class HandBackCleanupWorker implements ChatWorker {
         this.wrapper = wrapper;
     }
 
-    private getAction(req: Request<ChatCommand<unknown>>): HandBackCleanup | undefined {
-        const action = "engine" in req.data && engineId === req.data.engine
+    private getAction(req: Request<ChatCommand<unknown>>): Cleanup | undefined {
+        const action = "engine" in req.data && "openai" === req.data.engine
             && Array.isArray(req.data.actionData)
             && req.data.actionData[0];
 
-        if (isHandBackCleanupAction(action)) {
+        if (isCleanupAction(action)) {
             return action;
         }
         return undefined;

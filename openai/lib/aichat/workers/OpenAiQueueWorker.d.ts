@@ -1,4 +1,4 @@
-import { BaseChatWorker, ChatCommand, ChatData, ChatState, DispatchControl, TaskScheduler } from "@motorro/firebase-ai-chat-core";
+import { BaseChatWorker, ChatCleaner, ChatCommand, ChatData, ChatState, DispatchControl, TaskScheduler } from "@motorro/firebase-ai-chat-core";
 import { OpenAiChatActions } from "../data/OpenAiChatAction";
 import { OpenAiAssistantConfig } from "../data/OpenAiAssistantConfig";
 import { AiWrapper } from "../AiWrapper";
@@ -12,10 +12,11 @@ export declare abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiCha
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
+     * @param cleaner Chat cleaner
      * @param logData If true, logs data when dispatching
      *
      */
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, logData: boolean);
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, cleaner: ChatCleaner, logData: boolean);
     /**
      * Checks if command passed in `req` is supported by this dispatcher
      * @param req Dispatch request
@@ -45,5 +46,5 @@ export declare abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiCha
      * @param update Builds config changes
      * @protected
      */
-    protected updateConfig(control: OpenAiDispatchControl, state: ChatState<OpenAiAssistantConfig, ChatData>, update: (soFar: OpenAiAssistantConfig) => Partial<OpenAiAssistantConfig>): Promise<void>;
+    protected updateConfig(control: OpenAiDispatchControl, state: ChatState<OpenAiAssistantConfig, ChatData>, update: (soFar: OpenAiAssistantConfig) => Partial<OpenAiAssistantConfig>): Promise<OpenAiAssistantConfig>;
 }

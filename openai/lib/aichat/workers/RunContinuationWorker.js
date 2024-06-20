@@ -9,8 +9,8 @@ class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
     static isSupportedCommand(command) {
         return (0, OpenAiChatCommand_1.isOpenAiContinuationCommand)(command);
     }
-    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, logData) {
-        super(firestore, scheduler, wrapper, logData);
+    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, cleaner, logData) {
+        super(firestore, scheduler, wrapper, cleaner, logData);
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
     async doDispatch(command, state, control) {

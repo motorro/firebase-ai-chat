@@ -1,4 +1,4 @@
-import { BaseChatWorker, ChatCommand, ChatData, ChatState, DispatchControl, TaskScheduler } from "@motorro/firebase-ai-chat-core";
+import { BaseChatWorker, ChatCleaner, ChatCommand, ChatData, ChatState, DispatchControl, TaskScheduler } from "@motorro/firebase-ai-chat-core";
 import { VertexAiChatActions } from "../data/VertexAiChatAction";
 import { VertexAiAssistantConfig } from "../data/VertexAiAssistantConfig";
 import { AiWrapper } from "../AiWrapper";
@@ -12,9 +12,10 @@ export declare abstract class VertexAiQueueWorker extends BaseChatWorker<VertexA
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
+     * @param cleaner Chat cleaner
      * @param logData If true, logs chat data
      */
-    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, logData: boolean);
+    constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, cleaner: ChatCleaner, logData: boolean);
     /**
      * Checks if command passed in `req` is supported by this dispatcher
      * @param req Dispatch request
@@ -44,5 +45,5 @@ export declare abstract class VertexAiQueueWorker extends BaseChatWorker<VertexA
      * @param update Builds config changes
      * @protected
      */
-    protected updateConfig(control: VertexAiDispatchControl, state: ChatState<VertexAiAssistantConfig, ChatData>, update: (soFar: VertexAiAssistantConfig) => Partial<VertexAiAssistantConfig>): Promise<void>;
+    protected updateConfig(control: VertexAiDispatchControl, state: ChatState<VertexAiAssistantConfig, ChatData>, update: (soFar: VertexAiAssistantConfig) => Partial<VertexAiAssistantConfig>): Promise<VertexAiAssistantConfig>;
 }

@@ -7,6 +7,7 @@ import { ChatMeta, Meta } from "./data/Meta";
 import { CommandScheduler } from "./CommandScheduler";
 import { HandOverResult } from "./data/HandOverResult";
 import { NewMessage } from "./data/NewMessage";
+import { ChatCleaner } from "./workers/ChatCleaner";
 /**
  * Front-facing assistant chat
  * Runs AI chat saving state in the database
@@ -19,13 +20,15 @@ import { NewMessage } from "./data/NewMessage";
 export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
     private readonly db;
     private readonly schedulers;
+    private readonly cleaner;
     private getScheduler;
     /**
      * Constructor
      * @param db Firestore
      * @param scheduler Command scheduler
+     * @param cleaner Chat cleaner
      */
-    constructor(db: Firestore, scheduler: CommandScheduler | ReadonlyArray<CommandScheduler>);
+    constructor(db: Firestore, scheduler: CommandScheduler | ReadonlyArray<CommandScheduler>, cleaner: ChatCleaner);
     /**
      * Creates new chat thread
      * @param document Document reference
@@ -66,10 +69,9 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param document Document reference
      * @param userId Chat owner
      * @param workerMeta Metadata to pass to chat worker
-     * @param cleanup If true, cleans-up the current chat internals after hand-back, e.g: deletes underlying thread
      * @return Chat stack update
      */
-    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, workerMeta?: Meta, cleanup?: boolean): Promise<HandOverResult>;
+    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, workerMeta?: Meta): Promise<HandOverResult>;
     /**
      * Posts messages to the thread
      * @param document Chat document
@@ -95,9 +97,8 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * Closes chats
      * @param document Chat document reference
      * @param userId Owner user ID
-     * @param meta Metadata to pass to chat worker
      */
-    closeChat(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, meta?: Meta): Promise<ChatStateUpdate<DATA>>;
+    closeChat(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string): Promise<ChatStateUpdate<DATA>>;
     /**
      * Runs block mutating chat status if current chat status is one of allowed
      * @param document Chat document

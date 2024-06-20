@@ -14,12 +14,13 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
      * @param wrapper AI wrapper
      * @param instructions System instructions
      * @param getDispatcherFactory Tool dispatch factory
+     * @param cleaner Chat cleaner
      * @param logData Logs chat data if true
      */
     constructor(firestore, scheduler, wrapper, 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    instructions, getDispatcherFactory, logData) {
-        super(firestore, scheduler, wrapper, logData);
+    instructions, getDispatcherFactory, cleaner, logData) {
+        super(firestore, scheduler, wrapper, cleaner, logData);
         this.instructions = instructions;
         this.getDispatcherFactory = getDispatcherFactory;
     }

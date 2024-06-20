@@ -6,7 +6,7 @@ import {ChatMeta} from "./Meta";
 /**
  * Chat status
  */
-export type ChatStatus = "userInput" | "processing" | "closing" | "complete" | "failed";
+export type ChatStatus = "userInput" | "processing" | "complete" | "failed";
 
 /**
  * Assistant configuration

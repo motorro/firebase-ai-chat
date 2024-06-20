@@ -16,11 +16,13 @@ class DispatchRunner {
      * Constructor
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
+     * @param cleaner Chat cleaner
      * @param logData If true, logs data when dispatching
      */
-    constructor(firestore, scheduler, logData) {
+    constructor(firestore, scheduler, cleaner, logData) {
         this.db = firestore;
         this.scheduler = scheduler;
+        this.cleaner = cleaner;
         this.logData = logData;
     }
     async dispatchWithCheck(req, run) {
@@ -82,6 +84,7 @@ class DispatchRunner {
                 status: "failed",
                 lastError: String(e)
             });
+            await this.cleaner.cleanup(command.commonData.chatDocumentPath);
             await updateRun("complete");
         };
         try {

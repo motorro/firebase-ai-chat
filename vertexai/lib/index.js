@@ -54,18 +54,28 @@ function factory(firestore, functions, location,
 taskScheduler, formatContinuationError = firebase_ai_chat_core_1.commonFormatContinuationError, debugAi = false, logData = false) {
     const _taskScheduler = taskScheduler || new firebase_ai_chat_core_1.FirebaseQueueTaskScheduler(functions, location);
     const _continuationSchedulerFactory = (0, firebase_ai_chat_core_1.toolContinuationSchedulerFactory)(firestore, _taskScheduler);
+    const _chatCleanupRegistrar = new firebase_ai_chat_core_1.CommonChatCleanupRegistrar(firestore);
+    const _chatCleanerFactory = (queueName, chatCleaner) => {
+        const commonCleaner = new firebase_ai_chat_core_1.CommonChatCleaner(firestore, _taskScheduler, queueName);
+        return undefined === chatCleaner ? commonCleaner : {
+            cleanup: async (chatDocumentPath) => {
+                await commonCleaner.cleanup(chatDocumentPath);
+                await chatCleaner.cleanup(chatDocumentPath);
+            }
+        };
+    };
     function defaultSchedulers(queueName, taskScheduler) {
         return [new VertexAICommandScheduler_1.VertexAICommandScheduler(queueName, taskScheduler)];
     }
     return {
         createDefaultCommandSchedulers: defaultSchedulers,
-        chat: function (queueName, commandSchedulers = defaultSchedulers) {
-            return new firebase_ai_chat_core_1.AssistantChat(firestore, commandSchedulers(queueName, _taskScheduler));
+        chat: function (queueName, commandSchedulers = defaultSchedulers, chatCleaner) {
+            return new firebase_ai_chat_core_1.AssistantChat(firestore, commandSchedulers(queueName, _taskScheduler), _chatCleanerFactory(queueName, chatCleaner));
         },
         worker: function (model, threadsPath, 
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        instructions, messageMapper) {
-            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath, debugAi, messageMapper), instructions, formatContinuationError, logData);
+        instructions, messageMapper, chatCleaner) {
+            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath, debugAi, messageMapper), instructions, formatContinuationError, _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData);
         },
         continuationScheduler(queueName) {
             return _continuationSchedulerFactory.create(queueName);

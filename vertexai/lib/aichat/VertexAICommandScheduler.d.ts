@@ -13,7 +13,5 @@ export declare class VertexAICommandScheduler implements CommandScheduler {
     singleRun(common: ChatCommandData): Promise<void>;
     postAndRun(common: ChatCommandData): Promise<void>;
     handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void>;
-    handBackCleanup(common: ChatCommandData, config: AssistantConfig): Promise<void>;
-    close(common: ChatCommandData): Promise<void>;
     private schedule;
 }

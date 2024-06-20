@@ -50,4 +50,4 @@ export const DefaultOpenAiMessageMapper: OpenAiMessageMapper = {
             meta: <Record<string, unknown>>message.metadata
         };
     }
-}
+};

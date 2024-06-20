@@ -1,7 +1,17 @@
 import * as admin from "firebase-admin";
 import {firestore} from "firebase-admin";
 import {db, test} from "./functionsTest";
-import {anything, capture, imock, instance, reset, strictEqual, verify, when} from "@johanblumenberg/ts-mockito";
+import {
+    anything,
+    capture,
+    deepEqual,
+    imock,
+    instance,
+    reset,
+    strictEqual,
+    verify,
+    when
+} from "@johanblumenberg/ts-mockito";
 import {
     chatState, data,
     Data,
@@ -12,6 +22,8 @@ import {
     userId
 } from "./mock";
 import {
+    ChatCleaner,
+    ChatCleanupRegistrar,
     ChatCommand,
     ChatCommandData,
     ChatMessage,
@@ -40,6 +52,7 @@ import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
 import {VertexAiChatActions} from "../src/aichat/data/VertexAiChatAction";
 import {VertexAiContinuationCommand} from "../src/aichat/data/VertexAiChatCommand";
+import {beforeEach} from "mocha";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -103,20 +116,15 @@ describe("Chat worker", function() {
         commonData: commandData,
         actionData: ["switchToUserInput"]
     };
-    const closeCommand: VertexAiChatCommand = {
-        engine: "vertexai",
-        commonData: commandData,
-        actionData: ["close"]
-    };
     const config: VertexAiAssistantConfig = {
         engine: "vertexai",
         instructionsId,
         threadId
     };
-    const handBackCommand: VertexAiChatCommand = {
+    const cleanupCommand: VertexAiChatCommand = {
         engine: "vertexai",
         commonData: commandData,
-        actionData: [{name: "handBackCleanup", config: config}]
+        actionData: [{name: "cleanup", config: config}]
     };
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     const instructions: Record<string, VertexAiSystemInstructions<any>> = {
@@ -131,12 +139,22 @@ describe("Chat worker", function() {
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
+    let cleaner: ChatCleaner;
+    let cleanupRegistrar: ChatCleanupRegistrar;
     let worker: ChatWorker;
 
     before(async function() {
         wrapper = imock<AiWrapper>();
         scheduler = imock<TaskScheduler>();
+        cleaner = imock();
+        cleanupRegistrar = imock();
+
         when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
+    });
+
+    beforeEach(function() {
+        when(cleaner.cleanup(anything())).thenResolve();
+        when(cleanupRegistrar.register(anything())).thenResolve();
     });
 
     function createWorker(ToolContinuationDispatcherFactory?: ToolContinuationDispatcherFactory) {
@@ -155,6 +173,8 @@ describe("Chat worker", function() {
             instance(wrapper),
             instructions,
             commonFormatContinuationError,
+            instance(cleanupRegistrar),
+            () => instance(cleaner),
             false,
             () => factory
         );
@@ -233,6 +253,10 @@ describe("Chat worker", function() {
         });
 
         verify(wrapper.createThread(anything())).once();
+        verify(cleanupRegistrar.register(deepEqual({
+            ...createCommand,
+            actionData: {name: "cleanup", config: {...chatState.config.assistantConfig, threadId: threadId}}
+        })));
     });
 
     it("skips thread creation if already created", async function() {
@@ -602,36 +626,12 @@ describe("Chat worker", function() {
         });
     });
 
-    it("processes close command", async function() {
-        await createChat(threadId, "closing", dispatchId);
-
-        when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
-
-        const request: Request<ChatCommand<unknown>> = {
-            ...context,
-            data: closeCommand
-        };
-
-        await worker.dispatch(request);
-
-        const chatStateUpdate = await chatDoc.get();
-        const updatedChatState = chatStateUpdate.data() as ChatState<VertexAiAssistantConfig, Data>;
-        if (undefined === updatedChatState) {
-            throw new Error("Should have chat status");
-        }
-        updatedChatState.should.deep.include({
-            status: "complete"
-        });
-
-        verify(wrapper.deleteThread(threadId)).once();
-    });
-
     it("runs hand back cleanup handler", async function() {
         when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve(threadId));
 
         const request: Request<VertexAiChatCommand> = {
             ...context,
-            data: handBackCommand
+            data: cleanupCommand
         };
 
         let handlerCalled = false;

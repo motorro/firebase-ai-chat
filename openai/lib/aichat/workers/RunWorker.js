@@ -8,8 +8,8 @@ class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
     static isSupportedAction(action) {
         return "run" === action;
     }
-    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, logData) {
-        super(firestore, scheduler, wrapper, logData);
+    constructor(firestore, scheduler, wrapper, chatCleaner, toolsDispatchFactory, logData) {
+        super(firestore, scheduler, wrapper, chatCleaner, logData);
         this.toolsDispatchFactory = toolsDispatchFactory;
     }
     async doDispatch(command, state, control) {

@@ -1,5 +1,5 @@
 import {
-    BaseChatWorker, ChatCommand,
+    BaseChatWorker, ChatCleaner, ChatCommand,
     ChatData,
     ChatState, DispatchControl,
     tagLogger,
@@ -24,15 +24,17 @@ export abstract class VertexAiQueueWorker extends BaseChatWorker<VertexAiChatAct
      * @param firestore Firestore reference
      * @param scheduler Task scheduler
      * @param wrapper AI wrapper
+     * @param cleaner Chat cleaner
      * @param logData If true, logs chat data
      */
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
         wrapper: AiWrapper,
+        cleaner: ChatCleaner,
         logData: boolean
     ) {
-        super(firestore, scheduler, logData);
+        super(firestore, scheduler, cleaner, logData);
         this.wrapper = wrapper;
     }
 
@@ -104,16 +106,19 @@ export abstract class VertexAiQueueWorker extends BaseChatWorker<VertexAiChatAct
         control: VertexAiDispatchControl,
         state: ChatState<VertexAiAssistantConfig, ChatData>,
         update: (soFar: VertexAiAssistantConfig) => Partial<VertexAiAssistantConfig>
-    ): Promise<void> {
+    ): Promise<VertexAiAssistantConfig> {
+        const assistantConfig = {
+            ...state.config.assistantConfig,
+            ...(update(state.config.assistantConfig))
+        };
         const config: ChatConfig<VertexAiAssistantConfig> = {
             ...state.config,
-            assistantConfig: {
-                ...state.config.assistantConfig,
-                ...(update(state.config.assistantConfig))
-            }
+            assistantConfig: assistantConfig
+
         };
         await control.updateChatState({
             config: config
         });
+        return assistantConfig;
     }
 }

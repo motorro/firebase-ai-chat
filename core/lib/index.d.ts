@@ -30,6 +30,7 @@ export { Continuation, SuspendedContinuation, ResolvedContinuation } from "./aic
 export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "./aichat/data/ContinuationCommand";
 export { commonFormatContinuationError };
 export { NewMessage, StructuredMessage, isStructuredMessage } from "./aichat/data/NewMessage";
+export { ChatCleaner, ChatCleanupRegistrar, CommonChatCleaner, CommonChatCleanupRegistrar } from "./aichat/workers/ChatCleaner";
 /**
  * Tools continuation dispatcher factory
  * @param db Firestore

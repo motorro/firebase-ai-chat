@@ -17,12 +17,13 @@ import DocumentReference = admin.firestore.DocumentReference;
 import Firestore = firestore.Firestore;
 import {Dispatch} from "./data/Dispatch";
 import {ChatMeta, Meta} from "./data/Meta";
-import {CommandScheduler} from "./CommandScheduler";
+import {CommandScheduler, getScheduler} from "./CommandScheduler";
 import Transaction = firestore.Transaction;
 import Timestamp = firestore.Timestamp;
 import {HandOverResult} from "./data/HandOverResult";
 import {tagLogger} from "../logging";
 import {isStructuredMessage, NewMessage} from "./data/NewMessage";
+import {ChatCleaner} from "./workers/ChatCleaner";
 
 const logger = tagLogger("AssistantChat");
 
@@ -38,23 +39,22 @@ const logger = tagLogger("AssistantChat");
 export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
     private readonly db: FirebaseFirestore.Firestore;
     private readonly schedulers: ReadonlyArray<CommandScheduler>;
+    private readonly cleaner: ChatCleaner;
 
     private getScheduler(config: AssistantConfig): CommandScheduler {
-        const scheduler = this.schedulers.find((it) => it.isSupported(config));
-        if (undefined === scheduler) {
-            throw new HttpsError("unimplemented", "Chat configuration not supported");
-        }
-        return scheduler;
+        return getScheduler(this.schedulers, config);
     }
 
     /**
      * Constructor
      * @param db Firestore
      * @param scheduler Command scheduler
+     * @param cleaner Chat cleaner
      */
-    constructor(db: Firestore, scheduler: CommandScheduler | ReadonlyArray<CommandScheduler>) {
+    constructor(db: Firestore, scheduler: CommandScheduler | ReadonlyArray<CommandScheduler>, cleaner: ChatCleaner) {
         this.db = db;
         this.schedulers = Array.isArray(scheduler) ? scheduler : [scheduler];
+        this.cleaner = cleaner;
     }
 
     /**
@@ -251,17 +251,15 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
      * @param document Document reference
      * @param userId Chat owner
      * @param workerMeta Metadata to pass to chat worker
-     * @param cleanup If true, cleans-up the current chat internals after hand-back, e.g: deletes underlying thread
      * @return Chat stack update
      */
     async handBack(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
-        workerMeta?: Meta,
-        cleanup = true
+        workerMeta?: Meta
     ): Promise<HandOverResult> {
         logger.d("Popping chat state: ", document.path);
-        const [state, newState] = await this.db.runTransaction(async (tx) => {
+        const state = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(
                 tx,
                 document,
@@ -291,19 +289,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
             tx.set(document, newState);
             tx.delete(stackEntry.ref);
 
-            return [state, newState];
+            return state;
         });
-
-        if (cleanup) {
-            logger.d("Scheduling cleanup command");
-            const command: ChatCommandData = {
-                ownerId: userId,
-                chatDocumentPath: document.path,
-                dispatchId: newState.latestDispatchId,
-                meta: workerMeta || null
-            };
-            await this.getScheduler(state.config.assistantConfig).handBackCleanup(command, state.config.assistantConfig);
-        }
 
         return {
             formerAssistantConfig: state.config.assistantConfig,
@@ -417,28 +404,19 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
      * Closes chats
      * @param document Chat document reference
      * @param userId Owner user ID
-     * @param meta Metadata to pass to chat worker
      */
     async closeChat(
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
-        userId: string,
-        meta?: Meta
+        userId: string
     ): Promise<ChatStateUpdate<DATA>> {
         const state = await this.prepareDispatchWithChecks(
             document,
             userId,
             (current) => false === ["closing", "complete", "failed"].includes(current),
-            "closing",
+            "complete",
             async (state) => {
-                logger.d("Closing chat: ", document.path);
-
-                const command: ChatCommandData = {
-                    ownerId: userId,
-                    chatDocumentPath: document.path,
-                    dispatchId: state.latestDispatchId,
-                    meta: meta || null
-                };
-                await this.getScheduler(state.config.assistantConfig).close(command);
+                logger.d("Chat closed: ", document.path);
+                await this.cleaner.cleanup(document.path);
                 return state;
             }
         );

@@ -36,7 +36,7 @@ export class RetrieveWorker extends OpenAiQueueWorker {
 
         const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         const batch = this.db.batch();
-        newMessages.messages.forEach(([id, message], index) => {
+        newMessages.messages.forEach(([, message], index) => {
             let text: string;
             let data: Readonly<Record<string, unknown>> | null = null;
             let meta: Meta | null = state.meta?.aiMessageMeta || null;

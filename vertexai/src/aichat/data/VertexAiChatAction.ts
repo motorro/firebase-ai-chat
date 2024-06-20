@@ -12,21 +12,21 @@ export function isPostExplicitAction(data: unknown): data is PostExplicit {
         && "messages" in data && Array.isArray(data.messages);
 }
 
-export interface HandBackCleanup {
-    name: "handBackCleanup"
+export interface Cleanup {
+    name: "cleanup"
     config: VertexAiAssistantConfig
 }
 
-export function isHandBackCleanupAction(data: unknown): data is HandBackCleanup {
+export function isCleanupAction(data: unknown): data is Cleanup {
     return "object" === typeof data && null !== data
-        && "name" in data && "handBackCleanup" === data.name
+        && "name" in data && "cleanup" === data.name
         && "config" in data && isVertexAiAssistantConfig(data.config);
 }
 
 /**
  * VertexAI Assistant chat actions
  */
-export type VertexAiChatAction = "create" | "post" | "continuePost" | PostExplicit | "switchToUserInput" | "close" | HandBackCleanup;
+export type VertexAiChatAction = "create" | "post" | "continuePost" | PostExplicit | "switchToUserInput" | "close" | Cleanup;
 
 /**
  * VertexAI Assistant chat actions
