@@ -51,7 +51,7 @@ export class CreateWorker extends OpenAiQueueWorker {
             );
             await this.cleanupRegistrar.register({
                 ...command,
-                actionData: {name: "cleanup", config: newConfig}
+                actionData: [{name: "cleanup", config: newConfig}]
             });
         }
         await this.continueNextInQueue(control, command);

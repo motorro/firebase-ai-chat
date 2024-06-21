@@ -23,7 +23,7 @@ class CreateWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
             });
             logger.d("Thread created:", threadId);
             const newConfig = await this.updateConfig(control, state, () => ({ threadId: threadId }));
-            await this.cleanupRegistrar.register(Object.assign(Object.assign({}, command), { actionData: { name: "cleanup", config: newConfig } }));
+            await this.cleanupRegistrar.register(Object.assign(Object.assign({}, command), { actionData: [{ name: "cleanup", config: newConfig }] }));
         }
         await this.continueNextInQueue(control, command);
     }
