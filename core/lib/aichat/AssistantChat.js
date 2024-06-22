@@ -8,6 +8,7 @@ const CommandScheduler_1 = require("./CommandScheduler");
 var Timestamp = firebase_admin_1.firestore.Timestamp;
 const logging_1 = require("../logging");
 const NewMessage_1 = require("./data/NewMessage");
+const crypto_1 = require("crypto");
 const logger = (0, logging_1.tagLogger)("AssistantChat");
 /**
  * Front-facing assistant chat
@@ -48,12 +49,14 @@ class AssistantChat {
         const batch = this.db.batch();
         const status = "processing";
         const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
+        const sessionId = (0, crypto_1.randomUUID)();
         batch.set(document, {
             userId: userId,
             config: {
                 assistantConfig: assistantConfig
             },
             status: status,
+            sessionId: sessionId,
             latestDispatchId: dispatchDoc.id,
             data: data,
             createdAt: Timestamp.now(),
@@ -68,7 +71,7 @@ class AssistantChat {
             await scheduler.create(common);
         };
         if (undefined !== messages && messages.length > 0) {
-            this.insertMessages(batch, document, userId, dispatchDoc.id, messages, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
+            this.insertMessages(batch, document, userId, dispatchDoc.id, messages, sessionId, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
             action = async (common) => {
                 await scheduler.createAndRun(common);
             };
@@ -103,12 +106,14 @@ class AssistantChat {
         const batch = this.db.batch();
         const status = "processing";
         const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
+        const sessionId = (0, crypto_1.randomUUID)();
         batch.set(document, {
             userId: userId,
             config: {
                 assistantConfig: assistantConfig
             },
             status: status,
+            sessionId: sessionId,
             latestDispatchId: dispatchDoc.id,
             data: data,
             createdAt: Timestamp.now(),
@@ -118,7 +123,7 @@ class AssistantChat {
         batch.set(dispatchDoc, {
             createdAt: Timestamp.now()
         });
-        this.insertMessages(batch, document, userId, dispatchDoc.id, messages, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
+        this.insertMessages(batch, document, userId, dispatchDoc.id, messages, sessionId, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
         await batch.commit();
         const command = {
             ownerId: userId,
@@ -147,17 +152,12 @@ class AssistantChat {
         const [state, newState] = await this.db.runTransaction(async (tx) => {
             const state = await this.checkAndGetState(tx, document, userId, (current) => false === ["closing", "complete", "failed"].includes(current));
             const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
+            const sessionId = (0, crypto_1.randomUUID)();
             tx.set(dispatchDoc, { createdAt: Timestamp.now() });
             const now = Timestamp.now();
-            const stackEntry = {
-                config: state.config,
-                createdAt: now,
-                latestDispatchId: state.latestDispatchId,
-                status: state.status,
-                meta: state.meta
-            };
+            const stackEntry = Object.assign({ config: state.config, createdAt: now, latestDispatchId: state.latestDispatchId, status: state.status, meta: state.meta }, (state.sessionId ? { sessionId: state.sessionId } : {}));
             tx.set(document.collection(Collections_1.Collections.contextStack).doc(), stackEntry);
-            const newState = Object.assign(Object.assign({}, state), { config: Object.assign(Object.assign({}, state.config), { assistantConfig: assistantConfig }), status: "processing", latestDispatchId: dispatchDoc.id, updatedAt: now, meta: chatMeta || null });
+            const newState = Object.assign(Object.assign({}, state), { config: Object.assign(Object.assign({}, state.config), { assistantConfig: assistantConfig }), status: "processing", latestDispatchId: dispatchDoc.id, updatedAt: now, meta: chatMeta || null, sessionId: sessionId });
             tx.set(document, newState);
             return [state, newState];
         });
@@ -170,7 +170,8 @@ class AssistantChat {
         await this.getScheduler(newState.config.assistantConfig).handOver(command, handOverMessages);
         return {
             formerAssistantConfig: state.config.assistantConfig,
-            formerChatMeta: state.meta
+            formerChatMeta: state.meta,
+            formerSessionId: state.sessionId
         };
     }
     /**
@@ -191,14 +192,15 @@ class AssistantChat {
             if (undefined === stackEntry || undefined === stackEntryData) {
                 return Promise.reject(new https_1.HttpsError("failed-precondition", "No state to pop"));
             }
-            const newState = Object.assign(Object.assign({}, state), { config: stackEntryData.config, status: stackEntryData.status, latestDispatchId: stackEntryData.latestDispatchId, updatedAt: Timestamp.now(), meta: stackEntryData.meta });
+            const newState = Object.assign(Object.assign(Object.assign({}, state), { config: stackEntryData.config, status: stackEntryData.status, latestDispatchId: stackEntryData.latestDispatchId, updatedAt: Timestamp.now(), meta: stackEntryData.meta }), (stackEntryData.sessionId ? { sessionId: stackEntryData.sessionId } : {}));
             tx.set(document, newState);
             tx.delete(stackEntry.ref);
             return state;
         });
         return {
             formerAssistantConfig: state.config.assistantConfig,
-            formerChatMeta: state.meta
+            formerChatMeta: state.meta,
+            formerSessionId: state.sessionId
         };
     }
     /**
@@ -213,7 +215,7 @@ class AssistantChat {
         logger.d("Posting user messages to: ", document.path);
         const state = await this.prepareDispatchWithChecks(document, userId, (current) => ["userInput"].includes(current), "processing", async (state) => {
             var _a;
-            await this.insertMessages(this.db.batch(), document, userId, state.latestDispatchId, messages, (_a = state.meta) === null || _a === void 0 ? void 0 : _a.userMessageMeta).commit();
+            await this.insertMessages(this.db.batch(), document, userId, state.latestDispatchId, messages, state.sessionId, (_a = state.meta) === null || _a === void 0 ? void 0 : _a.userMessageMeta).commit();
             const command = {
                 ownerId: userId,
                 chatDocumentPath: document.path,
@@ -235,11 +237,12 @@ class AssistantChat {
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
+     * @param sessionId Chat session ID
      * @param chatMeta Common message meta
      * @return Write batch
      * @private
      */
-    insertMessages(batch, document, userId, dispatchId, messages, chatMeta) {
+    insertMessages(batch, document, userId, dispatchId, messages, sessionId, chatMeta) {
         const messageList = document.collection(Collections_1.Collections.messages);
         messages.forEach((message, index) => {
             let text;
@@ -262,16 +265,7 @@ class AssistantChat {
             else {
                 text = String(message);
             }
-            batch.create(messageList.doc(), {
-                userId: userId,
-                dispatchId: dispatchId,
-                author: "user",
-                text: text,
-                data: data,
-                inBatchSortIndex: index,
-                createdAt: Timestamp.now(),
-                meta: meta
-            });
+            batch.create(messageList.doc(), Object.assign({ userId: userId, dispatchId: dispatchId, author: "user", text: text, data: data, inBatchSortIndex: index, createdAt: Timestamp.now(), meta: meta }, (sessionId ? { sessionId: sessionId } : {})));
         });
         return batch;
     }

@@ -10,4 +10,5 @@ export interface ChatMessage {
     readonly inBatchSortIndex: number;
     readonly createdAt: Timestamp;
     readonly meta: Meta | null;
+    readonly sessionId?: string;
 }
