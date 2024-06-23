@@ -1,6 +1,6 @@
 {
   "name": "@motorro/firebase-ai-chat-core",
-  "version": "7.2.2",
+  "version": "7.3.0",
   "description": "A core library to run AI chats on Firebase",
   "publishConfig": {
     "access": "public"
@@ -10,7 +10,7 @@
     "lib/*"
   ],
   "engines": {
-    "node": "18"
+    "node": ">=18"
   },
   "scripts": {
     "lint": "eslint --ext .js,.ts .",

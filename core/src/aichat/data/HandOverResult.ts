@@ -6,5 +6,6 @@ import {ChatMeta} from "./Meta";
  */
 export interface HandOverResult<CM extends ChatMeta = ChatMeta> {
     formerAssistantConfig: AssistantConfig,
-    formerChatMeta: CM | null
+    formerChatMeta: CM | null,
+    formerSessionId?: string
 }

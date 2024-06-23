@@ -24,6 +24,8 @@ import {HandOverResult} from "./data/HandOverResult";
 import {tagLogger} from "../logging";
 import {isStructuredMessage, NewMessage} from "./data/NewMessage";
 import {ChatCleaner} from "./workers/ChatCleaner";
+import {randomUUID} from "crypto";
+import {UUID} from "node:crypto";
 
 const logger = tagLogger("AssistantChat");
 
@@ -80,6 +82,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         const batch = this.db.batch();
         const status: ChatStatus = "processing";
         const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
+        const sessionId: UUID = randomUUID();
 
         batch.set(document, {
             userId: userId,
@@ -87,6 +90,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                 assistantConfig: assistantConfig
             },
             status: status,
+            sessionId: sessionId,
             latestDispatchId: dispatchDoc.id,
             data: data,
             createdAt: Timestamp.now(),
@@ -102,7 +106,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
             await scheduler.create(common);
         };
         if (undefined !== messages && messages.length > 0) {
-            this.insertMessages(batch, document, userId, dispatchDoc.id, messages, chatMeta?.userMessageMeta);
+            this.insertMessages(batch, document, userId, dispatchDoc.id, messages, sessionId, chatMeta?.userMessageMeta);
             action = async (common) => {
                 await scheduler.createAndRun(common);
             };
@@ -147,6 +151,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         const batch = this.db.batch();
         const status: ChatStatus = "processing";
         const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
+        const sessionId: UUID = randomUUID();
 
         batch.set(document, {
             userId: userId,
@@ -154,6 +159,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                 assistantConfig: assistantConfig
             },
             status: status,
+            sessionId: sessionId,
             latestDispatchId: dispatchDoc.id,
             data: data,
             createdAt: Timestamp.now(),
@@ -163,7 +169,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         batch.set(dispatchDoc, {
             createdAt: Timestamp.now()
         });
-        this.insertMessages(batch, document, userId, dispatchDoc.id, messages, chatMeta?.userMessageMeta);
+        this.insertMessages(batch, document, userId, dispatchDoc.id, messages, sessionId, chatMeta?.userMessageMeta);
         await batch.commit();
 
         const command: ChatCommandData = {
@@ -207,6 +213,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                 (current) => false === ["closing", "complete", "failed"].includes(current)
             );
             const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
+            const sessionId: UUID = randomUUID();
             tx.set(dispatchDoc, {createdAt: Timestamp.now()});
 
             const now = Timestamp.now();
@@ -215,7 +222,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                 createdAt: now,
                 latestDispatchId: state.latestDispatchId,
                 status: state.status,
-                meta: state.meta
+                meta: state.meta,
+                ...(state.sessionId ? {sessionId: state.sessionId} : {})
             };
             tx.set(document.collection(Collections.contextStack).doc(), stackEntry);
 
@@ -225,7 +233,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                 status: "processing",
                 latestDispatchId: dispatchDoc.id,
                 updatedAt: now,
-                meta: chatMeta || null
+                meta: chatMeta || null,
+                sessionId: sessionId
             };
             tx.set(document, newState);
 
@@ -242,7 +251,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
 
         return {
             formerAssistantConfig: state.config.assistantConfig,
-            formerChatMeta: state.meta
+            formerChatMeta: state.meta,
+            formerSessionId: state.sessionId
         };
     }
 
@@ -282,7 +292,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                 status: stackEntryData.status,
                 latestDispatchId: stackEntryData.latestDispatchId,
                 updatedAt: Timestamp.now(),
-                meta: stackEntryData.meta
+                meta: stackEntryData.meta,
+                ...(stackEntryData.sessionId ? {sessionId: stackEntryData.sessionId} : {})
             };
             tx.set(document, newState);
             tx.delete(stackEntry.ref);
@@ -292,7 +303,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
 
         return {
             formerAssistantConfig: state.config.assistantConfig,
-            formerChatMeta: state.meta
+            formerChatMeta: state.meta,
+            formerSessionId: state.sessionId
         };
     }
 
@@ -323,6 +335,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                     userId,
                     state.latestDispatchId,
                     messages,
+                    state.sessionId,
                     state.meta?.userMessageMeta
                 ).commit();
                 const command: ChatCommandData = {
@@ -349,6 +362,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
+     * @param sessionId Chat session ID
      * @param chatMeta Common message meta
      * @return Write batch
      * @private
@@ -359,7 +373,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         userId: string,
         dispatchId: string,
         messages: ReadonlyArray<NewMessage>,
-        chatMeta?: Meta
+        sessionId: string | undefined,
+        chatMeta?: Meta,
     ): FirebaseFirestore.WriteBatch {
         const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
         messages.forEach((message, index) => {
@@ -391,7 +406,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                     data: data,
                     inBatchSortIndex: index,
                     createdAt: Timestamp.now(),
-                    meta: meta
+                    meta: meta,
+                    ...(sessionId ? {sessionId: sessionId} : {})
                 }
             );
         });

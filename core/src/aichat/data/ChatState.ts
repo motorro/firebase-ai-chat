@@ -37,6 +37,12 @@ export interface ChatState<out C extends AssistantConfig, out DATA extends ChatD
     readonly status: ChatStatus
 
     /**
+     * Some session ID that is being added to each message
+     * Saved/restored when chat is handed over
+     */
+    readonly sessionId?: string
+
+    /**
      * Latest command dispatch ID
      */
     readonly latestDispatchId: string
@@ -79,6 +85,6 @@ export interface ChatStateUpdate<DATA> {
  * Chat context stack entry
  */
 // eslint-disable-next-line max-len
-export interface ChatContextStackEntry<out DATA extends ChatData> extends Pick<ChatState<AssistantConfig, DATA>, "config" | "status" | "latestDispatchId" | "meta"> {
+export interface ChatContextStackEntry<out DATA extends ChatData> extends Pick<ChatState<AssistantConfig, DATA>, "config" | "status" | "latestDispatchId" | "meta" | "sessionId"> {
     readonly createdAt: Timestamp
 }

@@ -63,7 +63,8 @@ export class RetrieveWorker extends OpenAiQueueWorker {
                     data: data,
                     inBatchSortIndex: latestInBatchId + index,
                     createdAt: FieldValue.serverTimestamp(),
-                    meta: meta
+                    meta: meta,
+                    ...(state.sessionId ? {sessionId: state.sessionId} : {})
                 }
             );
         });

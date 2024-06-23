@@ -87,6 +87,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param userId Owner user
      * @param dispatchId Dispatch ID
      * @param messages Messages to insert
+     * @param sessionId Chat session ID
      * @param chatMeta Common message meta
      * @return Write batch
      * @private
