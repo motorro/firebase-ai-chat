@@ -41,16 +41,7 @@ class RetrieveWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
             else {
                 text = String(message);
             }
-            batch.set(messageCollectionRef.doc(), {
-                userId: command.commonData.ownerId,
-                dispatchId: command.commonData.dispatchId,
-                author: "ai",
-                text: text,
-                data: data,
-                inBatchSortIndex: latestInBatchId + index,
-                createdAt: FieldValue.serverTimestamp(),
-                meta: meta
-            });
+            batch.set(messageCollectionRef.doc(), Object.assign({ userId: command.commonData.ownerId, dispatchId: command.commonData.dispatchId, author: "ai", text: text, data: data, inBatchSortIndex: latestInBatchId + index, createdAt: FieldValue.serverTimestamp(), meta: meta }, (state.sessionId ? { sessionId: state.sessionId } : {})));
         });
         await batch.commit();
         await this.updateConfig(control, state, () => ({ lastMessageId: newMessages.latestMessageId }));

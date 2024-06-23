@@ -81,16 +81,7 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
                 else {
                     text = String(message);
                 }
-                batch.set(messageCollectionRef.doc(), {
-                    userId: commonData.ownerId,
-                    dispatchId: commonData.dispatchId,
-                    author: message.author,
-                    text: text,
-                    data: data,
-                    inBatchSortIndex: latestInBatchId + index,
-                    createdAt: message.createdAt,
-                    meta: meta
-                });
+                batch.set(messageCollectionRef.doc(), Object.assign({ userId: commonData.ownerId, dispatchId: commonData.dispatchId, author: message.author, text: text, data: data, inBatchSortIndex: latestInBatchId + index, createdAt: message.createdAt, meta: meta }, (state.sessionId ? { sessionId: state.sessionId } : {})));
             });
             await batch.commit();
             await control.updateChatState({
