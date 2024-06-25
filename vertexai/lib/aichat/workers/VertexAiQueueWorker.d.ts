@@ -4,7 +4,7 @@ import { VertexAiAssistantConfig } from "../data/VertexAiAssistantConfig";
 import { AiWrapper } from "../AiWrapper";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { VertexAiChatCommand } from "../data/VertexAiChatCommand";
-export type VertexAiDispatchControl = DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>;
+export type VertexAiDispatchControl = DispatchControl<VertexAiChatActions, ChatData>;
 export declare abstract class VertexAiQueueWorker extends BaseChatWorker<VertexAiChatActions, VertexAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
     /**

@@ -25,7 +25,7 @@ import {
     ChatCleaner,
     ChatCleanupRegistrar,
     ChatCommand,
-    ChatCommandData,
+    ChatCommandData, ChatData,
     ChatMessage,
     ChatState,
     ChatStatus,
@@ -33,7 +33,9 @@ import {
     Collections, commonFormatContinuationError,
     Continuation,
     ContinuationRequest,
-    Dispatch, getReducerSuccess,
+    Dispatch,
+    getReducerSuccess,
+    MessageMiddleware,
     Meta,
     TaskScheduler,
     ToolCallRequest,
@@ -52,7 +54,6 @@ import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
 import {VertexAiChatActions} from "../src/aichat/data/VertexAiChatAction";
 import {VertexAiContinuationCommand} from "../src/aichat/data/VertexAiChatCommand";
-import {beforeEach} from "mocha";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -148,16 +149,14 @@ describe("Chat worker", function() {
         scheduler = imock<TaskScheduler>();
         cleaner = imock();
         cleanupRegistrar = imock();
+        when(cleaner.cleanup(anything())).thenResolve();
+        when(cleanupRegistrar.register(anything())).thenResolve();
 
         when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
     });
 
-    beforeEach(function() {
-        when(cleaner.cleanup(anything())).thenResolve();
-        when(cleanupRegistrar.register(anything())).thenResolve();
-    });
-
-    function createWorker(ToolContinuationDispatcherFactory?: ToolContinuationDispatcherFactory) {
+    // eslint-disable-next-line max-len
+    function createWorker(ToolContinuationDispatcherFactory?: ToolContinuationDispatcherFactory, messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>) {
         let factory: ToolContinuationDispatcherFactory;
         if (undefined !== ToolContinuationDispatcherFactory) {
             factory = ToolContinuationDispatcherFactory;
@@ -176,6 +175,7 @@ describe("Chat worker", function() {
             instance(cleanupRegistrar),
             () => instance(cleaner),
             false,
+            messageMiddleware || [],
             () => factory
         );
     }
@@ -292,6 +292,171 @@ describe("Chat worker", function() {
         }));
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
         createWorker();
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: postCommand
+        };
+
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<VertexAiAssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            data: {
+                value: "test2"
+            }
+        });
+
+        // eslint-disable-next-line max-len
+        const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: Data, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
+        thread.should.be.equal(threadId);
+        instructions.should.deep.include({instructions: instructions1});
+        messages.should.include(messages[0], messages[1]);
+        data.should.be.deep.equal(data);
+
+        const newChatMessages = await chatMessages.get();
+        newChatMessages.docs.should.have.lengthOf(4);
+        const insertedData = newChatMessages.docs
+            .map((doc: QueryDocumentSnapshot<DocumentData>) => doc.data())
+            .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
+        insertedData[0].should.deep.include({
+            userId: userId,
+            author: "user",
+            text: messages[0]
+        });
+        insertedData[1].should.deep.include({
+            userId: userId,
+            author: "user",
+            text: messages[1]
+        });
+        insertedData[2].should.deep.include({
+            userId: userId,
+            author: "ai",
+            text: aiMessages[0].text,
+            meta: {
+                name: "ai"
+            }
+        });
+        insertedData[3].should.deep.include({
+            userId: userId,
+            author: "ai",
+            text: aiMessages[1].text,
+            meta: {
+                name: "ai"
+            }
+        });
+    });
+
+    it("processes post with message middleware", async function() {
+        await createChat(threadId, "processing", dispatchId);
+        when(wrapper.postMessage<Data>(anything(), anything(), anything(), anything(), anything())).thenResolve(Continuation.resolve({
+            messages: aiMessages,
+            data: {
+                value: "test2"
+            }
+        }));
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        let middlewareCalled = false;
+
+        createWorker(undefined, [
+            async (
+                messages,
+                chatDocumentPath,
+                _chatState,
+                control
+            ) => {
+                messages.length.should.equal(2);
+                chatDocumentPath.should.equal(chatDoc.path);
+                await control.next(messages);
+                middlewareCalled = true;
+            }
+        ]);
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: postCommand
+        };
+
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<VertexAiAssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            data: {
+                value: "test2"
+            }
+        });
+
+        // eslint-disable-next-line max-len
+        const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: Data, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
+        thread.should.be.equal(threadId);
+        instructions.should.deep.include({instructions: instructions1});
+        messages.should.include(messages[0], messages[1]);
+        data.should.be.deep.equal(data);
+
+        const newChatMessages = await chatMessages.get();
+        newChatMessages.docs.should.have.lengthOf(4);
+        const insertedData = newChatMessages.docs
+            .map((doc: QueryDocumentSnapshot<DocumentData>) => doc.data())
+            .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
+        insertedData[0].should.deep.include({
+            userId: userId,
+            author: "user",
+            text: messages[0]
+        });
+        insertedData[1].should.deep.include({
+            userId: userId,
+            author: "user",
+            text: messages[1]
+        });
+        insertedData[2].should.deep.include({
+            userId: userId,
+            author: "ai",
+            text: aiMessages[0].text,
+            meta: {
+                name: "ai"
+            }
+        });
+        insertedData[3].should.deep.include({
+            userId: userId,
+            author: "ai",
+            text: aiMessages[1].text,
+            meta: {
+                name: "ai"
+            }
+        });
+
+        middlewareCalled.should.be.true;
+    });
+
+    it("message middleware inserts messages", async function() {
+        await createChat(threadId, "processing", dispatchId);
+        when(wrapper.postMessage<Data>(anything(), anything(), anything(), anything(), anything())).thenResolve(Continuation.resolve({
+            messages: aiMessages,
+            data: {
+                value: "test2"
+            }
+        }));
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        createWorker(undefined, [
+            async (
+                messages,
+                _chatDocumentPath,
+                _chatState,
+                control
+            ) => {
+                await control.saveMessages(messages);
+            }
+        ]);
 
         const request: Request<ChatCommand<unknown>> = {
             ...context,

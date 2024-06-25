@@ -64,20 +64,19 @@ class DispatchRunner {
             return;
         }
         const updateState = async (state) => {
-            return await this.db.runTransaction(async (tx) => {
+            await this.db.runTransaction(async (tx) => {
                 const stateData = (await tx.get(doc)).data();
                 if (command.commonData.dispatchId === (stateData === null || stateData === void 0 ? void 0 : stateData.latestDispatchId)) {
                     if (this.logData) {
                         (0, logging_1.tagLogger)("DATA").d(`Updating document state of ${doc.path}:`, JSON.stringify(state));
                     }
                     tx.set(doc, Object.assign(Object.assign({}, state), { updatedAt: FieldValue.serverTimestamp() }), { merge: true });
-                    return true;
                 }
                 else {
                     logger.d("Document has dispatch another command. Data update cancelled");
-                    return false;
                 }
             });
+            return (await doc.get()).data();
         };
         const fail = async (e) => {
             await updateState({

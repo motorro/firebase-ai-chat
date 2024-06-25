@@ -6,7 +6,8 @@ import {
     ChatState,
     Continuation,
     ContinuationRequest,
-    DispatchControl, isStructuredMessage, Meta,
+    DispatchControl,
+    MessageMiddleware,
     tagLogger,
     TaskScheduler,
     ToolCallRequest,
@@ -30,6 +31,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private readonly instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>;
     protected readonly getDispatcherFactory: () => ToolContinuationDispatcherFactory;
+    private readonly messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>;
 
     /**
      * Constructor
@@ -40,6 +42,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
      * @param getDispatcherFactory Tool dispatch factory
      * @param cleaner Chat cleaner
      * @param logData Logs chat data if true
+     * @param messageMiddleware Optional Message processing middleware
      */
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -49,11 +52,13 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
         instructions: Readonly<Record<string, VertexAiSystemInstructions<any>>>,
         getDispatcherFactory: () => ToolContinuationDispatcherFactory,
         cleaner: ChatCleaner,
-        logData: boolean
+        logData: boolean,
+        messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>
     ) {
         super(firestore, scheduler, wrapper, cleaner, logData);
         this.instructions = instructions;
         this.getDispatcherFactory = getDispatcherFactory;
+        this.messageMiddleware = messageMiddleware;
     }
 
     /**
@@ -73,7 +78,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
         dispatcherId: string,
         instructions: VertexAiSystemInstructions<ChatData>,
         soFar: ChatData,
-        updateStateData: (data: ChatData) => Promise<boolean>
+        updateStateData: (data: ChatData) => Promise<ChatData>
     ): Promise<Continuation<PostMessageResult<ChatData>>>;
 
     /**
@@ -87,7 +92,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
     protected getPostDispatch(
         command: VertexAiChatCommand,
         dispatcherId: string,
-        updateData: (data: ChatData) => Promise<boolean>
+        updateData: (data: ChatData) => Promise<ChatData>
     ): (data: ChatData, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<ChatData>>> {
         const dispatcher = this.getDispatcherFactory().getDispatcher<VertexAiChatActions, VertexAiContinuationCommand, ChatData>(
             command.commonData.chatDocumentPath,
@@ -117,10 +122,9 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
     async doDispatch(
         command: VertexAiChatCommand,
         state: ChatState<VertexAiAssistantConfig, ChatData>,
-        control: DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>
+        control: DispatchControl<VertexAiChatActions, ChatData>
     ): Promise<void> {
         logger.d("Posting messages...");
-        const commonData = command.commonData;
         const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             logger.e("Thread ID is not defined at message posting");
@@ -139,56 +143,26 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
             instructions,
             state.data,
             async (data) => {
-                return control.updateChatState({
-                    data: data
-                });
+                return (await control.updateChatState({data: data})).data;
             }
         );
 
-        const messageCollectionRef = this.getMessageCollection(commonData.chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(commonData.chatDocumentPath, commonData.dispatchId);
-        const batch = this.db.batch();
-
         if (response.isResolved()) {
-            response.value.messages.forEach((message, index) => {
-                let text: string;
-                let data: Readonly<Record<string, unknown>> | null = null;
-                let meta: Meta | null = ("ai" === message.author ? state.meta?.aiMessageMeta : state.meta?.userMessageMeta) || null;
-                if (isStructuredMessage(message)) {
-                    text = message.text;
-                    data = message.data || null;
-                    if (message.meta) {
-                        if (null != meta) {
-                            meta = {...meta, ...message.meta};
-                        } else {
-                            meta = message.meta;
-                        }
-                    }
-                } else {
-                    text = String(message);
-                }
-
-                batch.set(
-                    messageCollectionRef.doc(),
-                    {
-                        userId: commonData.ownerId,
-                        dispatchId: commonData.dispatchId,
-                        author: message.author,
-                        text: text,
-                        data: data,
-                        inBatchSortIndex: latestInBatchId + index,
-                        createdAt: message.createdAt,
-                        meta: meta,
-                        ...(state.sessionId ? {sessionId: state.sessionId} : {})
-                    }
-                );
-            });
-            await batch.commit();
-            await control.updateChatState({
-                data: response.value.data
-            });
             logger.d("Resolved");
-            await this.continueNextInQueue(control, command);
+
+            await this.processMessages(
+                command,
+                await control.updateChatState({
+                    data: response.value.data
+                }),
+                async (messages, _document, _state, mpc) => {
+                    await mpc.saveMessages(messages);
+                    await this.continueNextInQueue(control, command);
+                },
+                control,
+                this.messageMiddleware,
+                response.value.messages
+            );
         } else {
             logger.d("Suspended");
         }
@@ -206,7 +180,7 @@ export class PostWorker extends BasePostWorker {
         dispatcherId: string,
         instructions: VertexAiSystemInstructions<ChatData>,
         soFar: ChatData,
-        updateStateData: (data: ChatData) => Promise<boolean>
+        updateStateData: (data: ChatData) => Promise<ChatData>
     ): Promise<Continuation<PostMessageResult<ChatData>>> {
         return await this.wrapper.postMessage(
             threadId,
@@ -229,7 +203,7 @@ export class ExplicitPostWorker extends BasePostWorker {
         dispatcherId: string,
         instructions: VertexAiSystemInstructions<ChatData>,
         soFar: ChatData,
-        updateStateData: (data: ChatData) => Promise<boolean>
+        updateStateData: (data: ChatData) => Promise<ChatData>
     ): Promise<Continuation<PostMessageResult<ChatData>>> {
         return await this.wrapper.postMessage(
             threadId,
@@ -252,7 +226,7 @@ export class ContinuePostWorker extends BasePostWorker {
         dispatcherId: string,
         instructions: VertexAiSystemInstructions<ChatData>,
         soFar: ChatData,
-        updateStateData: (data: ChatData) => Promise<boolean>
+        updateStateData: (data: ChatData) => Promise<ChatData>
     ): Promise<Continuation<PostMessageResult<ChatData>>> {
         const dispatcher = this.getDispatcherFactory().getDispatcher<VertexAiChatActions, VertexAiContinuationCommand, ChatData>(
             command.commonData.chatDocumentPath,

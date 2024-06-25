@@ -5,5 +5,5 @@ import { VertexAiQueueWorker } from "./VertexAiQueueWorker";
 import { VertexAiChatCommand } from "../data/VertexAiChatCommand";
 export declare class SwitchToUserWorker extends VertexAiQueueWorker {
     static isSupportedAction(action: unknown): action is "switchToUserInput";
-    doDispatch(command: VertexAiChatCommand, _state: ChatState<VertexAiAssistantConfig, ChatData>, control: DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>): Promise<void>;
+    doDispatch(command: VertexAiChatCommand, _state: ChatState<VertexAiAssistantConfig, ChatData>, control: DispatchControl<VertexAiChatActions, ChatData>): Promise<void>;
 }

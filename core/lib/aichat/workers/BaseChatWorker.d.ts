@@ -4,14 +4,16 @@ import CollectionReference = firestore.CollectionReference;
 import { AssistantConfig, ChatData, ChatState } from "../data/ChatState";
 import { TaskScheduler } from "../TaskScheduler";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
-import { Meta } from "../data/Meta";
+import { ChatMeta, Meta } from "../data/Meta";
 import { ChatCommand } from "../data/ChatCommand";
 import { ChatWorker, DispatchControl } from "./ChatWorker";
 import { ChatCleaner } from "./ChatCleaner";
+import { NewMessage } from "../data/NewMessage";
+import { MessageMiddleware } from "./MessageMiddleware";
 /**
  * Basic `OpenAiChatWorker` implementation that maintains chat state and dispatch runs
  */
-export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends ChatData> implements ChatWorker {
+export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends ChatData, CM extends ChatMeta = ChatMeta> implements ChatWorker {
     protected readonly db: FirebaseFirestore.Firestore;
     protected readonly scheduler: TaskScheduler;
     private readonly runner;
@@ -44,7 +46,7 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * @return Partial chat state to set after dispatched
      * @protected
      */
-    protected abstract doDispatch(command: ChatCommand<A>, state: ChatState<AC, DATA>, control: DispatchControl<A, AC, DATA>): Promise<void>;
+    protected abstract doDispatch(command: ChatCommand<A>, state: ChatState<AC, DATA, CM>, control: DispatchControl<A, DATA, CM>): Promise<void>;
     /**
      * Creates message collection reference
      * @param chatDocumentPath Chat document path
@@ -68,7 +70,36 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * @protected
      */
     protected getMessages(chatDocumentPath: string, dispatchId?: string): Promise<ReadonlyArray<ChatMessage>>;
+    /**
+     * Retrieves next batch index
+     * @param chatDocumentPath Chat document
+     * @param dispatchId Dispatch ID
+     * @protected
+     * @returns Next batch index
+     */
     protected getNextBatchSortIndex(chatDocumentPath: string, dispatchId?: string): Promise<number>;
+    /**
+     * Saves chat messages
+     * @param ownerId Chat owner
+     * @param chatDocumentPath Chat document path
+     * @param dispatchId Dispatch ID
+     * @param sessionId Session ID
+     * @param messages A list of messages to save
+     * @param chatMeta Chat metadata
+     * @protected
+     */
+    private saveMessages;
+    /**
+     * Runs AI message processing
+     * @param command Chat command
+     * @param chatState Current chat state
+     * @param defaultProcessor Default message processor
+     * @param control Dispatch control
+     * @param middleware Message middleware
+     * @param messages Messages to process
+     * @protected
+     */
+    protected processMessages(command: ChatCommand<A>, chatState: ChatState<AssistantConfig, DATA, CM>, defaultProcessor: MessageMiddleware<DATA, CM>, control: DispatchControl<A, DATA, CM>, middleware: ReadonlyArray<MessageMiddleware<DATA, CM>>, messages: ReadonlyArray<NewMessage>): Promise<void>;
     /**
      * Runs dispatch with concurrency and duplication check
      * https://mm.tt/app/map/3191589380?t=UdskfqiKnl

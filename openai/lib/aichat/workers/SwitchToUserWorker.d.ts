@@ -5,5 +5,5 @@ import { OpenAiQueueWorker } from "./OpenAiQueueWorker";
 import { OpenAiChatCommand } from "../data/OpenAiChatCommand";
 export declare class SwitchToUserWorker extends OpenAiQueueWorker {
     static isSupportedAction(action: unknown): action is OpenAiChatAction;
-    doDispatch(command: OpenAiChatCommand, _state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
+    doDispatch(command: OpenAiChatCommand, _state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, ChatData>): Promise<void>;
 }

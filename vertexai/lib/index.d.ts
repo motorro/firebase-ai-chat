@@ -1,4 +1,4 @@
-import { AssistantChat, ChatData, ChatWorker, CommandScheduler, TaskScheduler, ToolsContinuationScheduler, ToolCallRequest, DispatchError, ChatCleaner } from "@motorro/firebase-ai-chat-core";
+import { AssistantChat, ChatData, ChatWorker, CommandScheduler, TaskScheduler, ToolsContinuationScheduler, ToolCallRequest, DispatchError, ChatCleaner, MessageMiddleware } from "@motorro/firebase-ai-chat-core";
 import { Functions } from "firebase-admin/lib/functions";
 import { firestore } from "firebase-admin";
 import { AiWrapper } from "./aichat/AiWrapper";
@@ -12,6 +12,7 @@ export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from
 export { FirebaseQueueTaskScheduler } from "@motorro/firebase-ai-chat-core";
 export { Continuation, SuspendedContinuation, ResolvedContinuation } from "@motorro/firebase-ai-chat-core";
 export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "@motorro/firebase-ai-chat-core";
+export { PartialChatState, MessageProcessingControl, MessageMiddleware } from "@motorro/firebase-ai-chat-core";
 export { AiWrapper, VertexAiSystemInstructions, VertexAiMessageMapper };
 export { VertexAiTools } from "./aichat/data/VertexAiSystemInstructions";
 export { VertexAiAssistantConfig } from "./aichat/data/VertexAiAssistantConfig";
@@ -46,9 +47,10 @@ export interface AiChat {
      * @param instructions Model instructions
      * @param messageMapper Maps messages to/from VertexAI
      * @param chatCleaner Optional chat resource cleaner extension
+     * @param messageMiddleware Optional Message processing middleware
      * @return Worker interface
      */
-    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>, messageMapper?: VertexAiMessageMapper, chatCleaner?: ChatCleaner): ChatWorker;
+    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>, messageMapper?: VertexAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>): ChatWorker;
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
      * @param queueName The name of the queue the dispatch will be continued on

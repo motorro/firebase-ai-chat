@@ -14,7 +14,8 @@ import {
     commonFormatContinuationError,
     ChatCleaner,
     CommonChatCleaner,
-    CommonChatCleanupRegistrar
+    CommonChatCleanupRegistrar,
+    MessageMiddleware
 } from "@motorro/firebase-ai-chat-core";
 import {AiWrapper} from "./aichat/AiWrapper";
 import {OpenAiChatWorker} from "./aichat/OpenAiChatWorker";
@@ -85,6 +86,7 @@ export {
     isContinuationCommand,
     isContinuationCommandRequest
 } from "@motorro/firebase-ai-chat-core";
+export {PartialChatState, MessageProcessingControl, MessageMiddleware} from "@motorro/firebase-ai-chat-core";
 
 export {
     AiWrapper,
@@ -133,6 +135,7 @@ export interface AiChat {
      * @param dispatchers Tools dispatchers
      * @param messageMapper Maps messages to/from OpenAI
      * @param chatCleaner Optional chat resource cleaner extension
+     * @param messageMiddleware Optional Message processing middleware
      * @return Worker interface
      */
     worker(
@@ -140,7 +143,8 @@ export interface AiChat {
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>,
         messageMapper?: OpenAiMessageMapper,
-        chatCleaner?: ChatCleaner
+        chatCleaner?: ChatCleaner,
+        messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>
     ): OpenAiChatWorker
 
     /**
@@ -207,7 +211,8 @@ export function factory(
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
             ToolsDispatcher<any, any>>>,
             messageMapper?: OpenAiMessageMapper,
-            chatCleaner?: ChatCleaner
+            chatCleaner?: ChatCleaner,
+            messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>
         ): OpenAiChatWorker {
             return new OpenAiChatWorker(
                 firestore,
@@ -217,6 +222,7 @@ export function factory(
                 _chatCleanupRegistrar,
                 (queueName) => _chatCleanerFactory(queueName, chatCleaner),
                 logData,
+                messageMiddleware || []
             );
         },
         continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {

@@ -14,7 +14,7 @@ export interface ToolsContinuationDispatcher<A, C extends ContinuationCommand<A>
      * @param getContinuationCommand Continuation command factory
      * @return Tool calls continuation with at-once processed data or suspended
      */
-    dispatch(soFar: DATA, toolCalls: ReadonlyArray<ToolCallRequest>, updateChatData: (data: DATA) => Promise<boolean>, getContinuationCommand: (continuationRequest: ContinuationRequest) => C): Promise<Continuation<ToolCallsResult<DATA>>>;
+    dispatch(soFar: DATA, toolCalls: ReadonlyArray<ToolCallRequest>, updateChatData: (data: DATA) => Promise<DATA>, getContinuationCommand: (continuationRequest: ContinuationRequest) => C): Promise<Continuation<ToolCallsResult<DATA>>>;
     /**
      * Dispatches next tool call
      * @param soFar Chat state so far
@@ -23,7 +23,7 @@ export interface ToolsContinuationDispatcher<A, C extends ContinuationCommand<A>
      * @param getContinuationCommand Continuation command factory
      * @return Tool calls continuation with at-once processed data or suspended
      */
-    dispatchCommand(soFar: DATA, command: C, updateChatData: (data: DATA) => Promise<boolean>, getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>): Promise<Continuation<ToolCallsResult<DATA>>>;
+    dispatchCommand(soFar: DATA, command: C, updateChatData: (data: DATA) => Promise<DATA>, getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>): Promise<Continuation<ToolCallsResult<DATA>>>;
 }
 /**
  * Continuation dispatcher implementation
@@ -44,8 +44,8 @@ export declare class ToolsContinuationDispatcherImpl<A, C extends ContinuationCo
      * and thus fails continuation
      */
     constructor(chatDocumentPath: string, dispatcherId: string, db: FirebaseFirestore.Firestore, dispatchRunner: ToolsContinuationDispatchRunner<DATA>, logData?: boolean);
-    dispatch(soFar: DATA, toolCalls: ReadonlyArray<ToolCallRequest>, updateChatData: (data: DATA) => Promise<boolean>, getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>): Promise<Continuation<ToolCallsResult<DATA>>>;
-    dispatchCommand(soFar: DATA, command: C, updateChatData: (data: DATA) => Promise<boolean>, getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>): Promise<Continuation<ToolCallsResult<DATA>>>;
+    dispatch(soFar: DATA, toolCalls: ReadonlyArray<ToolCallRequest>, updateChatData: (data: DATA) => Promise<DATA>, getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>): Promise<Continuation<ToolCallsResult<DATA>>>;
+    dispatchCommand(soFar: DATA, command: C, updateChatData: (data: DATA) => Promise<DATA>, getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>): Promise<Continuation<ToolCallsResult<DATA>>>;
     private doDispatch;
     private getChatData;
 }

@@ -12,7 +12,7 @@ export class SwitchToUserWorker extends VertexAiQueueWorker {
     async doDispatch(
         command: VertexAiChatCommand,
         _state: ChatState<VertexAiAssistantConfig, ChatData>,
-        control: DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>
+        control: DispatchControl<VertexAiChatActions, ChatData>
     ): Promise<void> {
         await this.continueQueue(control, command);
     }

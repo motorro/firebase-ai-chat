@@ -37,7 +37,7 @@ export class CreateWorker extends VertexAiQueueWorker {
     async doDispatch(
         command: VertexAiChatCommand,
         state: ChatState<VertexAiAssistantConfig, ChatData>,
-        control: DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>
+        control: DispatchControl<VertexAiChatActions, ChatData>
     ): Promise<void> {
         if (state.config.assistantConfig.threadId) {
             logger.d("Already has a thread:", state.config.assistantConfig.threadId);

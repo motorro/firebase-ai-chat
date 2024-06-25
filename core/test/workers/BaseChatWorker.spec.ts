@@ -4,6 +4,7 @@ import {db, test} from "../functionsTest";
 import {anything, capture, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
 import {AiConfig, chatState, data, Data, DispatchAction, userId} from "../mock";
 import {
+    BaseChatWorker,
     ChatCommand,
     ChatCommandData,
     ChatError,
@@ -15,8 +16,7 @@ import {
     DispatchControl,
     Meta,
     Run,
-    TaskScheduler,
-    BaseChatWorker
+    TaskScheduler
 } from "../../src";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {expect} from "chai";
@@ -122,7 +122,61 @@ describe("Base chat worker", function() {
             async (
                 command: ChatCommand<DispatchAction>,
                 state: ChatState<AiConfig, Data>,
-                control: DispatchControl<DispatchAction, AiConfig, Data>
+                control: DispatchControl<DispatchAction, Data>
+            ): Promise<void> => {
+                passedCommand = command;
+                passedState = state;
+                await control.updateChatState({status: "complete"});
+                return Promise.resolve();
+            }
+        );
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: closeCommand
+        };
+
+        const result = await worker.dispatch(request);
+
+        result.should.be.true;
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<AiConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            status: "complete"
+        });
+
+        expect(passedReq).to.be.equal(request);
+        expect(passedCommand).to.be.deep.equal(closeCommand);
+        expect(passedState).to.deep.equal({
+            ...chatState,
+            status: "processing",
+            latestDispatchId: dispatchId
+        });
+    });
+
+    it("processes messages", async function() {
+        await createChat("processing", dispatchId);
+
+        let passedReq: Request<ChatCommand<unknown>> | null = null;
+        let passedCommand: ChatCommand<DispatchAction> | null = null;
+        let passedState: ChatState<AiConfig, Data> | null = null;
+
+        const worker = new TestWorker(
+            db,
+            instance(scheduler),
+            // eslint-disable-next-line max-len
+            (req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<DispatchAction>> => {
+                passedReq = req;
+                return true;
+            },
+            // eslint-disable-next-line max-len
+            async (
+                command: ChatCommand<DispatchAction>,
+                state: ChatState<AiConfig, Data>,
+                control: DispatchControl<DispatchAction, Data>
             ): Promise<void> => {
                 passedCommand = command;
                 passedState = state;
@@ -495,19 +549,17 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     private readonly doDispatchImpl: (
         command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
-        control: DispatchControl<DispatchAction, AiConfig, Data>
+        control: DispatchControl<DispatchAction, Data>
     ) => Promise<void>;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
-        // eslint-disable-next-line max-len
         isSupportedCommand: (req: Request<ChatCommand<unknown>>) => req is Request<ChatCommand<DispatchAction>>,
-        // eslint-disable-next-line max-len
         doDispatch: (
             command: ChatCommand<DispatchAction>,
             state: ChatState<AiConfig, Data>,
-            control: DispatchControl<DispatchAction, AiConfig, Data>
+            control: DispatchControl<DispatchAction, Data>
         ) => Promise<void>
     ) {
         super(firestore, scheduler, instance(imock()), false);
@@ -522,7 +574,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     protected doDispatch(
         command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
-        control: DispatchControl<DispatchAction, AiConfig, Data>
+        control: DispatchControl<DispatchAction, Data>
     ): Promise<void> {
         return this.doDispatchImpl(command, state, control);
     }

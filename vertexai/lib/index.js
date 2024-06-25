@@ -74,8 +74,8 @@ taskScheduler, formatContinuationError = firebase_ai_chat_core_1.commonFormatCon
         },
         worker: function (model, threadsPath, 
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        instructions, messageMapper, chatCleaner) {
-            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath, debugAi, messageMapper), instructions, formatContinuationError, _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData);
+        instructions, messageMapper, chatCleaner, messageMiddleware) {
+            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath, debugAi, messageMapper), instructions, formatContinuationError, _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData, messageMiddleware || []);
         },
         continuationScheduler(queueName) {
             return _continuationSchedulerFactory.create(queueName);

@@ -3,10 +3,11 @@ import { BoundChatCommand, ChatCommand } from "../data/ChatCommand";
 import { TaskScheduler } from "../TaskScheduler";
 import { AssistantConfig, ChatData, ChatState } from "../data/ChatState";
 import { ChatCleaner } from "./ChatCleaner";
+import { ChatMeta } from "../data/Meta";
 /**
  * Runs task locking on current dispatch and run
  */
-export declare class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData> {
+export declare class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
     protected readonly db: FirebaseFirestore.Firestore;
     protected readonly scheduler: TaskScheduler;
     protected readonly cleaner: ChatCleaner;
@@ -19,5 +20,5 @@ export declare class DispatchRunner<A, AC extends AssistantConfig, DATA extends 
      * @param logData If true, logs data when dispatching
      */
     constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, cleaner: ChatCleaner, logData: boolean);
-    dispatchWithCheck(req: Request<ChatCommand<A>> | Request<BoundChatCommand<A>>, run: (soFar: ChatState<AC, DATA>, command: ChatCommand<A> | BoundChatCommand<A>, updateState: (update: Partial<ChatState<AC, DATA>>) => Promise<boolean>) => Promise<void>): Promise<void>;
+    dispatchWithCheck(req: Request<ChatCommand<A>> | Request<BoundChatCommand<A>>, run: (soFar: ChatState<AC, DATA, CM>, command: ChatCommand<A> | BoundChatCommand<A>, updateState: (update: Partial<ChatState<AssistantConfig, DATA, CM>>) => Promise<ChatState<AssistantConfig, DATA, CM>>) => Promise<void>): Promise<void>;
 }

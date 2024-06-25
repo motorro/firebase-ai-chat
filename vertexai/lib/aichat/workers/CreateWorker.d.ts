@@ -8,5 +8,5 @@ export declare class CreateWorker extends VertexAiQueueWorker {
     private readonly cleanupRegistrar;
     static isSupportedAction(action: unknown): action is "create";
     constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, cleaner: ChatCleaner, logData: boolean, cleanupRegistrar: ChatCleanupRegistrar);
-    doDispatch(command: VertexAiChatCommand, state: ChatState<VertexAiAssistantConfig, ChatData>, control: DispatchControl<VertexAiChatActions, VertexAiAssistantConfig, ChatData>): Promise<void>;
+    doDispatch(command: VertexAiChatCommand, state: ChatState<VertexAiAssistantConfig, ChatData>, control: DispatchControl<VertexAiChatActions, ChatData>): Promise<void>;
 }

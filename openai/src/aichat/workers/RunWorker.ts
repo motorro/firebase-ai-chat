@@ -40,7 +40,7 @@ export class RunWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
+        control: DispatchControl<OpenAiChatActions, ChatData>
     ): Promise<void> {
         logger.d("Running assistant...");
         const threadId = state.config.assistantConfig.threadId;
@@ -73,9 +73,7 @@ export class RunWorker extends OpenAiQueueWorker {
                 data,
                 toolCalls,
                 async (data) => {
-                    return control.updateChatState({
-                        data: data
-                    });
+                    return (await control.updateChatState({data: data})).data;
                 },
                 getContinuationCommand
             );

@@ -2,8 +2,8 @@ import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {
     ChatCleaner,
     ChatCleanupRegistrar,
-    ChatCommand,
-    ChatWorker, DispatchError,
+    ChatCommand, ChatData,
+    ChatWorker, DispatchError, MessageMiddleware,
     Meta,
     tagLogger,
     TaskScheduler, ToolCallRequest,
@@ -34,6 +34,7 @@ export class VertexAiChatWorker implements ChatWorker {
     private readonly chatCleanerFactory: (queueName: string) => ChatCleaner;
     private readonly chatCleanupRegistrar: ChatCleanupRegistrar;
     private readonly logData: boolean;
+    private readonly messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>;
 
     private getWorker(command: VertexAiChatCommand, queueName: string): ChatWorker | undefined {
         logger.d("Dispatching VertexAi command...");
@@ -49,7 +50,8 @@ export class VertexAiChatWorker implements ChatWorker {
                 this.instructions,
                 this.getContinuationFactory,
                 cleaner,
-                this.logData
+                this.logData,
+                this.messageMiddleware
             );
         }
 
@@ -64,11 +66,29 @@ export class VertexAiChatWorker implements ChatWorker {
         }
         if (PostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with PostWorker");
-            return new PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData);
+            return new PostWorker(
+                this.firestore,
+                this.scheduler,
+                this.wrapper,
+                this.instructions,
+                this.getContinuationFactory,
+                cleaner,
+                this.logData,
+                this.messageMiddleware
+            );
         }
         if (ExplicitPostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with ExplicitPostWorker");
-            return new ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData);
+            return new ExplicitPostWorker(
+                this.firestore,
+                this.scheduler,
+                this.wrapper,
+                this.instructions,
+                this.getContinuationFactory,
+                cleaner,
+                this.logData,
+                this.messageMiddleware
+            );
         }
         if (SwitchToUserWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with SwitchToUserWorker");
@@ -89,6 +109,7 @@ export class VertexAiChatWorker implements ChatWorker {
         chatCleanupRegistrar: ChatCleanupRegistrar,
         chatCleanerFactory: (queueName: string) => ChatCleaner,
         logData: boolean,
+        messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>,
         getContinuationFactory?: () => ToolContinuationDispatcherFactory,
     ) {
         this.firestore = firestore;
@@ -115,6 +136,7 @@ export class VertexAiChatWorker implements ChatWorker {
         this.chatCleanerFactory = chatCleanerFactory;
         this.chatCleanupRegistrar = chatCleanupRegistrar;
         this.logData = logData;
+        this.messageMiddleware = messageMiddleware;
     }
 
     async dispatch(

@@ -3,7 +3,9 @@ import {
     ChatCleaner,
     ChatCleanupRegistrar,
     ChatCommand,
+    ChatData,
     ChatWorker,
+    MessageMiddleware,
     Meta,
     tagLogger,
     TaskScheduler,
@@ -33,6 +35,7 @@ export class OpenAiChatWorker implements ChatWorker {
     private readonly chatCleanerFactory: (queueName: string) => ChatCleaner;
     private readonly chatCleanupRegistrar: ChatCleanupRegistrar;
     private readonly logData: boolean;
+    private readonly messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -41,7 +44,8 @@ export class OpenAiChatWorker implements ChatWorker {
         toolsDispatchFactory: ToolContinuationDispatcherFactory,
         chatCleanupRegistrar: ChatCleanupRegistrar,
         chatCleanerFactory: (queueName: string) => ChatCleaner,
-        logData: boolean
+        logData: boolean,
+        messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>
     ) {
         this.firestore = firestore;
         this.firestore = firestore;
@@ -51,6 +55,7 @@ export class OpenAiChatWorker implements ChatWorker {
         this.chatCleanerFactory = chatCleanerFactory;
         this.chatCleanupRegistrar = chatCleanupRegistrar;
         this.logData = logData;
+        this.messageMiddleware = messageMiddleware;
     }
 
     private getWorker(command: OpenAiChatCommand, queueName: string): ChatWorker | undefined {
@@ -89,7 +94,7 @@ export class OpenAiChatWorker implements ChatWorker {
         }
         if (RetrieveWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with RetrieveWorker");
-            return new RetrieveWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
+            return new RetrieveWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.messageMiddleware);
         }
         if (RunWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with RunWorker");

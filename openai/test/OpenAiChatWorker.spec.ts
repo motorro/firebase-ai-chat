@@ -15,7 +15,7 @@ import {assistantId, chatState, Data, data, dispatcherId, threadId, userId} from
 import {
     ChatCleaner, ChatCleanupRegistrar,
     ChatCommand,
-    ChatCommandData,
+    ChatCommandData, ChatData,
     ChatError,
     ChatMessage,
     ChatState,
@@ -23,7 +23,7 @@ import {
     ChatWorker,
     Collections,
     Continuation, ContinuationRequest,
-    Dispatch, getReducerSuccess,
+    Dispatch, getReducerSuccess, MessageMiddleware,
     Meta,
     Run,
     TaskScheduler, ToolCallRequest,
@@ -40,7 +40,6 @@ import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
 import {OpenAiChatActions} from "../lib/aichat/data/OpenAiChatAction";
 import {OpenAiContinuationCommand} from "../lib/aichat/data/OpenAiChatCommand";
-import {beforeEach} from "mocha";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -142,7 +141,11 @@ describe("Chat worker", function() {
         toolContinuationDispatcherFactory = imock<ToolContinuationDispatcherFactory>();
         cleaner = imock();
         cleanupRegistrar = imock();
+        when(cleaner.cleanup(anything())).thenResolve();
+        when(cleanupRegistrar.register(anything())).thenResolve();
+    });
 
+    const createWorker = (middleware?: ReadonlyArray<MessageMiddleware<ChatData>>) => {
         worker = new OpenAiChatWorker(
             db,
             instance(scheduler),
@@ -150,17 +153,13 @@ describe("Chat worker", function() {
             instance(toolContinuationDispatcherFactory),
             instance(cleanupRegistrar),
             () => instance(cleaner),
-            false
+            false,
+            middleware || []
         );
-    });
+    };
 
     after(async function() {
         test.cleanup();
-    });
-
-    beforeEach(function() {
-        when(cleaner.cleanup(anything())).thenResolve();
-        when(cleanupRegistrar.register(anything())).thenResolve();
     });
 
     afterEach(async function() {
@@ -216,6 +215,7 @@ describe("Chat worker", function() {
 
     it("processes create command", async function() {
         await createChat(undefined, "processing", dispatchId);
+        createWorker();
 
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
 
@@ -250,6 +250,7 @@ describe("Chat worker", function() {
 
     it("skips thread creation if already created", async function() {
         await createChat(threadId, "processing", dispatchId);
+        createWorker();
 
         const request: Request<ChatCommand<unknown>> = {
             ...context,
@@ -278,6 +279,7 @@ describe("Chat worker", function() {
 
     it("processes post command", async function() {
         await createChat(threadId, "processing", dispatchId);
+        createWorker();
 
         when(wrapper.postMessage(anything(), anything())).thenReturn(Promise.resolve(lastPostMessageId));
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
@@ -304,6 +306,7 @@ describe("Chat worker", function() {
 
     it("processes explicit post command", async function() {
         await createChat(threadId, "processing", dispatchId);
+        createWorker();
 
         when(wrapper.postMessage(anything(), anything())).thenReturn(Promise.resolve(lastPostMessageId));
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
@@ -329,6 +332,7 @@ describe("Chat worker", function() {
 
     it("processes run command when tools are dispatched", async function() {
         await createChat(threadId, "processing", dispatchId);
+        createWorker();
 
         const continuationId = "continuationId";
         const toolCallId = "toolCallId";
@@ -402,6 +406,7 @@ describe("Chat worker", function() {
 
     it("processes run command when tools are suspended", async function() {
         await createChat(threadId, "processing", dispatchId);
+        createWorker();
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
         when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenResolve(Continuation.suspend());
@@ -423,6 +428,7 @@ describe("Chat worker", function() {
 
     it("processes continuation command when tools are dispatched", async function() {
         await createChat(threadId, "processing", dispatchId);
+        createWorker();
 
         const runId = "runId";
         const continuationId = "continuationId";
@@ -497,6 +503,7 @@ describe("Chat worker", function() {
 
     it("processes continuation command when tools are suspended", async function() {
         await createChat(threadId, "processing", dispatchId);
+        createWorker();
 
         const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
         when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenResolve(Continuation.suspend());
@@ -514,6 +521,7 @@ describe("Chat worker", function() {
 
     it("processes retrieve command", async function() {
         await createChat(threadId, "processing", dispatchId);
+        createWorker();
 
         when(wrapper.getMessages(anything(), anything())).thenReturn(Promise.resolve({
             messages: aiMessages,
@@ -556,8 +564,124 @@ describe("Chat worker", function() {
         verify(wrapper.getMessages(strictEqual(threadId), strictEqual(lastChatMessageId)));
     });
 
+    it("processes retrieve command with provided middleware", async function() {
+        await createChat(threadId, "processing", dispatchId);
+        when(wrapper.getMessages(anything(), anything())).thenReturn(Promise.resolve({
+            messages: aiMessages,
+            latestMessageId: lastChatMessageId
+        }));
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: retrieveCommand
+        };
+
+        let middlewareCalled = false;
+
+        createWorker(
+            [
+                async (
+                    messages,
+                    chatDocumentPath,
+                    _chatState,
+                    control
+                ) => {
+                    messages.length.should.equal(2);
+                    chatDocumentPath.should.equal(chatDoc.path);
+                    await control.next(messages);
+                    middlewareCalled = true;
+                }
+            ]
+        );
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<OpenAiAssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.config.assistantConfig.should.deep.include({
+            lastMessageId: lastChatMessageId
+        });
+
+        const newChatMessages = await chatMessages.get();
+        newChatMessages.docs.should.have.lengthOf(4);
+        const insertedData = newChatMessages.docs
+            .map((doc: QueryDocumentSnapshot<DocumentData>) => doc.data())
+            .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
+        for (let i = 2; i < 4; i++) {
+            const message = insertedData[i];
+            message.should.deep.include({
+                userId: userId,
+                author: "ai",
+                text: aiMessages[i - 2][1],
+                meta: {
+                    name: "ai"
+                }
+            });
+        }
+
+        middlewareCalled.should.be.true;
+    });
+
+    it("message middleware inserts messages", async function() {
+        await createChat(threadId, "processing", dispatchId);
+        createWorker();
+
+        when(wrapper.getMessages(anything(), anything())).thenReturn(Promise.resolve({
+            messages: aiMessages,
+            latestMessageId: lastChatMessageId
+        }));
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: retrieveCommand
+        };
+
+        createWorker(
+            [
+                async (
+                    messages,
+                    _chatDocumentPath,
+                    _chatState,
+                    control
+                ) => {
+                    await control.saveMessages(messages);
+                }
+            ]
+        );
+        await worker.dispatch(request);
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<OpenAiAssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.config.assistantConfig.should.deep.include({
+            lastMessageId: lastChatMessageId
+        });
+
+        const newChatMessages = await chatMessages.get();
+        newChatMessages.docs.should.have.lengthOf(4);
+        const insertedData = newChatMessages.docs
+            .map((doc: QueryDocumentSnapshot<DocumentData>) => doc.data())
+            .sort((a, b) => a["inBatchSortIndex"] - b["inBatchSortIndex"]);
+        for (let i = 2; i < 4; i++) {
+            const message = insertedData[i];
+            message.should.deep.include({
+                userId: userId,
+                author: "ai",
+                text: aiMessages[i - 2][1],
+                meta: {
+                    name: "ai"
+                }
+            });
+        }
+    });
+
     it("processes switch to user command", async function() {
         await createChat(threadId, "processing", dispatchId);
+        createWorker();
 
         const request: Request<ChatCommand<unknown>> = {
             ...context,
@@ -578,6 +702,7 @@ describe("Chat worker", function() {
 
     it("runs cleanup handler", async function() {
         when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve(threadId));
+        createWorker();
 
         const request: Request<OpenAiChatCommand> = {
             ...context,
@@ -595,6 +720,7 @@ describe("Chat worker", function() {
 
     it("doesn't update chat if state changes while processing", async function() {
         await createChat(threadId, "processing");
+        createWorker();
 
         when(wrapper.getMessages(anything(), anything())).thenCall(async () => {
             await chatDoc.set({status: "complete"}, {merge: true});
@@ -623,6 +749,7 @@ describe("Chat worker", function() {
 
     it("sets retry if there are retries", async function() {
         await createChat(undefined, "processing");
+        createWorker();
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
 
@@ -639,6 +766,7 @@ describe("Chat worker", function() {
 
     it("fails chat if there are no retries", async function() {
         await createChat(undefined, "processing");
+        createWorker();
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
         when(scheduler.getQueueMaxRetries(anything())).thenResolve(10);
@@ -663,6 +791,8 @@ describe("Chat worker", function() {
 
     it("completes run on success", async function() {
         await createChat(threadId, "processing");
+        createWorker();
+
         const request: Request<ChatCommand<unknown>> = {
             ...context,
             data: switchToUserCommand
@@ -703,6 +833,7 @@ describe("Chat worker", function() {
 
     it("sets run to retry on retry", async function() {
         await createChat(undefined, "processing");
+        createWorker();
 
         when(wrapper.createThread(anything())).thenReject(new ChatError("internal", false, "AI error"));
 
@@ -725,6 +856,8 @@ describe("Chat worker", function() {
 
     it("aborts if running in parallel", async function() {
         await createChat(threadId, "processing");
+        createWorker();
+
         await chatDispatches.doc(dispatchId)
             .collection(Collections.runs).doc(runId)
             .set({status: "running", createdAt: FieldValue.serverTimestamp()});
@@ -747,6 +880,8 @@ describe("Chat worker", function() {
 
     it("aborts if already run", async function() {
         await createChat(threadId, "processing");
+        createWorker();
+
         await chatDispatches.doc(dispatchId)
             .collection(Collections.runs).doc(runId)
             .set({status: "complete", createdAt: FieldValue.serverTimestamp()});
@@ -769,6 +904,8 @@ describe("Chat worker", function() {
 
     it("runs command batch", async function() {
         await createChat(undefined, "processing");
+        createWorker();
+
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
         when(wrapper.deleteThread(anything())).thenReturn(Promise.resolve());
 
@@ -797,6 +934,8 @@ describe("Chat worker", function() {
 
     it("runs completion handler", async function() {
         await createChat(undefined, "processing");
+        createWorker();
+
         when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
 
         const request: Request<OpenAiChatCommand> = {

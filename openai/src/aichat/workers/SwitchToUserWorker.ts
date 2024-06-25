@@ -12,7 +12,7 @@ export class SwitchToUserWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiChatCommand,
         _state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
+        control: DispatchControl<OpenAiChatActions, ChatData>
     ): Promise<void> {
         await this.continueQueue(control, command);
     }

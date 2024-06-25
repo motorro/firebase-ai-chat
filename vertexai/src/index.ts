@@ -12,7 +12,8 @@ import {
     commonFormatContinuationError,
     ChatCleaner,
     CommonChatCleaner,
-    CommonChatCleanupRegistrar
+    CommonChatCleanupRegistrar,
+    MessageMiddleware
 } from "@motorro/firebase-ai-chat-core";
 import {Functions} from "firebase-admin/lib/functions";
 import {firestore} from "firebase-admin";
@@ -82,6 +83,7 @@ export {
     isContinuationCommand,
     isContinuationCommandRequest
 } from "@motorro/firebase-ai-chat-core";
+export {PartialChatState, MessageProcessingControl, MessageMiddleware} from "@motorro/firebase-ai-chat-core";
 
 export {
     AiWrapper,
@@ -129,6 +131,7 @@ export interface AiChat {
      * @param instructions Model instructions
      * @param messageMapper Maps messages to/from VertexAI
      * @param chatCleaner Optional chat resource cleaner extension
+     * @param messageMiddleware Optional Message processing middleware
      * @return Worker interface
      */
     worker(
@@ -137,7 +140,8 @@ export interface AiChat {
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>,
         messageMapper?: VertexAiMessageMapper,
-        chatCleaner?: ChatCleaner
+        chatCleaner?: ChatCleaner,
+        messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>
     ): ChatWorker
 
     /**
@@ -205,7 +209,8 @@ export function factory(
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
             instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>,
             messageMapper?: VertexAiMessageMapper,
-            chatCleaner?: ChatCleaner
+            chatCleaner?: ChatCleaner,
+            messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>
         ): ChatWorker {
             return new VertexAiChatWorker(
                 firestore,
@@ -215,7 +220,8 @@ export function factory(
                 formatContinuationError,
                 _chatCleanupRegistrar,
                 (queueName) => _chatCleanerFactory(queueName, chatCleaner),
-                logData
+                logData,
+                messageMiddleware || []
             );
         },
         continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {

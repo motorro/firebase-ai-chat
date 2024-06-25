@@ -72,8 +72,8 @@ function factory(firestore, functions, location, taskScheduler, formatContinuati
         chat: function (queueName, commandSchedulers = defaultSchedulers, chatCleaner) {
             return new firebase_ai_chat_core_1.AssistantChat(firestore, commandSchedulers(queueName, _taskScheduler), _chatCleanerFactory(queueName, chatCleaner));
         },
-        worker(openAi, dispatchers, messageMapper, chatCleaner) {
-            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi, debugAi, messageMapper), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler, formatContinuationError, logData), _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData);
+        worker(openAi, dispatchers, messageMapper, chatCleaner, messageMiddleware) {
+            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi, debugAi, messageMapper), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler, formatContinuationError, logData), _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData, messageMiddleware || []);
         },
         continuationScheduler(queueName) {
             return _continuationSchedulerFactory.create(queueName);
