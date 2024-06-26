@@ -11,6 +11,7 @@ import FieldValue = firestore.FieldValue;
 import {AssistantConfig, ChatData, ChatState} from "../data/ChatState";
 import {ChatCleaner} from "./ChatCleaner";
 import {ChatMeta} from "../data/Meta";
+import PartialWithFieldValue = firestore.PartialWithFieldValue;
 
 const logger = tagLogger("DispatchRunner");
 
@@ -42,7 +43,12 @@ export class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData
         run: (
             soFar: ChatState<AC, DATA, CM>,
             command: ChatCommand<A> | BoundChatCommand<A>,
-            updateState: (update: Partial<ChatState<AssistantConfig, DATA, CM>>) => Promise<ChatState<AssistantConfig, DATA, CM>>
+            safeUpdate: (
+                update: (
+                    tx: FirebaseFirestore.Transaction,
+                    updateState: (update: PartialWithFieldValue<ChatState<AssistantConfig, DATA, CM>>) => void
+                ) => Promise<void>
+            ) => Promise<boolean>
         ) => Promise<void>,
     ): Promise<void> {
         const db = this.db;
@@ -87,32 +93,43 @@ export class DispatchRunner<A, AC extends AssistantConfig, DATA extends ChatData
             return;
         }
 
-        const updateState = async (state: Partial<ChatState<AssistantConfig, DATA, CM>>) => {
-            await this.db.runTransaction(async (tx) => {
+        const safeUpdate = async (
+            update: (
+                tx: FirebaseFirestore.Transaction,
+                updateState: (state: PartialWithFieldValue<ChatState<AssistantConfig, DATA, CM>>) => void
+            ) => Promise<void>
+        ): Promise<boolean> => {
+            return await this.db.runTransaction(async (tx) => {
                 const stateData = (await tx.get(doc)).data();
                 if (command.commonData.dispatchId === stateData?.latestDispatchId) {
-                    if (this.logData) {
-                        tagLogger("DATA").d(`Updating document state of ${doc.path}:`, JSON.stringify(state));
-                    }
-                    tx.set(doc, {...state, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+                    const updateState = async (update: PartialWithFieldValue<ChatState<AssistantConfig, DATA, CM>>) => {
+                        if (this.logData) {
+                            tagLogger("DATA").d(`Updating document state of ${doc.path}:`, JSON.stringify(update));
+                        }
+                        tx.set(doc, {...stateData, ...update, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+                    };
+                    await update(tx, updateState);
+                    return true;
                 } else {
                     logger.d("Document has dispatch another command. Data update cancelled");
+                    return false;
                 }
             });
-            return <ChatState<AssistantConfig, DATA, CM>>(await doc.get()).data();
         };
 
         const fail = async (e: unknown)=> {
-            await updateState({
-                status: "failed",
-                lastError: String(e)
+            await safeUpdate(async (tx, updateState) => {
+                updateState({
+                    status: "failed",
+                    lastError: String(e)
+                });
             });
             await this.cleaner.cleanup(command.commonData.chatDocumentPath);
             await updateRun("complete");
         };
 
         try {
-            await run(stateToDispatch, command, updateState);
+            await run(stateToDispatch, command, safeUpdate);
             await updateRun("complete");
         } catch (e) {
             logger.w("Error running dispatch", e);

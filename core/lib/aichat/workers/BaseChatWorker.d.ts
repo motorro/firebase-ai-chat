@@ -9,7 +9,7 @@ import { ChatCommand } from "../data/ChatCommand";
 import { ChatWorker, DispatchControl } from "./ChatWorker";
 import { ChatCleaner } from "./ChatCleaner";
 import { NewMessage } from "../data/NewMessage";
-import { MessageMiddleware } from "./MessageMiddleware";
+import { MessageMiddleware } from "../middleware/MessageMiddleware";
 /**
  * Basic `OpenAiChatWorker` implementation that maintains chat state and dispatch runs
  */
@@ -72,14 +72,16 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
     protected getMessages(chatDocumentPath: string, dispatchId?: string): Promise<ReadonlyArray<ChatMessage>>;
     /**
      * Retrieves next batch index
+     * @param tx Update transaction
      * @param chatDocumentPath Chat document
      * @param dispatchId Dispatch ID
      * @protected
      * @returns Next batch index
      */
-    protected getNextBatchSortIndex(chatDocumentPath: string, dispatchId?: string): Promise<number>;
+    private getNextBatchSortIndex;
     /**
      * Saves chat messages
+     * @param tx Update transaction
      * @param ownerId Chat owner
      * @param chatDocumentPath Chat document path
      * @param dispatchId Dispatch ID

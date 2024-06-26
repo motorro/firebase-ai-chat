@@ -126,7 +126,7 @@ describe("Base chat worker", function() {
             ): Promise<void> => {
                 passedCommand = command;
                 passedState = state;
-                await control.updateChatState({status: "complete"});
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "complete"}));
                 return Promise.resolve();
             }
         );
@@ -180,7 +180,7 @@ describe("Base chat worker", function() {
             ): Promise<void> => {
                 passedCommand = command;
                 passedState = state;
-                await control.updateChatState({status: "complete"});
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "complete"}));
                 return Promise.resolve();
             }
         );
@@ -289,9 +289,7 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (_command, _state, control): Promise<void> => {
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "userInput"}));
             }
         );
 
@@ -391,9 +389,7 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (_command, _state, control): Promise<void> => {
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "userInput"}));
             }
         );
 
@@ -428,9 +424,7 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (_command, _state, control): Promise<void> => {
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "userInput"}));
             }
         );
 
@@ -481,9 +475,7 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (command, _state, control): Promise<void> => {
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "userInput"}));
                 await control.continueQueue({...command, actionData: "close"});
             }
         );
@@ -520,9 +512,7 @@ describe("Base chat worker", function() {
             // eslint-disable-next-line max-len
             async (_command, _state, control): Promise<void> => {
                 await control.completeQueue();
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (tx, updateChatState) => updateChatState({status: "userInput"}));
             }
         );
         const request: Request<ChatCommand<unknown>> = {

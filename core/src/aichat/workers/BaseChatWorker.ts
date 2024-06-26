@@ -14,7 +14,7 @@ import {DispatchRunner} from "./DispatchRunner";
 import {ChatCleaner} from "./ChatCleaner";
 import {isStructuredMessage, NewMessage} from "../data/NewMessage";
 import FieldValue = firestore.FieldValue;
-import {MessageMiddleware, MessageProcessingControl} from "./MessageMiddleware";
+import {MessageMiddleware, MessageProcessingControl} from "../middleware/MessageMiddleware";
 
 const logger = tagLogger("BaseChatWorker");
 
@@ -130,21 +130,24 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
 
     /**
      * Retrieves next batch index
+     * @param tx Update transaction
      * @param chatDocumentPath Chat document
      * @param dispatchId Dispatch ID
      * @protected
      * @returns Next batch index
      */
-    protected async getNextBatchSortIndex(chatDocumentPath: string, dispatchId?: string): Promise<number> {
-        const messagesSoFar = await this.getThreadMessageQuery(chatDocumentPath, dispatchId)
-            .orderBy("inBatchSortIndex", "desc")
-            .limit(1)
-            .get();
+    private async getNextBatchSortIndex(tx: FirebaseFirestore.Transaction, chatDocumentPath: string, dispatchId?: string): Promise<number> {
+        const messagesSoFar = await tx.get(
+            this.getThreadMessageQuery(chatDocumentPath, dispatchId)
+                .orderBy("inBatchSortIndex", "desc")
+                .limit(1)
+        );
         return ((messagesSoFar.size > 0 && messagesSoFar.docs[0].data()?.inBatchSortIndex) || -1) + 1;
     }
 
     /**
      * Saves chat messages
+     * @param tx Update transaction
      * @param ownerId Chat owner
      * @param chatDocumentPath Chat document path
      * @param dispatchId Dispatch ID
@@ -154,6 +157,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
      * @protected
      */
     private async saveMessages(
+        tx: FirebaseFirestore.Transaction,
         ownerId: string,
         chatDocumentPath: string,
         dispatchId: string,
@@ -166,40 +170,38 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         }
 
         const messageCollectionRef = this.getMessageCollection(chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(chatDocumentPath, dispatchId);
-        await this.db.runTransaction( async (tx) => {
-            messages.forEach((message, i) => {
-                let text: string;
-                let data: Readonly<Record<string, unknown>> | null = null;
-                let meta: Meta | null = chatMeta?.aiMessageMeta || null;
-                if (isStructuredMessage(message)) {
-                    text = message.text;
-                    data = message.data || null;
-                    if (message.meta) {
-                        if (null != meta) {
-                            meta = {...meta, ...message.meta};
-                        } else {
-                            meta = message.meta;
-                        }
+        const latestInBatchId = await this.getNextBatchSortIndex(tx, chatDocumentPath, dispatchId);
+        messages.forEach((message, i) => {
+            let text: string;
+            let data: Readonly<Record<string, unknown>> | null = null;
+            let meta: Meta | null = chatMeta?.aiMessageMeta || null;
+            if (isStructuredMessage(message)) {
+                text = message.text;
+                data = message.data || null;
+                if (message.meta) {
+                    if (null != meta) {
+                        meta = {...meta, ...message.meta};
+                    } else {
+                        meta = message.meta;
                     }
-                } else {
-                    text = String(message);
                 }
-                tx.set(
-                    messageCollectionRef.doc(),
-                    {
-                        userId: ownerId,
-                        dispatchId: dispatchId,
-                        author: "ai",
-                        text: text,
-                        data: data,
-                        inBatchSortIndex: latestInBatchId + i,
-                        createdAt: FieldValue.serverTimestamp(),
-                        meta: meta,
-                        ...(sessionId ? {sessionId: sessionId} : {})
-                    }
-                );
-            });
+            } else {
+                text = String(message);
+            }
+            tx.set(
+                messageCollectionRef.doc(),
+                {
+                    userId: ownerId,
+                    dispatchId: dispatchId,
+                    author: "ai",
+                    text: text,
+                    data: data,
+                    inBatchSortIndex: latestInBatchId + i,
+                    createdAt: FieldValue.serverTimestamp(),
+                    meta: meta,
+                    ...(sessionId ? {sessionId: sessionId} : {})
+                }
+            );
         });
     }
 
@@ -221,8 +223,9 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         middleware: ReadonlyArray<MessageMiddleware<DATA, CM>>,
         messages: ReadonlyArray<NewMessage>
     ): Promise<void> {
-        const saveMessages = async (messages: ReadonlyArray<NewMessage>) => {
+        const saveMessages = async (tx: FirebaseFirestore.Transaction, messages: ReadonlyArray<NewMessage>) => {
             await this.saveMessages(
+                tx,
                 command.commonData.ownerId,
                 command.commonData.chatDocumentPath,
                 command.commonData.dispatchId,
@@ -236,16 +239,30 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
 
         const createMpControl = (next: (messages: ReadonlyArray<NewMessage>) => Promise<void>): MessageProcessingControl<DATA, CM> => {
             return {
-                updateChatState: async (newState) => {
-                    currentChatState = await control.updateChatState({
-                        config: newState.config,
-                        status: newState.status,
-                        data: newState.data,
-                        meta: newState.meta
+                safeUpdate: async (update) => {
+                    return await control.safeUpdate(async (tx, updateChatState) => {
+                        await update(
+                            tx,
+                            (newState) => {
+                                const update = {
+                                    ...(newState.config ? {config: newState.config} : {}),
+                                    ...(newState.status ? {status: newState.status} : {}),
+                                    ...(newState.data ? {data: newState.data} : {}),
+                                    ...(newState.meta ? {meta: newState.meta} : {}),
+                                    ...(newState.sessionId ? {sessionId: newState.sessionId} : {})
+                                };
+                                currentChatState = {
+                                    ...currentChatState,
+                                    ...update
+                                };
+                                updateChatState(update);
+                            },
+                            (messages) => {
+                                saveMessages(tx, messages);
+                            }
+                        );
                     });
-                    return currentChatState;
                 },
-                saveMessages: saveMessages,
                 next: next,
                 enqueue: control.schedule,
                 completeQueue: control.completeQueue
@@ -295,12 +312,10 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
     ): Promise<void> {
         return this.runner.dispatchWithCheck(
             req,
-            async (soFar, chatCommand, updateState) => {
+            async (soFar, chatCommand, safeUpdate) => {
                 const command = isBoundChatCommand(chatCommand) ? chatCommand.command : chatCommand;
                 const control: DispatchControl<A, DATA, CM> = {
-                    updateChatState: async (update) => {
-                        return updateState(update);
-                    },
+                    safeUpdate: safeUpdate,
                     schedule: async (command) => {
                         logger.d("Scheduling command: ", JSON.stringify(command));
                         return scheduleCommand(this.scheduler, req.queueName, command);

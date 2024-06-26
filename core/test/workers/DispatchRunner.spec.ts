@@ -120,9 +120,9 @@ describe("Dispatch runner", function() {
 
         await runner.dispatchWithCheck(
             request,
-            async (soFar, command, updateState) => {
+            async (soFar, command, safeUpdate) => {
                 passedState = soFar;
-                await updateState({status: "complete"});
+                await safeUpdate(async (tx, updateState) => updateState({status: "complete"}));
             }
         );
 
@@ -196,10 +196,10 @@ describe("Dispatch runner", function() {
 
         await runner.dispatchWithCheck(
             request,
-            async (soFar, command, updateState) => {
-                await updateState({
+            async (soFar, command, safeUpdate) => {
+                await safeUpdate(async (tx, updateState) => updateState({
                     status: "userInput"
-                });
+                }));
             }
         );
 
@@ -276,10 +276,10 @@ describe("Dispatch runner", function() {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         await runner.dispatchWithCheck(
             request,
-            async (soFar, command, updateState) => {
-                await updateState({
+            async (_soFar, _command, safeUpdate) => {
+                await safeUpdate(async (tx, updateState) => updateState({
                     status: "userInput"
-                });
+                }));
             }
         );
 
@@ -307,9 +307,11 @@ describe("Dispatch runner", function() {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         await runner.dispatchWithCheck(
             request,
-            async (soFar, command, updateState) => {
-                await updateState({
-                    status: "userInput"
+            async (soFar, command, safeUpdate) => {
+                await safeUpdate(async (tx, updateState) => {
+                    updateState({
+                        status: "userInput"
+                    });
                 });
             }
         );

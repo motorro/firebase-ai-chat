@@ -9,22 +9,23 @@ import {ChatMeta} from "../data/Meta";
 export type PartialChatState<DATA extends ChatData, CM extends ChatMeta = ChatMeta> = Partial<
     Pick<
         ChatState<AssistantConfig, DATA, CM>,
-        "config" | "status" | "data" | "meta"
+        "config" | "status" | "data" | "meta" | "sessionId"
     >
 >
 
 export interface MessageProcessingControl<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
     /**
-     * Updates chat state if corresponds with dispatch sequence
-     * @param state Partial state update
+     * Updates database if dispatch state is valid
+     * @param update Update function
      * @return True if state was updated or false if update attempt is conflicting with the dispatch logic
      */
-    updateChatState: (state: PartialChatState<DATA, CM>) => Promise<ChatState<AssistantConfig, DATA, CM>>
-    /**
-     * Saves message to chat
-     * @param messages Messages to save
-     */
-    saveMessages: (messages: ReadonlyArray<NewMessage>) => Promise<void>
+    safeUpdate: (
+        update: (
+            tx: FirebaseFirestore.Transaction,
+            updateState: (state: PartialChatState<DATA, CM>) => void,
+            saveMessages: (messages: ReadonlyArray<NewMessage>) => void
+        ) => Promise<void>
+    ) => Promise<boolean>
     /**
      * Runs next processor in chain
      * @param messages Message to process

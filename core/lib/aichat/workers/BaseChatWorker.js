@@ -88,21 +88,22 @@ class BaseChatWorker {
     }
     /**
      * Retrieves next batch index
+     * @param tx Update transaction
      * @param chatDocumentPath Chat document
      * @param dispatchId Dispatch ID
      * @protected
      * @returns Next batch index
      */
-    async getNextBatchSortIndex(chatDocumentPath, dispatchId) {
+    async getNextBatchSortIndex(tx, chatDocumentPath, dispatchId) {
         var _a;
-        const messagesSoFar = await this.getThreadMessageQuery(chatDocumentPath, dispatchId)
+        const messagesSoFar = await tx.get(this.getThreadMessageQuery(chatDocumentPath, dispatchId)
             .orderBy("inBatchSortIndex", "desc")
-            .limit(1)
-            .get();
+            .limit(1));
         return ((messagesSoFar.size > 0 && ((_a = messagesSoFar.docs[0].data()) === null || _a === void 0 ? void 0 : _a.inBatchSortIndex)) || -1) + 1;
     }
     /**
      * Saves chat messages
+     * @param tx Update transaction
      * @param ownerId Chat owner
      * @param chatDocumentPath Chat document path
      * @param dispatchId Dispatch ID
@@ -111,34 +112,32 @@ class BaseChatWorker {
      * @param chatMeta Chat metadata
      * @protected
      */
-    async saveMessages(ownerId, chatDocumentPath, dispatchId, sessionId, messages, chatMeta) {
+    async saveMessages(tx, ownerId, chatDocumentPath, dispatchId, sessionId, messages, chatMeta) {
         if (0 === messages.length) {
             return;
         }
         const messageCollectionRef = this.getMessageCollection(chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(chatDocumentPath, dispatchId);
-        await this.db.runTransaction(async (tx) => {
-            messages.forEach((message, i) => {
-                let text;
-                let data = null;
-                let meta = (chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.aiMessageMeta) || null;
-                if ((0, NewMessage_1.isStructuredMessage)(message)) {
-                    text = message.text;
-                    data = message.data || null;
-                    if (message.meta) {
-                        if (null != meta) {
-                            meta = Object.assign(Object.assign({}, meta), message.meta);
-                        }
-                        else {
-                            meta = message.meta;
-                        }
+        const latestInBatchId = await this.getNextBatchSortIndex(tx, chatDocumentPath, dispatchId);
+        messages.forEach((message, i) => {
+            let text;
+            let data = null;
+            let meta = (chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.aiMessageMeta) || null;
+            if ((0, NewMessage_1.isStructuredMessage)(message)) {
+                text = message.text;
+                data = message.data || null;
+                if (message.meta) {
+                    if (null != meta) {
+                        meta = Object.assign(Object.assign({}, meta), message.meta);
+                    }
+                    else {
+                        meta = message.meta;
                     }
                 }
-                else {
-                    text = String(message);
-                }
-                tx.set(messageCollectionRef.doc(), Object.assign({ userId: ownerId, dispatchId: dispatchId, author: "ai", text: text, data: data, inBatchSortIndex: latestInBatchId + i, createdAt: FieldValue.serverTimestamp(), meta: meta }, (sessionId ? { sessionId: sessionId } : {})));
-            });
+            }
+            else {
+                text = String(message);
+            }
+            tx.set(messageCollectionRef.doc(), Object.assign({ userId: ownerId, dispatchId: dispatchId, author: "ai", text: text, data: data, inBatchSortIndex: latestInBatchId + i, createdAt: FieldValue.serverTimestamp(), meta: meta }, (sessionId ? { sessionId: sessionId } : {})));
         });
     }
     /**
@@ -152,22 +151,23 @@ class BaseChatWorker {
      * @protected
      */
     async processMessages(command, chatState, defaultProcessor, control, middleware, messages) {
-        const saveMessages = async (messages) => {
-            await this.saveMessages(command.commonData.ownerId, command.commonData.chatDocumentPath, command.commonData.dispatchId, chatState.sessionId, messages, chatState.meta);
+        const saveMessages = async (tx, messages) => {
+            await this.saveMessages(tx, command.commonData.ownerId, command.commonData.chatDocumentPath, command.commonData.dispatchId, chatState.sessionId, messages, chatState.meta);
         };
         let currentChatState = chatState;
         const createMpControl = (next) => {
             return {
-                updateChatState: async (newState) => {
-                    currentChatState = await control.updateChatState({
-                        config: newState.config,
-                        status: newState.status,
-                        data: newState.data,
-                        meta: newState.meta
+                safeUpdate: async (update) => {
+                    return await control.safeUpdate(async (tx, updateChatState) => {
+                        await update(tx, (newState) => {
+                            const update = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (newState.config ? { config: newState.config } : {})), (newState.status ? { status: newState.status } : {})), (newState.data ? { data: newState.data } : {})), (newState.meta ? { meta: newState.meta } : {})), (newState.sessionId ? { sessionId: newState.sessionId } : {}));
+                            currentChatState = Object.assign(Object.assign({}, currentChatState), update);
+                            updateChatState(update);
+                        }, (messages) => {
+                            saveMessages(tx, messages);
+                        });
                     });
-                    return currentChatState;
                 },
-                saveMessages: saveMessages,
                 next: next,
                 enqueue: control.schedule,
                 completeQueue: control.completeQueue
@@ -193,12 +193,10 @@ class BaseChatWorker {
      * @private
      */
     async dispatchWithCheck(req, onQueueComplete, processAction) {
-        return this.runner.dispatchWithCheck(req, async (soFar, chatCommand, updateState) => {
+        return this.runner.dispatchWithCheck(req, async (soFar, chatCommand, safeUpdate) => {
             const command = (0, ChatCommand_1.isBoundChatCommand)(chatCommand) ? chatCommand.command : chatCommand;
             const control = {
-                updateChatState: async (update) => {
-                    return updateState(update);
-                },
+                safeUpdate: safeUpdate,
                 schedule: async (command) => {
                     logger.d("Scheduling command: ", JSON.stringify(command));
                     return (0, TaskScheduler_1.scheduleCommand)(this.scheduler, req.queueName, command);
