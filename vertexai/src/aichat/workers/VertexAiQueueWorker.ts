@@ -90,9 +90,9 @@ export abstract class VertexAiQueueWorker extends BaseChatWorker<VertexAiChatAct
      */
     private async runSwitchToUser(control: VertexAiDispatchControl): Promise<void> {
         logger.d("Switching to user input");
-        await control.updateChatState({
+        await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
             status: "userInput"
-        });
+        }));
     }
 
     /**
@@ -116,9 +116,9 @@ export abstract class VertexAiQueueWorker extends BaseChatWorker<VertexAiChatAct
             assistantConfig: assistantConfig
 
         };
-        await control.updateChatState({
+        await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
             config: config
-        });
+        }));
         return assistantConfig;
     }
 }

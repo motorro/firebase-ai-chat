@@ -6,6 +6,7 @@ import Timestamp = firestore.Timestamp;
  */
 export interface Dispatch {
     createdAt: Timestamp
+    nextMessageIndex?: number
 }
 
 /**

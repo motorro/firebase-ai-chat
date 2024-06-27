@@ -49,37 +49,37 @@ class AssistantChat {
      */
     async create(document, userId, data, assistantConfig, messages, workerMeta, chatMeta) {
         logger.d("Creating new chat with assistant:", JSON.stringify(assistantConfig));
-        const batch = this.db.batch();
         const status = "processing";
         const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
         const sessionId = (0, crypto_1.randomUUID)();
-        batch.set(document, {
-            userId: userId,
-            config: {
-                assistantConfig: assistantConfig
-            },
-            status: status,
-            sessionId: sessionId,
-            latestDispatchId: dispatchDoc.id,
-            data: data,
-            createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-            meta: chatMeta || null
-        });
-        batch.set(dispatchDoc, {
-            createdAt: FieldValue.serverTimestamp()
-        });
-        const scheduler = this.getScheduler(assistantConfig);
-        let action = async (common) => {
-            await scheduler.create(common);
-        };
-        if (undefined !== messages && messages.length > 0) {
-            this.insertMessages(batch, document, userId, dispatchDoc.id, messages, sessionId, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
-            action = async (common) => {
-                await scheduler.createAndRun(common);
+        const action = await this.db.runTransaction(async (tx) => {
+            tx.set(document, {
+                userId: userId,
+                config: {
+                    assistantConfig: assistantConfig
+                },
+                status: status,
+                sessionId: sessionId,
+                latestDispatchId: dispatchDoc.id,
+                data: data,
+                createdAt: FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp(),
+                meta: chatMeta || null
+            });
+            tx.set(dispatchDoc, {
+                createdAt: FieldValue.serverTimestamp()
+            });
+            const scheduler = this.getScheduler(assistantConfig);
+            if (undefined !== messages && messages.length > 0) {
+                this.insertMessages(tx, document, userId, dispatchDoc.id, messages, sessionId, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
+                return async (common) => {
+                    await scheduler.createAndRun(common);
+                };
+            }
+            return async (common) => {
+                await scheduler.create(common);
             };
-        }
-        await batch.commit();
+        });
         const command = {
             ownerId: userId,
             chatDocumentPath: document.path,
@@ -106,28 +106,28 @@ class AssistantChat {
      */
     async singleRun(document, userId, data, assistantConfig, messages, workerMeta, chatMeta) {
         logger.d("Creating new single run with assistant:", JSON.stringify(assistantConfig));
-        const batch = this.db.batch();
         const status = "processing";
         const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
         const sessionId = (0, crypto_1.randomUUID)();
-        batch.set(document, {
-            userId: userId,
-            config: {
-                assistantConfig: assistantConfig
-            },
-            status: status,
-            sessionId: sessionId,
-            latestDispatchId: dispatchDoc.id,
-            data: data,
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-            meta: chatMeta || null
+        await this.db.runTransaction(async (tx) => {
+            tx.set(document, {
+                userId: userId,
+                config: {
+                    assistantConfig: assistantConfig
+                },
+                status: status,
+                sessionId: sessionId,
+                latestDispatchId: dispatchDoc.id,
+                data: data,
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now(),
+                meta: chatMeta || null
+            });
+            tx.set(dispatchDoc, {
+                createdAt: Timestamp.now()
+            });
+            this.insertMessages(tx, document, userId, dispatchDoc.id, messages, sessionId, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
         });
-        batch.set(dispatchDoc, {
-            createdAt: Timestamp.now()
-        });
-        this.insertMessages(batch, document, userId, dispatchDoc.id, messages, sessionId, chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.userMessageMeta);
-        await batch.commit();
         const command = {
             ownerId: userId,
             chatDocumentPath: document.path,
@@ -222,6 +222,8 @@ class AssistantChat {
      */
     insertMessages(batch, document, userId, dispatchId, messages, sessionId, chatMeta) {
         const messageList = document.collection(Collections_1.Collections.messages);
+        const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc(dispatchId);
+        let nextIndex = 0;
         messages.forEach((message, index) => {
             let text;
             let meta = chatMeta || null;
@@ -243,8 +245,10 @@ class AssistantChat {
             else {
                 text = String(message);
             }
-            batch.create(messageList.doc(), Object.assign({ userId: userId, dispatchId: dispatchId, author: "user", text: text, data: data, inBatchSortIndex: index, createdAt: Timestamp.now(), meta: meta }, (sessionId ? { sessionId: sessionId } : {})));
+            batch.create(messageList.doc(), Object.assign({ userId: userId, dispatchId: dispatchId, author: "user", text: text, data: data, inBatchSortIndex: nextIndex, createdAt: Timestamp.now(), meta: meta }, (sessionId ? { sessionId: sessionId } : {})));
+            ++nextIndex;
         });
+        batch.set(dispatchDoc, { nextMessageIndex: nextIndex }, { merge: true });
     }
     /**
      * Closes chats
@@ -273,12 +277,14 @@ class AssistantChat {
      */
     async prepareDispatchWithChecks(document, userId, checkStatus, block) {
         return await this.db.runTransaction(async (tx) => {
-            const state = await this.checkAndGetState(tx, document, userId, checkStatus);
             const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc();
-            const result = await (block(tx, Object.assign(Object.assign({}, state), { latestDispatchId: dispatchDoc.id }), (update) => {
-                tx.set(document, Object.assign(Object.assign(Object.assign({}, state), update), { latestDispatchId: dispatchDoc.id, updatedAt: FieldValue.serverTimestamp() }));
+            let state = Object.assign(Object.assign({}, (await this.checkAndGetState(tx, document, userId, checkStatus))), { latestDispatchId: dispatchDoc.id });
+            const result = await (block(tx, state, (update) => {
+                state = Object.assign(state, update);
+                tx.set(document, Object.assign(Object.assign({}, state), { updatedAt: FieldValue.serverTimestamp() }));
             }));
-            tx.set(dispatchDoc, { createdAt: Timestamp.now() });
+            tx.set(dispatchDoc, { createdAt: Timestamp.now() }, { merge: true });
+            tx.set(document, { latestDispatchId: dispatchDoc.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
             return result;
         });
     }

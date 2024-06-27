@@ -73,7 +73,8 @@ export class RunWorker extends OpenAiQueueWorker {
                 data,
                 toolCalls,
                 async (data) => {
-                    return (await control.updateChatState({data: data})).data;
+                    await control.safeUpdate(async (_tx, updateChatState) => updateChatState({data: data}));
+                    return data;
                 },
                 getContinuationCommand
             );
@@ -87,8 +88,8 @@ export class RunWorker extends OpenAiQueueWorker {
         );
 
         if (continuation.isResolved()) {
-            await control.updateChatState({
-                data: continuation.value
+            await control.safeUpdate(async (_tx, updateChatState) => {
+                updateChatState({data: continuation.value});
             });
             await this.continueNextInQueue(control, command);
         }

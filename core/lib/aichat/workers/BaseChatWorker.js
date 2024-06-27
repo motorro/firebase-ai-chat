@@ -87,23 +87,9 @@ class BaseChatWorker {
         return result;
     }
     /**
-     * Retrieves next batch index
-     * @param tx Update transaction
-     * @param chatDocumentPath Chat document
-     * @param dispatchId Dispatch ID
-     * @protected
-     * @returns Next batch index
-     */
-    async getNextBatchSortIndex(tx, chatDocumentPath, dispatchId) {
-        var _a;
-        const messagesSoFar = await tx.get(this.getThreadMessageQuery(chatDocumentPath, dispatchId)
-            .orderBy("inBatchSortIndex", "desc")
-            .limit(1));
-        return ((messagesSoFar.size > 0 && ((_a = messagesSoFar.docs[0].data()) === null || _a === void 0 ? void 0 : _a.inBatchSortIndex)) || -1) + 1;
-    }
-    /**
      * Saves chat messages
      * @param tx Update transaction
+     * @param nextInBatchIndex Next index in batch
      * @param ownerId Chat owner
      * @param chatDocumentPath Chat document path
      * @param dispatchId Dispatch ID
@@ -112,12 +98,8 @@ class BaseChatWorker {
      * @param chatMeta Chat metadata
      * @protected
      */
-    async saveMessages(tx, ownerId, chatDocumentPath, dispatchId, sessionId, messages, chatMeta) {
-        if (0 === messages.length) {
-            return;
-        }
+    saveMessages(tx, nextInBatchIndex, ownerId, chatDocumentPath, dispatchId, sessionId, messages, chatMeta) {
         const messageCollectionRef = this.getMessageCollection(chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(tx, chatDocumentPath, dispatchId);
         messages.forEach((message, i) => {
             let text;
             let data = null;
@@ -137,8 +119,9 @@ class BaseChatWorker {
             else {
                 text = String(message);
             }
-            tx.set(messageCollectionRef.doc(), Object.assign({ userId: ownerId, dispatchId: dispatchId, author: "ai", text: text, data: data, inBatchSortIndex: latestInBatchId + i, createdAt: FieldValue.serverTimestamp(), meta: meta }, (sessionId ? { sessionId: sessionId } : {})));
+            tx.set(messageCollectionRef.doc(), Object.assign({ userId: ownerId, dispatchId: dispatchId, author: "ai", text: text, data: data, inBatchSortIndex: nextInBatchIndex++, createdAt: FieldValue.serverTimestamp(), meta: meta }, (sessionId ? { sessionId: sessionId } : {})));
         });
+        return nextInBatchIndex;
     }
     /**
      * Runs AI message processing
@@ -151,21 +134,22 @@ class BaseChatWorker {
      * @protected
      */
     async processMessages(command, chatState, defaultProcessor, control, middleware, messages) {
-        const saveMessages = async (tx, messages) => {
-            await this.saveMessages(tx, command.commonData.ownerId, command.commonData.chatDocumentPath, command.commonData.dispatchId, chatState.sessionId, messages, chatState.meta);
-        };
         let currentChatState = chatState;
         const createMpControl = (next) => {
             return {
                 safeUpdate: async (update) => {
                     return await control.safeUpdate(async (tx, updateChatState) => {
+                        var _a, _b;
+                        const dispatchDoc = this.db.doc(command.commonData.chatDocumentPath).collection(Collections_1.Collections.dispatches).doc(command.commonData.dispatchId);
+                        let nextMessageIndex = ((_b = (_a = (await dispatchDoc.get())) === null || _a === void 0 ? void 0 : _a.data()) === null || _b === void 0 ? void 0 : _b.nextMessageIndex) || 0;
                         await update(tx, (newState) => {
                             const update = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (newState.config ? { config: newState.config } : {})), (newState.status ? { status: newState.status } : {})), (newState.data ? { data: newState.data } : {})), (newState.meta ? { meta: newState.meta } : {})), (newState.sessionId ? { sessionId: newState.sessionId } : {}));
-                            currentChatState = Object.assign(Object.assign({}, currentChatState), update);
+                            currentChatState = Object.assign(currentChatState, update);
                             updateChatState(update);
                         }, (messages) => {
-                            saveMessages(tx, messages);
+                            nextMessageIndex = this.saveMessages(tx, nextMessageIndex, command.commonData.ownerId, command.commonData.chatDocumentPath, command.commonData.dispatchId, chatState.sessionId, messages, chatState.meta);
                         });
+                        tx.set(dispatchDoc, { nextMessageIndex: nextMessageIndex }, { merge: true });
                     });
                 },
                 next: next,

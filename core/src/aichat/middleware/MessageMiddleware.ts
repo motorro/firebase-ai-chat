@@ -2,11 +2,13 @@ import {NewMessage} from "../data/NewMessage";
 import {AssistantConfig, ChatData, ChatState} from "../data/ChatState";
 import {BoundChatCommand, ChatAction, ChatCommand} from "../data/ChatCommand";
 import {ChatMeta} from "../data/Meta";
+import {firestore} from "firebase-admin";
+import PartialWithFieldValue = firestore.PartialWithFieldValue;
 
 /**
  * Updatable part of chat data
  */
-export type PartialChatState<DATA extends ChatData, CM extends ChatMeta = ChatMeta> = Partial<
+export type PartialChatState<DATA extends ChatData, CM extends ChatMeta = ChatMeta> = PartialWithFieldValue<
     Pick<
         ChatState<AssistantConfig, DATA, CM>,
         "config" | "status" | "data" | "meta" | "sessionId"

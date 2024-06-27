@@ -15,6 +15,8 @@ import {ChatCleaner} from "./ChatCleaner";
 import {isStructuredMessage, NewMessage} from "../data/NewMessage";
 import FieldValue = firestore.FieldValue;
 import {MessageMiddleware, MessageProcessingControl} from "../middleware/MessageMiddleware";
+import DocumentReference = firestore.DocumentReference;
+import {Dispatch} from "../data/Dispatch";
 
 const logger = tagLogger("BaseChatWorker");
 
@@ -129,25 +131,9 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
     }
 
     /**
-     * Retrieves next batch index
-     * @param tx Update transaction
-     * @param chatDocumentPath Chat document
-     * @param dispatchId Dispatch ID
-     * @protected
-     * @returns Next batch index
-     */
-    private async getNextBatchSortIndex(tx: FirebaseFirestore.Transaction, chatDocumentPath: string, dispatchId?: string): Promise<number> {
-        const messagesSoFar = await tx.get(
-            this.getThreadMessageQuery(chatDocumentPath, dispatchId)
-                .orderBy("inBatchSortIndex", "desc")
-                .limit(1)
-        );
-        return ((messagesSoFar.size > 0 && messagesSoFar.docs[0].data()?.inBatchSortIndex) || -1) + 1;
-    }
-
-    /**
      * Saves chat messages
      * @param tx Update transaction
+     * @param nextInBatchIndex Next index in batch
      * @param ownerId Chat owner
      * @param chatDocumentPath Chat document path
      * @param dispatchId Dispatch ID
@@ -156,21 +142,17 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
      * @param chatMeta Chat metadata
      * @protected
      */
-    private async saveMessages(
+    private saveMessages(
         tx: FirebaseFirestore.Transaction,
+        nextInBatchIndex: number,
         ownerId: string,
         chatDocumentPath: string,
         dispatchId: string,
         sessionId: string | null | undefined,
         messages: ReadonlyArray<NewMessage>,
         chatMeta?: CM | null
-    ): Promise<void> {
-        if (0 === messages.length) {
-            return;
-        }
-
+    ): number {
         const messageCollectionRef = this.getMessageCollection(chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(tx, chatDocumentPath, dispatchId);
         messages.forEach((message, i) => {
             let text: string;
             let data: Readonly<Record<string, unknown>> | null = null;
@@ -196,13 +178,14 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
                     author: "ai",
                     text: text,
                     data: data,
-                    inBatchSortIndex: latestInBatchId + i,
+                    inBatchSortIndex: nextInBatchIndex++,
                     createdAt: FieldValue.serverTimestamp(),
                     meta: meta,
                     ...(sessionId ? {sessionId: sessionId} : {})
                 }
             );
         });
+        return nextInBatchIndex;
     }
 
     /**
@@ -223,24 +206,14 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         middleware: ReadonlyArray<MessageMiddleware<DATA, CM>>,
         messages: ReadonlyArray<NewMessage>
     ): Promise<void> {
-        const saveMessages = async (tx: FirebaseFirestore.Transaction, messages: ReadonlyArray<NewMessage>) => {
-            await this.saveMessages(
-                tx,
-                command.commonData.ownerId,
-                command.commonData.chatDocumentPath,
-                command.commonData.dispatchId,
-                chatState.sessionId,
-                messages,
-                chatState.meta
-            );
-        };
-
-        let currentChatState = chatState;
+        let currentChatState: ChatState<AssistantConfig, DATA, CM> = chatState;
 
         const createMpControl = (next: (messages: ReadonlyArray<NewMessage>) => Promise<void>): MessageProcessingControl<DATA, CM> => {
             return {
                 safeUpdate: async (update) => {
                     return await control.safeUpdate(async (tx, updateChatState) => {
+                        const dispatchDoc = this.db.doc(command.commonData.chatDocumentPath).collection(Collections.dispatches).doc(command.commonData.dispatchId) as DocumentReference<Dispatch>;
+                        let nextMessageIndex = (await dispatchDoc.get())?.data()?.nextMessageIndex || 0;
                         await update(
                             tx,
                             (newState) => {
@@ -251,16 +224,23 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
                                     ...(newState.meta ? {meta: newState.meta} : {}),
                                     ...(newState.sessionId ? {sessionId: newState.sessionId} : {})
                                 };
-                                currentChatState = {
-                                    ...currentChatState,
-                                    ...update
-                                };
+                                currentChatState = Object.assign(currentChatState, update);
                                 updateChatState(update);
                             },
                             (messages) => {
-                                saveMessages(tx, messages);
+                                nextMessageIndex = this.saveMessages(
+                                    tx,
+                                    nextMessageIndex,
+                                    command.commonData.ownerId,
+                                    command.commonData.chatDocumentPath,
+                                    command.commonData.dispatchId,
+                                    chatState.sessionId,
+                                    messages,
+                                    chatState.meta
+                                );
                             }
                         );
+                        tx.set(dispatchDoc, {nextMessageIndex: nextMessageIndex}, {merge: true});
                     });
                 },
                 next: next,

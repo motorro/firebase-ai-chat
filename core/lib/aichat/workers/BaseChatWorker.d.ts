@@ -71,17 +71,9 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      */
     protected getMessages(chatDocumentPath: string, dispatchId?: string): Promise<ReadonlyArray<ChatMessage>>;
     /**
-     * Retrieves next batch index
-     * @param tx Update transaction
-     * @param chatDocumentPath Chat document
-     * @param dispatchId Dispatch ID
-     * @protected
-     * @returns Next batch index
-     */
-    private getNextBatchSortIndex;
-    /**
      * Saves chat messages
      * @param tx Update transaction
+     * @param nextInBatchIndex Next index in batch
      * @param ownerId Chat owner
      * @param chatDocumentPath Chat document path
      * @param dispatchId Dispatch ID

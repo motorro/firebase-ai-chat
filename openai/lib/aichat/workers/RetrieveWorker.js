@@ -32,7 +32,9 @@ class RetrieveWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
         await this.updateConfig(control, state, () => ({ lastMessageId: newMessages.latestMessageId }));
         await this.processMessages(command, state, async (messages, _document, _state, mpc) => {
-            await mpc.saveMessages(messages);
+            await mpc.safeUpdate(async (_tx, _updateState, saveMessages) => {
+                saveMessages(messages);
+            });
             await this.continueNextInQueue(control, command);
         }, control, this.messageMiddleware, newMessages.messages.map(([, message]) => message));
     }

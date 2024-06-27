@@ -62,9 +62,9 @@ class OpenAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
      */
     async runSwitchToUser(control) {
         logger.d("Switching to user input");
-        await control.updateChatState({
+        await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
             status: "userInput"
-        });
+        }));
     }
     /**
      * Updates config
@@ -76,9 +76,9 @@ class OpenAiQueueWorker extends firebase_ai_chat_core_1.BaseChatWorker {
     async updateConfig(control, state, update) {
         const assistantConfig = Object.assign(Object.assign({}, state.config.assistantConfig), (update(state.config.assistantConfig)));
         const config = Object.assign(Object.assign({}, state.config), { assistantConfig: assistantConfig });
-        await control.updateChatState({
+        await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
             config: config
-        });
+        }));
         return assistantConfig;
     }
 }

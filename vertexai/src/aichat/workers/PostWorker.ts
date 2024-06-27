@@ -143,20 +143,27 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
             instructions,
             state.data,
             async (data) => {
-                return (await control.updateChatState({data: data})).data;
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({data: data}));
+                return data;
             }
         );
 
         if (response.isResolved()) {
             logger.d("Resolved");
 
+            const newData = response.value.data;
+
+            await control.safeUpdate(async (_tx, updateChatState) => {
+                updateChatState({data: newData});
+            });
+
             await this.processMessages(
                 command,
-                await control.updateChatState({
-                    data: response.value.data
-                }),
+                {...state, data: newData},
                 async (messages, _document, _state, mpc) => {
-                    await mpc.saveMessages(messages);
+                    await mpc.safeUpdate(async (_tx, _updateState, saveMessages) => {
+                        saveMessages(messages);
+                    });
                     await this.continueNextInQueue(control, command);
                 },
                 control,

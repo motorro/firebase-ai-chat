@@ -91,9 +91,9 @@ export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions
      */
     private async runSwitchToUser(control: OpenAiDispatchControl): Promise<void> {
         logger.d("Switching to user input");
-        await control.updateChatState({
+        await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
             status: "userInput"
-        });
+        }));
     }
 
     /**
@@ -116,9 +116,9 @@ export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions
             ...state.config,
             assistantConfig: assistantConfig
         };
-        await control.updateChatState({
+        await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
             config: config
-        });
+        }));
         return assistantConfig;
     }
 }

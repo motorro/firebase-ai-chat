@@ -3,13 +3,15 @@ import {db, test} from "./functionsTest";
 
 import {anything, capture, deepEqual, imock, instance, reset, verify, when} from "@johanblumenberg/ts-mockito";
 import {AiConfig, assistantId, CHATS, chatState, config, data, Data, userId} from "./mock";
-import {AssistantChat, ChatCleaner, ChatState, Collections, CommandScheduler, Meta} from "../src";
+import {AssistantChat, ChatCleaner, ChatState, Collections, CommandScheduler, Dispatch, Meta} from "../src";
 import {AssistantConfig} from "../lib";
 import {ChatContextStackEntry} from "../src/aichat/data/ChatState";
 import {beforeEach} from "mocha";
 import CollectionReference = admin.firestore.CollectionReference;
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
+import {firestore} from "firebase-admin";
+import DocumentReference = firestore.DocumentReference;
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 
@@ -108,8 +110,13 @@ describe("Assistant Chat", function() {
             data: data,
             status: "processing"
         });
-        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(createdState.latestDispatchId);
-        (await dispatchDoc.get()).exists.should.be.true;
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(createdState.latestDispatchId) as DocumentReference<Dispatch>;
+        const dispatchData = (await dispatchDoc.get()).data();
+        if (undefined === dispatchData) {
+            throw new Error("Expecting dispatch doc");
+        }
+        const nextMessageIndex = dispatchData.nextMessageIndex || -1;
+        nextMessageIndex.should.be.equal(2);
 
         const insertedMessages = await chatMessages.get();
         insertedMessages.docs.should.have.lengthOf(messages.length);
@@ -172,8 +179,13 @@ describe("Assistant Chat", function() {
             data: data,
             status: "processing"
         });
-        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(createdState.latestDispatchId);
-        (await dispatchDoc.get()).exists.should.be.true;
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(createdState.latestDispatchId) as DocumentReference<Dispatch>;
+        const dispatchData = (await dispatchDoc.get()).data();
+        if (undefined === dispatchData) {
+            throw new Error("Expecting dispatch doc");
+        }
+        const nextMessageIndex = dispatchData.nextMessageIndex || -1;
+        nextMessageIndex.should.be.equal(2);
 
         const insertedMessages = await chatMessages.get();
         insertedMessages.docs.should.have.lengthOf(messages.length);
@@ -220,8 +232,13 @@ describe("Assistant Chat", function() {
         updatedState.should.deep.include({
             status: "processing"
         });
-        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(updatedState.latestDispatchId);
-        (await dispatchDoc.get()).exists.should.be.true;
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(updatedState.latestDispatchId) as DocumentReference<Dispatch>;
+        const dispatchData = (await dispatchDoc.get()).data();
+        if (undefined === dispatchData) {
+            throw new Error("Expecting dispatch doc");
+        }
+        const nextMessageIndex = dispatchData.nextMessageIndex || -1;
+        nextMessageIndex.should.be.equal(2);
 
         const insertedMessages = await chatMessages.get();
         insertedMessages.docs.should.have.lengthOf(messages.length);

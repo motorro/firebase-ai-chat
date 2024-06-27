@@ -25,13 +25,14 @@ class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
                     runId: runId
                 } }));
             return await dispatcher.dispatch(data, toolCalls, async (data) => {
-                return (await control.updateChatState({ data: data })).data;
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({ data: data }));
+                return data;
             }, getContinuationCommand);
         };
         const continuation = await this.wrapper.run(threadId, state.config.assistantConfig.assistantId, state.data, dispatch);
         if (continuation.isResolved()) {
-            await control.updateChatState({
-                data: continuation.value
+            await control.safeUpdate(async (_tx, updateChatState) => {
+                updateChatState({ data: continuation.value });
             });
             await this.continueNextInQueue(control, command);
         }

@@ -82,39 +82,39 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         chatMeta?: CM
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Creating new chat with assistant:", JSON.stringify(assistantConfig));
-        const batch = this.db.batch();
         const status: ChatStatus = "processing";
         const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
         const sessionId: UUID = randomUUID();
 
-        batch.set(document, {
-            userId: userId,
-            config: {
-                assistantConfig: assistantConfig
-            },
-            status: status,
-            sessionId: sessionId,
-            latestDispatchId: dispatchDoc.id,
-            data: data,
-            createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-            meta: chatMeta || null
-        });
-        batch.set(dispatchDoc, {
-            createdAt: FieldValue.serverTimestamp()
-        });
+        const action: (common: ChatCommandData) => Promise<void> = await this.db.runTransaction(async (tx) => {
+            tx.set(document, {
+                userId: userId,
+                config: {
+                    assistantConfig: assistantConfig
+                },
+                status: status,
+                sessionId: sessionId,
+                latestDispatchId: dispatchDoc.id,
+                data: data,
+                createdAt: FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp(),
+                meta: chatMeta || null
+            });
+            tx.set(dispatchDoc, {
+                createdAt: FieldValue.serverTimestamp()
+            });
 
-        const scheduler = this.getScheduler(assistantConfig);
-        let action: (common: ChatCommandData) => Promise<void> = async (common) => {
-            await scheduler.create(common);
-        };
-        if (undefined !== messages && messages.length > 0) {
-            this.insertMessages(batch, document, userId, dispatchDoc.id, messages, sessionId, chatMeta?.userMessageMeta);
-            action = async (common) => {
-                await scheduler.createAndRun(common);
-            };
-        }
-        await batch.commit();
+            const scheduler = this.getScheduler(assistantConfig);
+            if (undefined !== messages && messages.length > 0) {
+                this.insertMessages(tx, document, userId, dispatchDoc.id, messages, sessionId, chatMeta?.userMessageMeta);
+                return async (common) => {
+                    await scheduler.createAndRun(common);
+                };
+            }
+            return async (common) => {
+                await scheduler.create(common);
+            }
+        });
 
         const command: ChatCommandData = {
             ownerId: userId,
@@ -123,6 +123,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
             meta: workerMeta || null
         };
         await action(command);
+
         return {
             status: status,
             data: data
@@ -151,29 +152,29 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         chatMeta?: CM
     ): Promise<ChatStateUpdate<DATA>> {
         logger.d("Creating new single run with assistant:", JSON.stringify(assistantConfig));
-        const batch = this.db.batch();
         const status: ChatStatus = "processing";
         const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
         const sessionId: UUID = randomUUID();
 
-        batch.set(document, {
-            userId: userId,
-            config: {
-                assistantConfig: assistantConfig
-            },
-            status: status,
-            sessionId: sessionId,
-            latestDispatchId: dispatchDoc.id,
-            data: data,
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-            meta: chatMeta || null
+        await this.db.runTransaction(async (tx) => {
+            tx.set(document, {
+                userId: userId,
+                config: {
+                    assistantConfig: assistantConfig
+                },
+                status: status,
+                sessionId: sessionId,
+                latestDispatchId: dispatchDoc.id,
+                data: data,
+                createdAt: Timestamp.now(),
+                updatedAt: Timestamp.now(),
+                meta: chatMeta || null
+            });
+            tx.set(dispatchDoc, {
+                createdAt: Timestamp.now()
+            });
+            this.insertMessages(tx, document, userId, dispatchDoc.id, messages, sessionId, chatMeta?.userMessageMeta);
         });
-        batch.set(dispatchDoc, {
-            createdAt: Timestamp.now()
-        });
-        this.insertMessages(batch, document, userId, dispatchDoc.id, messages, sessionId, chatMeta?.userMessageMeta);
-        await batch.commit();
 
         const command: ChatCommandData = {
             ownerId: userId,
@@ -314,7 +315,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
      * @private
      */
     private insertMessages(
-        batch: FirebaseFirestore.WriteBatch | FirebaseFirestore.Transaction,
+        batch: FirebaseFirestore.Transaction,
         document: DocumentReference<ChatState<AssistantConfig, DATA>>,
         userId: string,
         dispatchId: string,
@@ -323,6 +324,8 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         chatMeta?: Meta,
     ) {
         const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
+        const dispatchDoc = document.collection(Collections.dispatches).doc(dispatchId) as DocumentReference<Dispatch>;
+        let nextIndex = 0;
         messages.forEach((message, index) => {
             let text: string;
             let meta: Meta | null = chatMeta || null;
@@ -350,13 +353,15 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
                     author: "user",
                     text: text,
                     data: data,
-                    inBatchSortIndex: index,
+                    inBatchSortIndex: nextIndex,
                     createdAt: Timestamp.now(),
                     meta: meta,
                     ...(sessionId ? {sessionId: sessionId} : {})
                 }
             );
+            ++nextIndex;
         });
+        batch.set(dispatchDoc, {nextMessageIndex: nextIndex}, {merge: true});
     }
 
     /**
@@ -404,15 +409,16 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         ) => Promise<R>
     ): Promise<R> {
         return await this.db.runTransaction(async (tx) => {
-            const state = await this.checkAndGetState(tx, document, userId, checkStatus);
-
             const dispatchDoc = document.collection(Collections.dispatches).doc() as DocumentReference<Dispatch>;
+            let state = {...(await this.checkAndGetState(tx, document, userId, checkStatus)), latestDispatchId: dispatchDoc.id};
 
-            const result = await (block(tx, {...state, latestDispatchId: dispatchDoc.id}, (update) => {
-                tx.set(document, {...state, ...update, latestDispatchId: dispatchDoc.id, updatedAt: FieldValue.serverTimestamp()});
+            const result = await (block(tx, state, (update) => {
+                state = Object.assign(state, update);
+                tx.set(document, {...state, updatedAt: FieldValue.serverTimestamp()});
             }));
 
-            tx.set(dispatchDoc, {createdAt: Timestamp.now()});
+            tx.set(dispatchDoc, {createdAt: Timestamp.now()}, {merge: true});
+            tx.set(document, {latestDispatchId: dispatchDoc.id, updatedAt: FieldValue.serverTimestamp()}, {merge: true});
 
             return result;
         });

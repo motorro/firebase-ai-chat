@@ -22,12 +22,14 @@ class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         }
         const dispatcher = this.toolsDispatchFactory.getDispatcher(command.commonData.chatDocumentPath, state.config.assistantConfig.dispatcherId);
         const dc = await dispatcher.dispatchCommand(state.data, command, async (data) => {
-            return (await control.updateChatState({ data: data })).data;
+            (await control.safeUpdate(async (_tx, updateChatState) => updateChatState({ data: data })));
+            return data;
         }, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
         if (dc.isResolved()) {
             const dispatch = async (data, toolCalls, runId) => {
                 return await dispatcher.dispatch(data, toolCalls, async (data) => {
-                    return (await control.updateChatState({ data: data })).data;
+                    (await control.safeUpdate(async (_tx, updateChatState) => updateChatState({ data: data })));
+                    return data;
                 }, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest, meta: {
                         runId: runId
                     } })));
@@ -37,9 +39,9 @@ class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
                 toolsResult: dc.value.responses
             });
             if (rc.isResolved()) {
-                await control.updateChatState({
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
                     data: rc.value
-                });
+                }));
                 await this.continueNextInQueue(control, command);
             }
         }

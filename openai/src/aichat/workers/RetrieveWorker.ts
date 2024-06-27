@@ -69,7 +69,9 @@ export class RetrieveWorker extends OpenAiQueueWorker {
             command,
             state,
             async (messages, _document, _state, mpc) => {
-                await mpc.saveMessages(messages);
+                await mpc.safeUpdate(async (_tx, _updateState, saveMessages) => {
+                    saveMessages(messages);
+                });
                 await this.continueNextInQueue(control, command);
             },
             control,

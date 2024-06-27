@@ -54,14 +54,19 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Requested instructions not found"));
         }
         const response = await this.doPost(command, threadId, state.config.assistantConfig.instructionsId, instructions, state.data, async (data) => {
-            return (await control.updateChatState({ data: data })).data;
+            await control.safeUpdate(async (_tx, updateChatState) => updateChatState({ data: data }));
+            return data;
         });
         if (response.isResolved()) {
             logger.d("Resolved");
-            await this.processMessages(command, await control.updateChatState({
-                data: response.value.data
-            }), async (messages, _document, _state, mpc) => {
-                await mpc.saveMessages(messages);
+            const newData = response.value.data;
+            await control.safeUpdate(async (_tx, updateChatState) => {
+                updateChatState({ data: newData });
+            });
+            await this.processMessages(command, Object.assign(Object.assign({}, state), { data: newData }), async (messages, _document, _state, mpc) => {
+                await mpc.safeUpdate(async (_tx, _updateState, saveMessages) => {
+                    saveMessages(messages);
+                });
                 await this.continueNextInQueue(control, command);
             }, control, this.messageMiddleware, response.value.messages);
         }

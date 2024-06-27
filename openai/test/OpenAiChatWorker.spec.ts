@@ -196,7 +196,6 @@ describe("Chat worker", function() {
         };
 
         await chatDoc.set(data);
-        await chatDispatches.doc(dispatchDoc).set({createdAt: FieldValue.serverTimestamp()});
 
         const toInsert: ReadonlyArray<ChatMessage> = messages.map((message, index) => ({
             userId: userId,
@@ -208,9 +207,13 @@ describe("Chat worker", function() {
             data: null,
             meta: null
         }));
-        for (const message of toInsert) {
+        let index = 0;
+        for (; index < toInsert.length; ++index) {
+            const message = toInsert[index];
             await chatMessages.doc().set(message);
         }
+
+        await chatDispatches.doc(dispatchDoc).set({createdAt: FieldValue.serverTimestamp(), nextMessageIndex: index});
     }
 
     it("processes create command", async function() {
@@ -646,7 +649,9 @@ describe("Chat worker", function() {
                     _chatState,
                     control
                 ) => {
-                    await control.saveMessages(messages);
+                    await control.safeUpdate(async (_tx, _updateState, saveMessages) => {
+                        saveMessages(messages);
+                    });
                 }
             ]
         );
