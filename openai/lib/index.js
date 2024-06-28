@@ -77,7 +77,9 @@ function factory(firestore, functions, location, taskScheduler, formatContinuati
         handOverMiddleware(queueName, process, commandSchedulers) {
             return (0, firebase_ai_chat_core_1.handOverMiddleware)(firestore, commandSchedulers(queueName, _taskScheduler), process);
         },
-        worker(openAi, dispatchers, messageMapper, chatCleaner, messageMiddleware) {
+        worker(openAi, dispatchers, messageMapper, chatCleaner, 
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        messageMiddleware) {
             return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi, debugAi, messageMapper), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler, formatContinuationError, logData), _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData, messageMiddleware || []);
         },
         continuationScheduler(queueName) {

@@ -63,7 +63,7 @@ export interface AiChat {
      * @param messageMiddleware Optional Message processing middleware
      * @return Worker interface
      */
-    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>, messageMapper?: OpenAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>): OpenAiChatWorker;
+    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>, messageMapper?: OpenAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>): OpenAiChatWorker;
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
      * @param queueName The name of the queue the dispatch will be continued on

@@ -109,7 +109,8 @@ export class VertexAiChatWorker implements ChatWorker {
         chatCleanupRegistrar: ChatCleanupRegistrar,
         chatCleanerFactory: (queueName: string) => ChatCleaner,
         logData: boolean,
-        messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>,
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        messageMiddleware: ReadonlyArray<MessageMiddleware<any, any>>,
         getContinuationFactory?: () => ToolContinuationDispatcherFactory,
     ) {
         this.firestore = firestore;

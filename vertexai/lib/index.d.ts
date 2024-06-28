@@ -61,7 +61,7 @@ export interface AiChat {
      * @param messageMiddleware Optional Message processing middleware
      * @return Worker interface
      */
-    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>, messageMapper?: VertexAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>): ChatWorker;
+    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>, messageMapper?: VertexAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>): ChatWorker;
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
      * @param queueName The name of the queue the dispatch will be continued on

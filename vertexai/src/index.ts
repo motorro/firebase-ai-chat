@@ -169,7 +169,8 @@ export interface AiChat {
         instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>,
         messageMapper?: VertexAiMessageMapper,
         chatCleaner?: ChatCleaner,
-        messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
     ): ChatWorker
 
     /**
@@ -250,7 +251,8 @@ export function factory(
             instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>,
             messageMapper?: VertexAiMessageMapper,
             chatCleaner?: ChatCleaner,
-            messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>
+            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+            messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
         ): ChatWorker {
             return new VertexAiChatWorker(
                 firestore,

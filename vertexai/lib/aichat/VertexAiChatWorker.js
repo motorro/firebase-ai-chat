@@ -45,7 +45,9 @@ class VertexAiChatWorker {
     }
     constructor(firestore, scheduler, wrapper, 
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    instructions, formatContinuationError, chatCleanupRegistrar, chatCleanerFactory, logData, messageMiddleware, getContinuationFactory) {
+    instructions, formatContinuationError, chatCleanupRegistrar, chatCleanerFactory, logData, 
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    messageMiddleware, getContinuationFactory) {
         this.firestore = firestore;
         this.scheduler = scheduler;
         this.wrapper = wrapper;

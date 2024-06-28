@@ -171,7 +171,8 @@ export interface AiChat {
         dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>,
         messageMapper?: OpenAiMessageMapper,
         chatCleaner?: ChatCleaner,
-        messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
     ): OpenAiChatWorker
 
     /**
@@ -251,7 +252,8 @@ export function factory(
             ToolsDispatcher<any, any>>>,
             messageMapper?: OpenAiMessageMapper,
             chatCleaner?: ChatCleaner,
-            messageMiddleware?: ReadonlyArray<MessageMiddleware<ChatData>>
+            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+            messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
         ): OpenAiChatWorker {
             return new OpenAiChatWorker(
                 firestore,

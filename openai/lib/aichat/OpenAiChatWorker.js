@@ -16,7 +16,9 @@ const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiChatWorker");
  * Chat worker that dispatches chat commands and runs AI
  */
 class OpenAiChatWorker {
-    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, chatCleanupRegistrar, chatCleanerFactory, logData, messageMiddleware) {
+    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, chatCleanupRegistrar, chatCleanerFactory, logData, 
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    messageMiddleware) {
         this.firestore = firestore;
         this.firestore = firestore;
         this.scheduler = scheduler;
