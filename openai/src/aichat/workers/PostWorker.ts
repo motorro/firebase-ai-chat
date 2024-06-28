@@ -19,7 +19,7 @@ export class PostWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
+        control: DispatchControl<OpenAiChatActions, ChatData>
     ): Promise<void> {
         logger.d("Posting messages...");
         const threadId = state.config.assistantConfig.threadId;

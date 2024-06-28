@@ -14,7 +14,7 @@ import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
 const logger = tagLogger("OpenAiQueueWorker");
 
-export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>;
+export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, ChatData>;
 
 export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
@@ -91,9 +91,9 @@ export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions
      */
     private async runSwitchToUser(control: OpenAiDispatchControl): Promise<void> {
         logger.d("Switching to user input");
-        await control.updateChatState({
+        await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
             status: "userInput"
-        });
+        }));
     }
 
     /**
@@ -116,9 +116,9 @@ export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions
             ...state.config,
             assistantConfig: assistantConfig
         };
-        await control.updateChatState({
+        await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
             config: config
-        });
+        }));
         return assistantConfig;
     }
 }

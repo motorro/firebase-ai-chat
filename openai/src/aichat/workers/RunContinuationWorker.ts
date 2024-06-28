@@ -41,7 +41,7 @@ export class RunContinuationWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiContinuationCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
+        control: DispatchControl<OpenAiChatActions, ChatData>
     ): Promise<void> {
         logger.d("Running continuation...");
         const threadId = state.config.assistantConfig.threadId;
@@ -59,9 +59,8 @@ export class RunContinuationWorker extends OpenAiQueueWorker {
             state.data,
             command,
             async (data) => {
-                return control.updateChatState({
-                    data: data
-                });
+                (await control.safeUpdate(async (_tx, updateChatState) => updateChatState({data: data})));
+                return data;
             },
             (continuationRequest: ContinuationRequest): OpenAiContinuationCommand => ({
                 // Already a continuation command so if suspended we use the same set of actions
@@ -81,9 +80,8 @@ export class RunContinuationWorker extends OpenAiQueueWorker {
                     data,
                     toolCalls,
                     async (data) => {
-                        return control.updateChatState({
-                            data: data
-                        });
+                        (await control.safeUpdate(async (_tx, updateChatState) => updateChatState({data: data})));
+                        return data;
                     },
                     (continuationRequest: ContinuationRequest): OpenAiContinuationCommand => ({
                         // Already a continuation command so if suspended we use the same set of actions
@@ -109,9 +107,9 @@ export class RunContinuationWorker extends OpenAiQueueWorker {
             );
 
             if (rc.isResolved()) {
-                await control.updateChatState({
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
                     data: rc.value
-                });
+                }));
                 await this.continueNextInQueue(control, command);
             }
         }

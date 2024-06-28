@@ -1,8 +1,9 @@
 import { DeliverySchedule } from "firebase-admin/functions";
+import { BoundChatCommand, ChatAction, ChatCommand } from "./data/ChatCommand";
 /**
  * Task queue scheduler
  */
-export interface TaskScheduler<Args extends Record<string, unknown> = Record<string, unknown>> {
+export interface TaskScheduler<in Args extends Record<string, unknown> = Record<string, unknown>> {
     /**
      * Schedules tasks
      * @param queueName Dispatch queue name
@@ -23,3 +24,10 @@ export interface TaskScheduler<Args extends Record<string, unknown> = Record<str
      */
     getQueueMaxRetries(queueName: string): Promise<number>;
 }
+/**
+ * Schedules chat command to default queue or to the bound one
+ * @param scheduler Task scheduler
+ * @param queueName Default queue name
+ * @param chatCommand Chat command to schedule
+ */
+export declare function scheduleCommand(scheduler: TaskScheduler<ChatCommand<ChatAction>>, queueName: string, chatCommand: ChatCommand<ChatAction> | BoundChatCommand<ChatAction>): Promise<void>;

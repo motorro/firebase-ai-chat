@@ -14,6 +14,7 @@ Supported AI engines:
 
 
 ## Contents
+
 <!-- toc -->
 
 - [A problem statement](#a-problem-statement)
@@ -29,8 +30,10 @@ Supported AI engines:
   * [Handling user messages](#handling-user-messages)
   * [Running AI](#running-ai)
   * [Using AI function tools](#using-ai-function-tools)
-  * [Tool continuation](#tool-continuation)
-  * [Assistant switching and assistant crew](#assistant-swithching-and-assistant-crew)
+- [Tool continuation](#tool-continuation)
+- [AI message mapping](#ai-message-mapping)
+- [Message middleware](#message-middleware)
+- [Assistant switching and assistant crew](#assistant-switching-and-assistant-crew)
 - [Client application](#client-application)
 
 <!-- tocstop -->
@@ -531,7 +534,50 @@ const whenResultIsReady = async (data: string) => {
 Example of suspending tool dispatch in tools reducer could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L42).
 Example of resuming AI run could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts#L136).
 
-## Assistant swithching and assistant crew
+## AI message mapping
+By default, the library takes text messages from AI and makes text chat messages of them. If you use images or want to 
+parse custom data (or metadata) when exchanging messages between the client chat and AI you may want to add a custom 
+message mapper for each engine. Take a look at default mappers to get the idea:
+- [OpenAI](openai/src/aichat/OpenAiMessageMapper.ts)
+- [VertexAI](vertexai/src/aichat/VertexAiMessageMapper.ts)
+
+The [NewMessage](core/src/aichat/data/NewMessage.ts) which goes to/from client and AI may be just a string of a structured
+data that gets to corresponding fields of [ChatMessage](core/src/aichat/data/ChatMessage.ts).
+To provide your custom message mapper use the corresponding parameter to the `worker` functions of chat factories.
+The example is available in a sample project:
+- [OpenAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L89)
+- [VertexAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L89)
+- [Common part](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L196)
+
+## Message middleware
+By default, the library saves all messages received from AI to the client chat. However, you may want to custom-process
+those messages to filter special messages or to do some other processing (e.g. [handing over](#assistant-swithching-and-assistant-crew)).
+The middleware is a function with the following parameters:
+```typescript
+export interface MessageMiddleware<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
+  /**
+   * Processes message
+   * @param messages Message received from AI
+   * @param chatDocumentPath Chat document path
+   * @param chatState Chat state
+   * @param control Message processing control
+   */
+  (
+      messages: ReadonlyArray<NewMessage>,
+      chatDocumentPath: string,
+      chatState: ChatState<AssistantConfig, DATA, CM>,
+      control: MessageProcessingControl<DATA, CM>
+  ): Promise<void>
+}
+```
+Each time the engine responds with a message, it is being mapped with a mapper and then provided to your middleware along
+with the chat document path and state. Along with the data you get a [MessageProcessingControl](core/src/aichat/middleware/MessageMiddleware.ts)
+object to take the next steps. You can custom-process messages, pass them to the next processor or schedule some other
+task and complete the processing queue. Take a look at the source code for documentation. This is pretty "low-level" API
+so some more specialized middleware is already there. Take a look at hand-over middleware below.
+To provide the middleware to your workers, pass the array of them to the `worker` method of the engine factory.
+
+## Assistant switching and assistant crew
 As your tasks grow more complex it is worth considering delegating different tasks to different assistants each of them
 trained to perform certain scope of tasks. Thus, a crew of assistants work as a team to decompose the task and move step
 by step to fulfill it. One of the famous frameworks to build such a team is [Crew AI](https://docs.crewai.com/). This 
@@ -548,11 +594,20 @@ To be able to do it there are two methods in [AssistantChat](core/src/aichat/Ass
 - `handOver` - changes the context of chat to use with another assistant.
 - `handBack` - restores context to main assistant
 
-You may want to use function calling to switch the context suspending main chat with a continuation.
-Take a look at the full example:
+You may also switch during message processing. There is a special [middleware](core/src/aichat/middleware/handOverMiddleware.ts)
+available to do the switch during the message processing. The `HandOverControl` object in your middleware function will get the
+methods to hand over and to hand back the chat control.
 
-- [Reducers](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts)
-- [Tool definition](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/vertexai/vertexai.ts)
+The example is available in a sample project. 
+1. Instruct the assistant to use some kind of [special message for hand-over](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/instructions.ts#L12).
+2. Optionally, make a mapper to prepare a message. See above in [AI message mapping](#ai-message-mapping) section.
+3. Set up a middleware [function](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L137).
+4. Provide mappers and middleware to workers: [OpenAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L104), [VertexAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/vertexai/vertexai.ts#L124).
+
+### Note on switching the engine in tool calls
+Take a note that changing the assistant within tool calls may fail if the new assistant takes a long time to hand back. 
+For example, currently (2024-06-28), OpenAI calls tools during the assistant run and times out after 10 minutes. So it
+turns out that hand over during tool calls with suspension is not generally a good idea :(
 
 ## Client application
 The sample project includes a sample KMP [Android application](https://github.com/motorro/firebase-openai-chat-project/tree/master/Client)

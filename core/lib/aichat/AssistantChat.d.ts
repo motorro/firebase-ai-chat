@@ -58,7 +58,7 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param document Document reference
      * @param userId Chat owner
      * @param assistantConfig Assistant Config
-     * @param handOverMessages Messages used to initialize the new chat passed  Hidden from user
+     * @param handOverMessages Messages used to initialize the new chat passed (hidden from user)
      * @param workerMeta Metadata to pass to chat worker
      * @param chatMeta Chat meta to set for switched chat
      * @return Chat stack update
@@ -68,9 +68,11 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * Hands chat back to the next popped assistant
      * @param document Document reference
      * @param userId Chat owner
+     * @param handOverMessages Messages used to sent when handing back (hidden from user)
+     * @param workerMeta Metadata to pass to chat worker
      * @return Chat stack update
      */
-    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string): Promise<HandOverResult>;
+    handBack(document: DocumentReference<ChatState<AssistantConfig, DATA>>, userId: string, handOverMessages?: ReadonlyArray<NewMessage>, workerMeta?: WM): Promise<HandOverResult>;
     /**
      * Posts messages to the thread
      * @param document Chat document
@@ -89,7 +91,6 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param messages Messages to insert
      * @param sessionId Chat session ID
      * @param chatMeta Common message meta
-     * @return Write batch
      * @private
      */
     private insertMessages;
@@ -104,7 +105,6 @@ export declare class AssistantChat<DATA extends ChatData, WM extends Meta = Meta
      * @param document Chat document
      * @param userId To check the user can perform block
      * @param checkStatus Checks current status for availability
-     * @param targetStatus Target status
      * @param block Block to run
      * @private
      */

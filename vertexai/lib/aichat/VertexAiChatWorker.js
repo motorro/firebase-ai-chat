@@ -17,7 +17,7 @@ class VertexAiChatWorker {
         const cleaner = this.chatCleanerFactory(queueName);
         if (PostWorker_1.ContinuePostWorker.isSupportedCommand(command)) {
             logger.d("Action to be handled with ContinuePostWorker");
-            return new PostWorker_1.ContinuePostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData);
+            return new PostWorker_1.ContinuePostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData, this.messageMiddleware);
         }
         const action = command.actionData[0];
         if (CreateWorker_1.CreateWorker.isSupportedAction(action)) {
@@ -30,11 +30,11 @@ class VertexAiChatWorker {
         }
         if (PostWorker_1.PostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with PostWorker");
-            return new PostWorker_1.PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData);
+            return new PostWorker_1.PostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData, this.messageMiddleware);
         }
         if (PostWorker_1.ExplicitPostWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with ExplicitPostWorker");
-            return new PostWorker_1.ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData);
+            return new PostWorker_1.ExplicitPostWorker(this.firestore, this.scheduler, this.wrapper, this.instructions, this.getContinuationFactory, cleaner, this.logData, this.messageMiddleware);
         }
         if (SwitchToUserWorker_1.SwitchToUserWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with SwitchToUserWorker");
@@ -45,7 +45,9 @@ class VertexAiChatWorker {
     }
     constructor(firestore, scheduler, wrapper, 
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    instructions, formatContinuationError, chatCleanupRegistrar, chatCleanerFactory, logData, getContinuationFactory) {
+    instructions, formatContinuationError, chatCleanupRegistrar, chatCleanerFactory, logData, 
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    messageMiddleware, getContinuationFactory) {
         this.firestore = firestore;
         this.scheduler = scheduler;
         this.wrapper = wrapper;
@@ -65,6 +67,7 @@ class VertexAiChatWorker {
         this.chatCleanerFactory = chatCleanerFactory;
         this.chatCleanupRegistrar = chatCleanupRegistrar;
         this.logData = logData;
+        this.messageMiddleware = messageMiddleware;
     }
     async dispatch(req, onQueueComplete) {
         if ((0, VertexAiChatCommand_1.isVertexAiChatReq)(req)) {

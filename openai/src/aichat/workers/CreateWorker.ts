@@ -34,7 +34,7 @@ export class CreateWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
+        control: DispatchControl<OpenAiChatActions, ChatData>
     ): Promise<void> {
         if (state.config.assistantConfig.threadId) {
             logger.d("Already has a thread:", state.config.assistantConfig.threadId);

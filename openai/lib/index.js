@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.factory = exports.DefaultOpenAiMessageMapper = exports.isOpenAiChatCommand = exports.isOpenAiChatReq = exports.OpenAiChatWorker = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isStructuredMessage = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.commonFormatContinuationError = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
+exports.factory = exports.DefaultOpenAiMessageMapper = exports.isOpenAiChatCommand = exports.isOpenAiChatReq = exports.OpenAiChatWorker = exports.handOverMiddleware = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isStructuredMessage = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.commonFormatContinuationError = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const OpenAiChatWorker_1 = require("./aichat/OpenAiChatWorker");
 Object.defineProperty(exports, "OpenAiChatWorker", { enumerable: true, get: function () { return OpenAiChatWorker_1.OpenAiChatWorker; } });
@@ -35,6 +35,8 @@ var firebase_ai_chat_core_7 = require("@motorro/firebase-ai-chat-core");
 Object.defineProperty(exports, "isContinuationRequest", { enumerable: true, get: function () { return firebase_ai_chat_core_7.isContinuationRequest; } });
 Object.defineProperty(exports, "isContinuationCommand", { enumerable: true, get: function () { return firebase_ai_chat_core_7.isContinuationCommand; } });
 Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: true, get: function () { return firebase_ai_chat_core_7.isContinuationCommandRequest; } });
+var firebase_ai_chat_core_8 = require("@motorro/firebase-ai-chat-core");
+Object.defineProperty(exports, "handOverMiddleware", { enumerable: true, get: function () { return firebase_ai_chat_core_8.handOverMiddleware; } });
 var OpenAiChatCommand_1 = require("./aichat/data/OpenAiChatCommand");
 Object.defineProperty(exports, "isOpenAiChatReq", { enumerable: true, get: function () { return OpenAiChatCommand_1.isOpenAiChatReq; } });
 Object.defineProperty(exports, "isOpenAiChatCommand", { enumerable: true, get: function () { return OpenAiChatCommand_1.isOpenAiChatCommand; } });
@@ -72,8 +74,13 @@ function factory(firestore, functions, location, taskScheduler, formatContinuati
         chat: function (queueName, commandSchedulers = defaultSchedulers, chatCleaner) {
             return new firebase_ai_chat_core_1.AssistantChat(firestore, commandSchedulers(queueName, _taskScheduler), _chatCleanerFactory(queueName, chatCleaner));
         },
-        worker(openAi, dispatchers, messageMapper, chatCleaner) {
-            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi, debugAi, messageMapper), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler, formatContinuationError, logData), _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData);
+        handOverMiddleware(queueName, process, commandSchedulers = defaultSchedulers) {
+            return (0, firebase_ai_chat_core_1.handOverMiddleware)(firestore, commandSchedulers(queueName, _taskScheduler), process);
+        },
+        worker(openAi, dispatchers, messageMapper, chatCleaner, 
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        messageMiddleware) {
+            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi, debugAi, messageMapper), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler, formatContinuationError, logData), _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData, messageMiddleware || []);
         },
         continuationScheduler(queueName) {
             return _continuationSchedulerFactory.create(queueName);

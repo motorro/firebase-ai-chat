@@ -37,7 +37,7 @@ export interface ToolsContinuationDispatcher<A, C extends ContinuationCommand<A>
     dispatch(
         soFar: DATA,
         toolCalls: ReadonlyArray<ToolCallRequest>,
-        updateChatData: (data: DATA) => Promise<boolean>,
+        updateChatData: (data: DATA) => Promise<DATA>,
         getContinuationCommand: (continuationRequest: ContinuationRequest) => C
     ): Promise<Continuation<ToolCallsResult<DATA>>>
 
@@ -52,7 +52,7 @@ export interface ToolsContinuationDispatcher<A, C extends ContinuationCommand<A>
     dispatchCommand(
         soFar: DATA,
         command: C,
-        updateChatData: (data: DATA) => Promise<boolean>,
+        updateChatData: (data: DATA) => Promise<DATA>,
         getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>
     ): Promise<Continuation<ToolCallsResult<DATA>>>
 }
@@ -93,7 +93,7 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
     async dispatch(
         soFar: DATA,
         toolCalls: ReadonlyArray<ToolCallRequest>,
-        updateChatData: (data: DATA) => Promise<boolean>,
+        updateChatData: (data: DATA) => Promise<DATA>,
         getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>
     ): Promise<Continuation<ToolCallsResult<DATA>>> {
         logger.d("Dispatching tool calls");
@@ -144,7 +144,7 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
     async dispatchCommand(
         soFar: DATA,
         command: C,
-        updateChatData: (data: DATA) => Promise<boolean>,
+        updateChatData: (data: DATA) => Promise<DATA>,
         getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>
     ): Promise<Continuation<ToolCallsResult<DATA>>> {
         logger.d("Continuation processing. Moving forward:", JSON.stringify(command));
@@ -187,7 +187,7 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
 
     private async doDispatch(
         batch: FirebaseFirestore.WriteBatch,
-        updateChatData: (data: DATA) => Promise<boolean>,
+        updateChatData: (data: DATA) => Promise<DATA>,
         continuationDoc: DocumentReference<ToolsContinuationData>,
         soFar: DATA,
         continuation: ToolsContinuationData,

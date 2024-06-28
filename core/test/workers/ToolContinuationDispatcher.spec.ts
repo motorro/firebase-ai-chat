@@ -65,10 +65,10 @@ describe("Tool continuation dispatcher", function() {
     describe("dispatch", function() {
         it("processes all tool calls", async function() {
             let dataUpdated = false;
-            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+            const updateChatData: (data: Data) => Promise<Data> = async (data) => {
                 dataUpdated = true;
                 data.should.deep.equal(data2);
-                return true;
+                return data;
             };
 
             const results = [
@@ -130,10 +130,10 @@ describe("Tool continuation dispatcher", function() {
 
         it("saves continuation if tools are suspended", async function() {
             let dataUpdated = false;
-            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+            const updateChatData: (data: Data) => Promise<Data> = async (data) => {
                 dataUpdated = true;
                 data.should.deep.equal(data2);
-                return true;
+                return data;
             };
 
             const results: ReadonlyArray<Continuation<DispatchResult<Data>>> = [
@@ -252,10 +252,10 @@ describe("Tool continuation dispatcher", function() {
 
         it("processes all tool calls", async function() {
             let dataUpdated = false;
-            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+            const updateChatData: (data: Data) => Promise<Data> = async (data) => {
                 dataUpdated = true;
                 data.should.deep.equal(data2);
-                return true;
+                return data;
             };
 
             const command = await createCommand();
@@ -357,10 +357,10 @@ describe("Tool continuation dispatcher", function() {
 
         it("saves next tools when suspended", async function() {
             let dataUpdated = false;
-            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+            const updateChatData: (data: Data) => Promise<Data> = async (data) => {
                 dataUpdated = true;
                 data.should.deep.equal(data2);
-                return true;
+                return data;
             };
 
             const command = await createCommand();
@@ -438,10 +438,10 @@ describe("Tool continuation dispatcher", function() {
 
         it("completes and resolves continuation", async function() {
             let dataUpdated = false;
-            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+            const updateChatData: (data: Data) => Promise<Data> = async (data) => {
                 dataUpdated = true;
                 data.should.deep.equal(data3);
-                return true;
+                return data;
             };
 
             const command = await createCommand([
@@ -529,10 +529,10 @@ describe("Tool continuation dispatcher", function() {
 
         it("processes fully resolved continuation", async function() {
             let dataUpdated = false;
-            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+            const updateChatData: (data: Data) => Promise<Data> = async (data) => {
                 dataUpdated = true;
                 data.should.deep.equal(data3);
-                return true;
+                return data;
             };
 
             const command = await createCommand([
@@ -589,10 +589,10 @@ describe("Tool continuation dispatcher", function() {
 
         it("processes failed continuation", async function() {
             let dataUpdated = false;
-            const updateChatData: (data: Data) => Promise<boolean> = async (data) => {
+            const updateChatData: (data: Data) => Promise<Data> = async (data) => {
                 dataUpdated = true;
                 data.should.deep.equal(data2);
-                return true;
+                return data;
             };
 
             const command = await createCommand([

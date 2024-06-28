@@ -4,6 +4,8 @@ import {db, test} from "../functionsTest";
 import {anything, capture, imock, instance, reset, when} from "@johanblumenberg/ts-mockito";
 import {AiConfig, chatState, data, Data, DispatchAction, userId} from "../mock";
 import {
+    AssistantConfig,
+    BaseChatWorker,
     ChatCommand,
     ChatCommandData,
     ChatError,
@@ -13,16 +15,19 @@ import {
     Collections,
     Dispatch,
     DispatchControl,
+    MessageMiddleware,
+    MessageProcessingControl,
     Meta,
+    NewMessage,
     Run,
-    TaskScheduler,
-    BaseChatWorker
+    TaskScheduler
 } from "../../src";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {expect} from "chai";
 import CollectionReference = admin.firestore.CollectionReference;
 import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
+import DocumentReference = firestore.DocumentReference;
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Base chat worker", function() {
@@ -56,6 +61,10 @@ describe("Base chat worker", function() {
         commonData: commandData,
         actionData: "create"
     };
+    const processCommand: ChatCommand<DispatchAction> = {
+        commonData: commandData,
+        actionData: "process"
+    };
     const closeCommand: ChatCommand<DispatchAction> = {
         commonData: commandData,
         actionData: "close"
@@ -86,7 +95,6 @@ describe("Base chat worker", function() {
         };
 
         await chatDoc.set(data);
-        await chatDispatches.doc(dispatchDoc).set({createdAt: FieldValue.serverTimestamp()});
 
         const toInsert: ReadonlyArray<ChatMessage> = messages.map((message, index) => ({
             userId: userId,
@@ -98,9 +106,13 @@ describe("Base chat worker", function() {
             data: null,
             meta: null
         }));
-        for (const message of toInsert) {
+        let index = 0;
+        for (; index < toInsert.length; ++index) {
+            const message = toInsert[index];
             await chatMessages.doc().set(message);
         }
+
+        await chatDispatches.doc(dispatchDoc).set({createdAt: FieldValue.serverTimestamp(), nextMessageIndex: index});
     }
 
     it("processes command", async function() {
@@ -122,11 +134,11 @@ describe("Base chat worker", function() {
             async (
                 command: ChatCommand<DispatchAction>,
                 state: ChatState<AiConfig, Data>,
-                control: DispatchControl<DispatchAction, AiConfig, Data>
+                control: DispatchControl<DispatchAction, Data>
             ): Promise<void> => {
                 passedCommand = command;
                 passedState = state;
-                await control.updateChatState({status: "complete"});
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "complete"}));
                 return Promise.resolve();
             }
         );
@@ -155,6 +167,61 @@ describe("Base chat worker", function() {
             status: "processing",
             latestDispatchId: dispatchId
         });
+    });
+
+    it("processes and messages", async function() {
+        await createChat("processing", dispatchId);
+
+        const worker = new TestWorker(
+            db,
+            instance(scheduler),
+            // eslint-disable-next-line max-len
+            (req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<DispatchAction>> => {
+                return true;
+            },
+            // eslint-disable-next-line max-len
+            async function (
+                this: TestWorker,
+                command: ChatCommand<DispatchAction>,
+                state: ChatState<AiConfig, Data>,
+                control: DispatchControl<DispatchAction, Data>
+            ): Promise<void> {
+                await this.process(command, state, control, {value: "Test2"}, ["Message to add"]);
+            }
+        );
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: processCommand
+        };
+
+        const result = await worker.dispatch(request);
+
+        result.should.be.true;
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<AiConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.data.should.deep.include({
+            value: "Test2"
+        });
+
+        const messages = await chatDoc.collection(Collections.messages).orderBy("inBatchSortIndex").get();
+        messages.size.should.be.equal(3);
+        const m3Data = messages.docs[2].data();
+        if (undefined === m3Data) {
+            throw new Error("Expected message 3 to be there")
+        }
+        m3Data.should.deep.include({text: "Message to add"});
+
+        const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(dispatchId) as DocumentReference<Dispatch>;
+        const dispatchData = (await dispatchDoc.get()).data();
+        if (undefined === dispatchData) {
+            throw new Error("Expected a dispatch doc");
+        }
+        const nextMessageIndex = dispatchData.nextMessageIndex || -1;
+        nextMessageIndex.should.be.equal(3);
     });
 
     it("sets retry if there are retries", async function() {
@@ -235,9 +302,7 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (_command, _state, control): Promise<void> => {
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "userInput"}));
             }
         );
 
@@ -337,9 +402,7 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (_command, _state, control): Promise<void> => {
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "userInput"}));
             }
         );
 
@@ -374,9 +437,7 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (_command, _state, control): Promise<void> => {
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "userInput"}));
             }
         );
 
@@ -427,9 +488,7 @@ describe("Base chat worker", function() {
             },
             // eslint-disable-next-line max-len
             async (command, _state, control): Promise<void> => {
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (_tx, updateChatState) => updateChatState({status: "userInput"}));
                 await control.continueQueue({...command, actionData: "close"});
             }
         );
@@ -466,9 +525,7 @@ describe("Base chat worker", function() {
             // eslint-disable-next-line max-len
             async (_command, _state, control): Promise<void> => {
                 await control.completeQueue();
-                await control.updateChatState({
-                    status: "userInput"
-                });
+                await control.safeUpdate(async (tx, updateChatState) => updateChatState({status: "userInput"}));
             }
         );
         const request: Request<ChatCommand<unknown>> = {
@@ -495,19 +552,18 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     private readonly doDispatchImpl: (
         command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
-        control: DispatchControl<DispatchAction, AiConfig, Data>
+        control: DispatchControl<DispatchAction, Data>
     ) => Promise<void>;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
         scheduler: TaskScheduler,
-        // eslint-disable-next-line max-len
         isSupportedCommand: (req: Request<ChatCommand<unknown>>) => req is Request<ChatCommand<DispatchAction>>,
-        // eslint-disable-next-line max-len
         doDispatch: (
+            this: TestWorker,
             command: ChatCommand<DispatchAction>,
             state: ChatState<AiConfig, Data>,
-            control: DispatchControl<DispatchAction, AiConfig, Data>
+            control: DispatchControl<DispatchAction, Data>
         ) => Promise<void>
     ) {
         super(firestore, scheduler, instance(imock()), false);
@@ -522,8 +578,37 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     protected doDispatch(
         command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
-        control: DispatchControl<DispatchAction, AiConfig, Data>
+        control: DispatchControl<DispatchAction, Data>
     ): Promise<void> {
         return this.doDispatchImpl(command, state, control);
+    }
+
+    async process(
+        command: ChatCommand<DispatchAction>,
+        state: ChatState<AiConfig, Data>,
+        control: DispatchControl<DispatchAction, Data>,
+        newData: Data,
+        messages: ReadonlyArray<NewMessage>
+    ): Promise<void> {
+        const defaultProcessor: MessageMiddleware<Data> = async (
+            messages: ReadonlyArray<NewMessage>,
+            _chatDocumentPath: string,
+            _chatState: ChatState<AssistantConfig, Data>,
+            control: MessageProcessingControl<Data>
+        ): Promise<void> => {
+            await control.safeUpdate(async (tx, updateState, saveMessages) => {
+                updateState({data: newData});
+                saveMessages(messages);
+            });
+        }
+
+        await this.processMessages(
+            command,
+            state,
+            defaultProcessor,
+            control,
+            [],
+            messages
+        );
     }
 }

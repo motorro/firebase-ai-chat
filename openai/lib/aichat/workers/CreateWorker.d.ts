@@ -8,5 +8,5 @@ export declare class CreateWorker extends OpenAiQueueWorker {
     private readonly cleanupRegistrar;
     constructor(firestore: FirebaseFirestore.Firestore, scheduler: TaskScheduler, wrapper: AiWrapper, cleaner: ChatCleaner, logData: boolean, cleanupRegistrar: ChatCleanupRegistrar);
     static isSupportedAction(action: unknown): action is OpenAiChatAction;
-    doDispatch(command: OpenAiChatCommand, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>): Promise<void>;
+    doDispatch(command: OpenAiChatCommand, state: ChatState<OpenAiAssistantConfig, ChatData>, control: DispatchControl<OpenAiChatActions, ChatData>): Promise<void>;
 }

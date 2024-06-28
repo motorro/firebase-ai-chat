@@ -16,7 +16,7 @@ export interface Data2 extends ChatData {
     readonly value: string
 }
 
-export type DispatchAction = "create" | "close";
+export type DispatchAction = "create" | "process" | "close";
 
 export const runId = "run-1";
 export const userId = "123456";

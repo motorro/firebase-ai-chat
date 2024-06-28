@@ -23,4 +23,5 @@ node_modules
 # Project files
 .idea
 *.iml
+.DS_Store
 

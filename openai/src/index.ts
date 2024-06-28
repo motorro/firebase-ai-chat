@@ -14,7 +14,14 @@ import {
     commonFormatContinuationError,
     ChatCleaner,
     CommonChatCleaner,
-    CommonChatCleanupRegistrar
+    CommonChatCleanupRegistrar,
+    MessageMiddleware,
+    AssistantConfig,
+    HandOverControl,
+    NewMessage,
+    Meta,
+    ChatMeta,
+    handOverMiddleware
 } from "@motorro/firebase-ai-chat-core";
 import {AiWrapper} from "./aichat/AiWrapper";
 import {OpenAiChatWorker} from "./aichat/OpenAiChatWorker";
@@ -85,6 +92,8 @@ export {
     isContinuationCommand,
     isContinuationCommandRequest
 } from "@motorro/firebase-ai-chat-core";
+export {PartialChatState, MessageProcessingControl, MessageMiddleware} from "@motorro/firebase-ai-chat-core";
+export {HandOverControl, handOverMiddleware} from "@motorro/firebase-ai-chat-core";
 
 export {
     AiWrapper,
@@ -128,11 +137,32 @@ export interface AiChat {
     ): AssistantChat<DATA>
 
     /**
+     * Creates chat hand-over message middleware
+     * Add it to the worker to custom-process messages coming from AI
+     * @param queueName Chat dispatcher function (queue) name to dispatch work
+     * @param process Processing function
+     * @param commandSchedulers Creates a list of command schedulers. Should return schedulers for each platform
+     * @return Message middleware with handover functions
+     * @see worker
+     */
+    handOverMiddleware<DATA extends ChatData, CM extends ChatMeta = ChatMeta, WM extends Meta = Meta>(
+        queueName: string,
+        process: (
+            messages: ReadonlyArray<NewMessage>,
+            chatDocumentPath: string,
+            chatState: ChatState<AssistantConfig, DATA, CM>,
+            control: HandOverControl<DATA, WM, CM>
+        ) => Promise<void>,
+        commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>,
+    ): MessageMiddleware<DATA, CM>
+
+    /**
      * Chat worker to use in Firebase tasks
      * @param openAi OpenAI instance
      * @param dispatchers Tools dispatchers
      * @param messageMapper Maps messages to/from OpenAI
      * @param chatCleaner Optional chat resource cleaner extension
+     * @param messageMiddleware Optional Message processing middleware
      * @return Worker interface
      */
     worker(
@@ -140,7 +170,9 @@ export interface AiChat {
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>,
         messageMapper?: OpenAiMessageMapper,
-        chatCleaner?: ChatCleaner
+        chatCleaner?: ChatCleaner,
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
     ): OpenAiChatWorker
 
     /**
@@ -201,13 +233,27 @@ export function factory(
                 _chatCleanerFactory(queueName, chatCleaner)
             );
         },
+        handOverMiddleware<DATA extends ChatData, CM extends ChatMeta = ChatMeta, WM extends Meta = Meta>(
+            queueName: string,
+            process: (
+                messages: ReadonlyArray<NewMessage>,
+                chatDocumentPath: string,
+                chatState: ChatState<AssistantConfig, DATA, CM>,
+                control: HandOverControl<DATA, WM, CM>
+            ) => Promise<void>,
+            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers,
+        ): MessageMiddleware<DATA, CM> {
+            return handOverMiddleware(firestore, commandSchedulers(queueName, _taskScheduler), process);
+        },
         worker(
             openAi: OpenAI,
             dispatchers: Readonly<Record<string,
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
             ToolsDispatcher<any, any>>>,
             messageMapper?: OpenAiMessageMapper,
-            chatCleaner?: ChatCleaner
+            chatCleaner?: ChatCleaner,
+            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+            messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
         ): OpenAiChatWorker {
             return new OpenAiChatWorker(
                 firestore,
@@ -217,6 +263,7 @@ export function factory(
                 _chatCleanupRegistrar,
                 (queueName) => _chatCleanerFactory(queueName, chatCleaner),
                 logData,
+                messageMiddleware || []
             );
         },
         continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {

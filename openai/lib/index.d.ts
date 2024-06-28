@@ -1,4 +1,4 @@
-import { AssistantChat, ToolsDispatcher, ChatData, ChatState, TaskScheduler, CommandScheduler, ToolsContinuationScheduler, ToolCallRequest, DispatchError, ChatCleaner } from "@motorro/firebase-ai-chat-core";
+import { AssistantChat, ToolsDispatcher, ChatData, ChatState, TaskScheduler, CommandScheduler, ToolsContinuationScheduler, ToolCallRequest, DispatchError, ChatCleaner, MessageMiddleware, AssistantConfig, HandOverControl, NewMessage, Meta, ChatMeta } from "@motorro/firebase-ai-chat-core";
 import { AiWrapper } from "./aichat/AiWrapper";
 import { OpenAiChatWorker } from "./aichat/OpenAiChatWorker";
 import { Functions } from "firebase-admin/lib/functions";
@@ -13,6 +13,8 @@ export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from
 export { FirebaseQueueTaskScheduler } from "@motorro/firebase-ai-chat-core";
 export { Continuation, SuspendedContinuation, ResolvedContinuation } from "@motorro/firebase-ai-chat-core";
 export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "@motorro/firebase-ai-chat-core";
+export { PartialChatState, MessageProcessingControl, MessageMiddleware } from "@motorro/firebase-ai-chat-core";
+export { HandOverControl, handOverMiddleware } from "@motorro/firebase-ai-chat-core";
 export { AiWrapper, OpenAiChatWorker, OpenAiMessageMapper };
 export { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
 export { OpenAiChatCommand, isOpenAiChatReq, isOpenAiChatCommand } from "./aichat/data/OpenAiChatCommand";
@@ -43,14 +45,25 @@ export interface AiChat {
      */
     chat<DATA extends ChatData>(queueName: string, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>, chatCleaner?: ChatCleaner): AssistantChat<DATA>;
     /**
+     * Creates chat hand-over message middleware
+     * Add it to the worker to custom-process messages coming from AI
+     * @param queueName Chat dispatcher function (queue) name to dispatch work
+     * @param process Processing function
+     * @param commandSchedulers Creates a list of command schedulers. Should return schedulers for each platform
+     * @return Message middleware with handover functions
+     * @see worker
+     */
+    handOverMiddleware<DATA extends ChatData, CM extends ChatMeta = ChatMeta, WM extends Meta = Meta>(queueName: string, process: (messages: ReadonlyArray<NewMessage>, chatDocumentPath: string, chatState: ChatState<AssistantConfig, DATA, CM>, control: HandOverControl<DATA, WM, CM>) => Promise<void>, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>): MessageMiddleware<DATA, CM>;
+    /**
      * Chat worker to use in Firebase tasks
      * @param openAi OpenAI instance
      * @param dispatchers Tools dispatchers
      * @param messageMapper Maps messages to/from OpenAI
      * @param chatCleaner Optional chat resource cleaner extension
+     * @param messageMiddleware Optional Message processing middleware
      * @return Worker interface
      */
-    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>, messageMapper?: OpenAiMessageMapper, chatCleaner?: ChatCleaner): OpenAiChatWorker;
+    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>, messageMapper?: OpenAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>): OpenAiChatWorker;
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
      * @param queueName The name of the queue the dispatch will be continued on

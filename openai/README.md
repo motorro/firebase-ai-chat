@@ -37,6 +37,34 @@ const myMessageMapper: OpenAiMessageMapper = {
 }
 ```
 
+### Custom resource cleaner
+When you close the chat, the library cleans up the threads that were created during the chat. If you need any custom
+processing, you may add some custom cleaner that will be called along:
+```typescript
+/**
+ * Chat resource cleaner
+ */
+const cleaner: ChatCleaner = {
+    /**
+     * Schedules cleanup commands stored inside chat data
+     * @param chatDocumentPath Chat document
+     */
+    cleanup: async (chatDocumentPath: string): Promise<void> => {
+        logger.d("Cleanup");
+    }
+}
+```
+
+### Optional middleware
+By default, the library saves all the messages that come from AI. If you need any custom processing, you could add some
+custom AI message middleware. Take a look at the main documentation for details [here](../README.md#message-middleware).
+```typescript
+const handOver: MessageMiddleware<CalculateChatData, CalculatorMeta> = chatFactory.handOverMiddleware(
+    "calculator",
+    handOverProcessor
+);
+```
+
 Refer to [Configure your environment](https://firebase.google.com/docs/functions/config-env) article for more
 information on setting environment and secret variables for your functions.
 
@@ -68,7 +96,7 @@ export const calculator = onTaskDispatched(
     async (req) => {
       // Create and run a worker
       // See the `dispatchers` definitions below
-      await chatFactory.worker(new OpenAI({apiKey: openAiApiKey.value()}), dispatchers, myMessageMapper).dispatch(
+      await chatFactory.worker(new OpenAI({apiKey: openAiApiKey.value()}), dispatchers, myMessageMapper, cleaner, [handOver]).dispatch(
           req,
           (chatDocumentPath: string, meta: Meta) => {
              // Optional task completion handler

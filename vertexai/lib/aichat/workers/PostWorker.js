@@ -16,13 +16,15 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
      * @param getDispatcherFactory Tool dispatch factory
      * @param cleaner Chat cleaner
      * @param logData Logs chat data if true
+     * @param messageMiddleware Optional Message processing middleware
      */
     constructor(firestore, scheduler, wrapper, 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    instructions, getDispatcherFactory, cleaner, logData) {
+    instructions, getDispatcherFactory, cleaner, logData, messageMiddleware) {
         super(firestore, scheduler, wrapper, cleaner, logData);
         this.instructions = instructions;
         this.getDispatcherFactory = getDispatcherFactory;
+        this.messageMiddleware = messageMiddleware;
     }
     /**
      * Creates a post dispatch function
@@ -41,7 +43,6 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
     }
     async doDispatch(command, state, control) {
         logger.d("Posting messages...");
-        const commonData = command.commonData;
         const threadId = state.config.assistantConfig.threadId;
         if (undefined === threadId) {
             logger.e("Thread ID is not defined at message posting");
@@ -53,42 +54,21 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Requested instructions not found"));
         }
         const response = await this.doPost(command, threadId, state.config.assistantConfig.instructionsId, instructions, state.data, async (data) => {
-            return control.updateChatState({
-                data: data
-            });
+            await control.safeUpdate(async (_tx, updateChatState) => updateChatState({ data: data }));
+            return data;
         });
-        const messageCollectionRef = this.getMessageCollection(commonData.chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(commonData.chatDocumentPath, commonData.dispatchId);
-        const batch = this.db.batch();
         if (response.isResolved()) {
-            response.value.messages.forEach((message, index) => {
-                var _a, _b;
-                let text;
-                let data = null;
-                let meta = ("ai" === message.author ? (_a = state.meta) === null || _a === void 0 ? void 0 : _a.aiMessageMeta : (_b = state.meta) === null || _b === void 0 ? void 0 : _b.userMessageMeta) || null;
-                if ((0, firebase_ai_chat_core_1.isStructuredMessage)(message)) {
-                    text = message.text;
-                    data = message.data || null;
-                    if (message.meta) {
-                        if (null != meta) {
-                            meta = Object.assign(Object.assign({}, meta), message.meta);
-                        }
-                        else {
-                            meta = message.meta;
-                        }
-                    }
-                }
-                else {
-                    text = String(message);
-                }
-                batch.set(messageCollectionRef.doc(), Object.assign({ userId: commonData.ownerId, dispatchId: commonData.dispatchId, author: message.author, text: text, data: data, inBatchSortIndex: latestInBatchId + index, createdAt: message.createdAt, meta: meta }, (state.sessionId ? { sessionId: state.sessionId } : {})));
-            });
-            await batch.commit();
-            await control.updateChatState({
-                data: response.value.data
-            });
             logger.d("Resolved");
-            await this.continueNextInQueue(control, command);
+            const newData = response.value.data;
+            await control.safeUpdate(async (_tx, updateChatState) => {
+                updateChatState({ data: newData });
+            });
+            await this.processMessages(command, Object.assign(Object.assign({}, state), { data: newData }), async (messages, _document, _state, mpc) => {
+                await mpc.safeUpdate(async (_tx, _updateState, saveMessages) => {
+                    saveMessages(messages);
+                });
+                await this.continueNextInQueue(control, command);
+            }, control, this.messageMiddleware, response.value.messages);
         }
         else {
             logger.d("Suspended");

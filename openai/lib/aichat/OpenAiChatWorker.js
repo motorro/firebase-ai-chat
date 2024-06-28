@@ -16,7 +16,9 @@ const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiChatWorker");
  * Chat worker that dispatches chat commands and runs AI
  */
 class OpenAiChatWorker {
-    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, chatCleanupRegistrar, chatCleanerFactory, logData) {
+    constructor(firestore, scheduler, wrapper, toolsDispatchFactory, chatCleanupRegistrar, chatCleanerFactory, logData, 
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    messageMiddleware) {
         this.firestore = firestore;
         this.firestore = firestore;
         this.scheduler = scheduler;
@@ -25,6 +27,7 @@ class OpenAiChatWorker {
         this.chatCleanerFactory = chatCleanerFactory;
         this.chatCleanupRegistrar = chatCleanupRegistrar;
         this.logData = logData;
+        this.messageMiddleware = messageMiddleware;
     }
     getWorker(command, queueName) {
         logger.d("Dispatching OpenAi command...");
@@ -52,7 +55,7 @@ class OpenAiChatWorker {
         }
         if (RetrieveWorker_1.RetrieveWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with RetrieveWorker");
-            return new RetrieveWorker_1.RetrieveWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
+            return new RetrieveWorker_1.RetrieveWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.messageMiddleware);
         }
         if (RunWorker_1.RunWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with RunWorker");

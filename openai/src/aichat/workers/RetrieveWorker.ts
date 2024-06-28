@@ -1,16 +1,19 @@
 import {
-    ChatState,
+    ChatCleaner,
     ChatData,
-    DispatchControl,
     ChatError,
-    tagLogger, Meta, isStructuredMessage
+    ChatMeta,
+    ChatState,
+    DispatchControl,
+    MessageMiddleware,
+    tagLogger,
+    TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
-import {firestore} from "firebase-admin";
-import FieldValue = firestore.FieldValue;
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
+import {AiWrapper} from "../AiWrapper";
 
 const logger = tagLogger("RetrieveWorker");
 
@@ -18,11 +21,34 @@ export class RetrieveWorker extends OpenAiQueueWorker {
     static isSupportedAction(action: unknown): action is OpenAiChatAction {
         return "retrieve" === action;
     }
+    private readonly messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>;
+
+    /**
+     * Constructor
+     * @param firestore Firestore reference
+     * @param scheduler Task scheduler
+     * @param wrapper AI wrapper
+     * @param cleaner Chat cleaner
+     * @param logData If true, logs data when dispatching
+     * @param messageMiddleware Message processing middleware
+     *
+     */
+    constructor(
+        firestore: FirebaseFirestore.Firestore,
+        scheduler: TaskScheduler,
+        wrapper: AiWrapper,
+        cleaner: ChatCleaner,
+        logData: boolean,
+        messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData, ChatMeta>>
+    ) {
+        super(firestore, scheduler, wrapper, cleaner, logData);
+        this.messageMiddleware = messageMiddleware;
+    }
 
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, OpenAiAssistantConfig, ChatData>
+        control: DispatchControl<OpenAiChatActions, ChatData>
     ): Promise<void> {
         logger.d("Retrieving messages...");
         const threadId = state.config.assistantConfig.threadId;
@@ -31,50 +57,27 @@ export class RetrieveWorker extends OpenAiQueueWorker {
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at message posting"));
         }
 
-        const messageCollectionRef = this.getMessageCollection(command.commonData.chatDocumentPath);
-        const latestInBatchId = await this.getNextBatchSortIndex(command.commonData.chatDocumentPath, command.commonData.dispatchId);
-
         const newMessages = await this.wrapper.getMessages(threadId, state.config.assistantConfig.lastMessageId);
-        const batch = this.db.batch();
-        newMessages.messages.forEach(([, message], index) => {
-            let text: string;
-            let data: Readonly<Record<string, unknown>> | null = null;
-            let meta: Meta | null = state.meta?.aiMessageMeta || null;
-            if (isStructuredMessage(message)) {
-                text = message.text;
-                data = message.data || null;
-                if (message.meta) {
-                    if (null != meta) {
-                        meta = {...meta, ...message.meta};
-                    } else {
-                        meta = message.meta;
-                    }
-                }
-            } else {
-                text = String(message);
-            }
-            batch.set(
-                messageCollectionRef.doc(),
-                {
-                    userId: command.commonData.ownerId,
-                    dispatchId: command.commonData.dispatchId,
-                    author: "ai",
-                    text: text,
-                    data: data,
-                    inBatchSortIndex: latestInBatchId + index,
-                    createdAt: FieldValue.serverTimestamp(),
-                    meta: meta,
-                    ...(state.sessionId ? {sessionId: state.sessionId} : {})
-                }
-            );
-        });
-        await batch.commit();
+
         await this.updateConfig(
             control,
             state,
             () => ({lastMessageId: newMessages.latestMessageId})
         );
 
-        await this.continueNextInQueue(control, command);
+        await this.processMessages(
+            command,
+            state,
+            async (messages, _document, _state, mpc) => {
+                await mpc.safeUpdate(async (_tx, _updateState, saveMessages) => {
+                    saveMessages(messages);
+                });
+                await this.continueNextInQueue(control, command);
+            },
+            control,
+            this.messageMiddleware,
+            newMessages.messages.map(([, message]) => message)
+        );
     }
 }
+
