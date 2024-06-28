@@ -74,7 +74,7 @@ function factory(firestore, functions, location, taskScheduler, formatContinuati
         chat: function (queueName, commandSchedulers = defaultSchedulers, chatCleaner) {
             return new firebase_ai_chat_core_1.AssistantChat(firestore, commandSchedulers(queueName, _taskScheduler), _chatCleanerFactory(queueName, chatCleaner));
         },
-        handOverMiddleware(queueName, process, commandSchedulers) {
+        handOverMiddleware(queueName, process, commandSchedulers = defaultSchedulers) {
             return (0, firebase_ai_chat_core_1.handOverMiddleware)(firestore, commandSchedulers(queueName, _taskScheduler), process);
         },
         worker(openAi, dispatchers, messageMapper, chatCleaner, 

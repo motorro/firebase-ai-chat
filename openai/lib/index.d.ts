@@ -53,7 +53,7 @@ export interface AiChat {
      * @return Message middleware with handover functions
      * @see worker
      */
-    handOverMiddleware<DATA extends ChatData, CM extends ChatMeta = ChatMeta, WM extends Meta = Meta>(queueName: string, process: (messages: ReadonlyArray<NewMessage>, chatDocumentPath: string, chatState: ChatState<AssistantConfig, DATA, CM>, control: HandOverControl<DATA, WM, CM>) => Promise<void>, commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>): MessageMiddleware<DATA, CM>;
+    handOverMiddleware<DATA extends ChatData, CM extends ChatMeta = ChatMeta, WM extends Meta = Meta>(queueName: string, process: (messages: ReadonlyArray<NewMessage>, chatDocumentPath: string, chatState: ChatState<AssistantConfig, DATA, CM>, control: HandOverControl<DATA, WM, CM>) => Promise<void>, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>): MessageMiddleware<DATA, CM>;
     /**
      * Chat worker to use in Firebase tasks
      * @param openAi OpenAI instance

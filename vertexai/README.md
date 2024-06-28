@@ -57,6 +57,34 @@ const myMessageMapper: VertexAiMessageMapper = {
 }
 ```
 
+### Custom resource cleaner
+When you close the chat, the library cleans up the threads that were created during the chat. If you need any custom 
+processing, you may add some custom cleaner that will be called along:
+```typescript
+/**
+ * Chat resource cleaner
+ */
+const cleaner: ChatCleaner = {
+    /**
+     * Schedules cleanup commands stored inside chat data
+     * @param chatDocumentPath Chat document
+     */
+    cleanup: async (chatDocumentPath: string): Promise<void> => {
+        logger.d("Cleanup");
+    }
+}
+```
+
+### Optional middleware
+By default, the library saves all the messages that come from AI. If you need any custom processing, you could add some
+custom AI message middleware. Take a look at the main documentation for details [here](../README.md#message-middleware).
+```typescript
+const handOver: MessageMiddleware<CalculateChatData, CalculatorMeta> = chatFactory.handOverMiddleware(
+    "calculator",
+    handOverProcessor
+);
+```
+
 ### Command dispatcher configuration
 The requests to front-facing functions return to user as fast as possible after changing the chat state in Firestore.
 As soon as the AI run could take a considerable time, we run theme in a Cloud Task "offline" from the client request.
@@ -106,7 +134,7 @@ export const calculator = onTaskDispatched(
       );
 
       // Dispatch request  
-      await chatFactory.worker(model, VERTEXAI_THREADS, instructions, myMessageMapper).dispatch(
+      await chatFactory.worker(model, VERTEXAI_THREADS, instructions, myMessageMapper, cleaner, [handOver]).dispatch(
           req,
           (chatDocumentPath: string, meta: Meta) => {
              // Optional task completion handler

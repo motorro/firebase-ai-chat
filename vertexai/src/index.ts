@@ -149,7 +149,7 @@ export interface AiChat {
             chatState: ChatState<AssistantConfig, DATA, CM>,
             control: HandOverControl<DATA, WM, CM>
         ) => Promise<void>,
-        commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>,
+        commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>,
     ): MessageMiddleware<DATA, CM>
 
     /**
@@ -240,7 +240,7 @@ export function factory(
                 chatState: ChatState<AssistantConfig, DATA, CM>,
                 control: HandOverControl<DATA, WM, CM>
             ) => Promise<void>,
-            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>,
+            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers,
         ): MessageMiddleware<DATA, CM> {
             return handOverMiddleware(firestore, commandSchedulers(queueName, _taskScheduler), process);
         },
