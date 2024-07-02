@@ -8,7 +8,7 @@ import {scheduleCommand, TaskScheduler} from "../TaskScheduler";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {ChatMeta, Meta} from "../data/Meta";
 import Query = firestore.Query;
-import {BoundChatCommand, ChatCommand, isBoundChatCommand} from "../data/ChatCommand";
+import {BoundChatCommand, ChatAction, ChatCommand, isBoundChatCommand} from "../data/ChatCommand";
 import {ChatWorker, DispatchControl} from "./ChatWorker";
 import {DispatchRunner} from "./DispatchRunner";
 import {ChatCleaner} from "./ChatCleaner";
@@ -300,7 +300,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
                         logger.d("Scheduling command: ", JSON.stringify(command));
                         return scheduleCommand(this.scheduler, req.queueName, command);
                     },
-                    continueQueue: async (next: ChatCommand<A> | BoundChatCommand<A>) => {
+                    continueQueue: async (next: ChatCommand<ChatAction> | BoundChatCommand<ChatAction>) => {
                         logger.d("Scheduling next step: ", JSON.stringify(next));
                         let command: ChatCommand<A>;
                         let queueName = req.queueName;

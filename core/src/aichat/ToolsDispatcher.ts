@@ -6,6 +6,8 @@ import {ChatMeta} from "./data/Meta";
 export interface ChatDispatchData<CM extends ChatMeta = ChatMeta> {
     readonly ownerId: string
     readonly chatDocumentPath: string,
+    readonly dispatchId: string,
+    readonly sessionId: string | null,
     readonly assistantConfig: AssistantConfig,
     readonly meta: CM | null
 }

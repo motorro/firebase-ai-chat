@@ -63,6 +63,8 @@ const continuationCommand2: ContinuationCommand<DispatchAction> = {
 export const chatData: ChatDispatchData = {
     ownerId: userId,
     chatDocumentPath: chatDoc.path,
+    dispatchId: "dispatchId",
+    sessionId: "sessionId",
     assistantConfig: {
         threadId: threadId
     },
