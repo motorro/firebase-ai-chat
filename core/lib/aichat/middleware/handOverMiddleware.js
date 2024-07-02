@@ -9,14 +9,18 @@ function handOverMiddleware(db, schedulers, process) {
             safeUpdate: control.safeUpdate,
             next: control.next,
             handOver: async (data) => {
-                return await db.runTransaction(async (tx) => {
-                    return handOver.handOver(tx, chatDocumentPath, chatState, data);
+                let result = undefined;
+                await control.safeUpdate(async (tx) => {
+                    result = await handOver.handOver(tx, chatDocumentPath, chatState, data);
                 });
+                return result;
             },
             handBack: async (messages, workerMeta) => {
-                return await db.runTransaction(async (tx) => {
-                    return handOver.handBack(tx, chatDocumentPath, chatState, messages, workerMeta);
+                let result = undefined;
+                await control.safeUpdate(async (tx) => {
+                    result = await handOver.handBack(tx, chatDocumentPath, chatState, messages, workerMeta);
                 });
+                return result;
             }
         };
         return process(messages, chatDocumentPath, chatState, hoControl);

@@ -136,6 +136,8 @@ class ToolsContinuationDispatcherImpl {
         return {
             ownerId: chat.userId,
             chatDocumentPath: this.chatDocument.path,
+            dispatchId: chat.latestDispatchId,
+            sessionId: chat.sessionId || null,
             assistantConfig: chat.config.assistantConfig,
             meta: chat.meta
         };

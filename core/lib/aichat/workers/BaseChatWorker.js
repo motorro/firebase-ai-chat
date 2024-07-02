@@ -100,7 +100,7 @@ class BaseChatWorker {
      */
     saveMessages(tx, nextInBatchIndex, ownerId, chatDocumentPath, dispatchId, sessionId, messages, chatMeta) {
         const messageCollectionRef = this.getMessageCollection(chatDocumentPath);
-        messages.forEach((message, i) => {
+        messages.forEach((message) => {
             let text;
             let data = null;
             let meta = (chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.aiMessageMeta) || null;

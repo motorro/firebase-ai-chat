@@ -79,7 +79,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
     protected abstract doDispatch(
         command: ChatCommand<A>,
         state: ChatState<AC, DATA, CM>,
-        control: DispatchControl<A, DATA, CM>
+        control: DispatchControl<DATA, CM>
     ): Promise<void>
 
     /**
@@ -153,7 +153,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         chatMeta?: CM | null
     ): number {
         const messageCollectionRef = this.getMessageCollection(chatDocumentPath);
-        messages.forEach((message, i) => {
+        messages.forEach((message) => {
             let text: string;
             let data: Readonly<Record<string, unknown>> | null = null;
             let meta: Meta | null = chatMeta?.aiMessageMeta || null;
@@ -202,7 +202,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         command: ChatCommand<A>,
         chatState: ChatState<AssistantConfig, DATA, CM>,
         defaultProcessor: MessageMiddleware<DATA, CM>,
-        control: DispatchControl<A, DATA, CM>,
+        control: DispatchControl<DATA, CM>,
         middleware: ReadonlyArray<MessageMiddleware<DATA, CM>>,
         messages: ReadonlyArray<NewMessage>
     ): Promise<void> {
@@ -287,14 +287,14 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         processAction: (
             command: ChatCommand<A>,
             state: ChatState<AC, DATA, CM>,
-            control: DispatchControl<A, DATA, CM>
+            control: DispatchControl<DATA, CM>
         ) => Promise<void>
     ): Promise<void> {
         return this.runner.dispatchWithCheck(
             req,
             async (soFar, chatCommand, safeUpdate) => {
                 const command = isBoundChatCommand(chatCommand) ? chatCommand.command : chatCommand;
-                const control: DispatchControl<A, DATA, CM> = {
+                const control: DispatchControl<DATA, CM> = {
                     safeUpdate: safeUpdate,
                     schedule: async (command) => {
                         logger.d("Scheduling command: ", JSON.stringify(command));

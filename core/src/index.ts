@@ -73,6 +73,8 @@ export {ChatCleaner, ChatCleanupRegistrar, CommonChatCleaner, CommonChatCleanupR
 export {PartialChatState, MessageProcessingControl, MessageMiddleware} from "./aichat/middleware/MessageMiddleware";
 export {HandOverData, HandOverDelegate} from "./aichat/chat/handOver";
 export {HandOverControl, handOverMiddleware} from "./aichat/middleware/handOverMiddleware";
+export {HandOverCommand, HandBackCommand, isHandOverCommand, isHandBackCommand} from "./aichat/data/HandOverCommand";
+export {HandOverWorker, HandBackWorker} from "./aichat/workers/HandOver";
 
 /**
  * Tools continuation dispatcher factory

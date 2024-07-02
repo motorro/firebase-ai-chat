@@ -46,7 +46,7 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * @return Partial chat state to set after dispatched
      * @protected
      */
-    protected abstract doDispatch(command: ChatCommand<A>, state: ChatState<AC, DATA, CM>, control: DispatchControl<A, DATA, CM>): Promise<void>;
+    protected abstract doDispatch(command: ChatCommand<A>, state: ChatState<AC, DATA, CM>, control: DispatchControl<DATA, CM>): Promise<void>;
     /**
      * Creates message collection reference
      * @param chatDocumentPath Chat document path
@@ -93,7 +93,7 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * @param messages Messages to process
      * @protected
      */
-    protected processMessages(command: ChatCommand<A>, chatState: ChatState<AssistantConfig, DATA, CM>, defaultProcessor: MessageMiddleware<DATA, CM>, control: DispatchControl<A, DATA, CM>, middleware: ReadonlyArray<MessageMiddleware<DATA, CM>>, messages: ReadonlyArray<NewMessage>): Promise<void>;
+    protected processMessages(command: ChatCommand<A>, chatState: ChatState<AssistantConfig, DATA, CM>, defaultProcessor: MessageMiddleware<DATA, CM>, control: DispatchControl<DATA, CM>, middleware: ReadonlyArray<MessageMiddleware<DATA, CM>>, messages: ReadonlyArray<NewMessage>): Promise<void>;
     /**
      * Runs dispatch with concurrency and duplication check
      * https://mm.tt/app/map/3191589380?t=UdskfqiKnl
