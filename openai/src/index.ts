@@ -93,6 +93,7 @@ export {
     isContinuationCommandRequest
 } from "@motorro/firebase-ai-chat-core";
 export {PartialChatState, MessageProcessingControl, MessageMiddleware} from "@motorro/firebase-ai-chat-core";
+export {HandOverData, HandOverDelegate} from "@motorro/firebase-ai-chat-core";
 export {HandOverControl, handOverMiddleware} from "@motorro/firebase-ai-chat-core";
 
 export {

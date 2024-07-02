@@ -71,6 +71,7 @@ export {commonFormatContinuationError};
 export {NewMessage, StructuredMessage, isStructuredMessage} from "./aichat/data/NewMessage";
 export {ChatCleaner, ChatCleanupRegistrar, CommonChatCleaner, CommonChatCleanupRegistrar} from "./aichat/workers/ChatCleaner";
 export {PartialChatState, MessageProcessingControl, MessageMiddleware} from "./aichat/middleware/MessageMiddleware";
+export {HandOverData, HandOverDelegate} from "./aichat/chat/handOver";
 export {HandOverControl, handOverMiddleware} from "./aichat/middleware/handOverMiddleware";
 
 /**

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.handOverMiddleware = exports.CommonChatCleanupRegistrar = exports.CommonChatCleaner = exports.isStructuredMessage = exports.commonFormatContinuationError = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.tagLogger = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
+exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.handOverMiddleware = exports.HandOverDelegate = exports.CommonChatCleanupRegistrar = exports.CommonChatCleaner = exports.isStructuredMessage = exports.commonFormatContinuationError = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.tagLogger = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
 const ToolContinuationDispatcherFactory_1 = require("./aichat/workers/ToolContinuationDispatcherFactory");
 const ToolsContinuationScheduler_1 = require("./aichat/workers/ToolsContinuationScheduler");
 const ToolsContinuationDispatchRunner_1 = require("./aichat/workers/ToolsContinuationDispatchRunner");
@@ -48,6 +48,8 @@ Object.defineProperty(exports, "isStructuredMessage", { enumerable: true, get: f
 var ChatCleaner_1 = require("./aichat/workers/ChatCleaner");
 Object.defineProperty(exports, "CommonChatCleaner", { enumerable: true, get: function () { return ChatCleaner_1.CommonChatCleaner; } });
 Object.defineProperty(exports, "CommonChatCleanupRegistrar", { enumerable: true, get: function () { return ChatCleaner_1.CommonChatCleanupRegistrar; } });
+var handOver_1 = require("./aichat/chat/handOver");
+Object.defineProperty(exports, "HandOverDelegate", { enumerable: true, get: function () { return handOver_1.HandOverDelegate; } });
 var handOverMiddleware_1 = require("./aichat/middleware/handOverMiddleware");
 Object.defineProperty(exports, "handOverMiddleware", { enumerable: true, get: function () { return handOverMiddleware_1.handOverMiddleware; } });
 /**

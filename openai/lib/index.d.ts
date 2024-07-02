@@ -14,6 +14,7 @@ export { FirebaseQueueTaskScheduler } from "@motorro/firebase-ai-chat-core";
 export { Continuation, SuspendedContinuation, ResolvedContinuation } from "@motorro/firebase-ai-chat-core";
 export { ContinuationRequest, ContinuationCommand, ToolCall, ContinuationRequestToolData, ToolCallRequest, ToolCallResponse, ToolCallsResult, isContinuationRequest, isContinuationCommand, isContinuationCommandRequest } from "@motorro/firebase-ai-chat-core";
 export { PartialChatState, MessageProcessingControl, MessageMiddleware } from "@motorro/firebase-ai-chat-core";
+export { HandOverData, HandOverDelegate } from "@motorro/firebase-ai-chat-core";
 export { HandOverControl, handOverMiddleware } from "@motorro/firebase-ai-chat-core";
 export { AiWrapper, OpenAiChatWorker, OpenAiMessageMapper };
 export { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";

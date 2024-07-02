@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.factory = exports.DefaultVertexAiMessageMapper = exports.isVertexAiChatCommand = exports.isVertexAiChatReq = exports.handOverMiddleware = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isStructuredMessage = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
+exports.factory = exports.DefaultVertexAiMessageMapper = exports.isVertexAiChatCommand = exports.isVertexAiChatReq = exports.handOverMiddleware = exports.HandOverDelegate = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isStructuredMessage = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const VertexAICommandScheduler_1 = require("./aichat/VertexAICommandScheduler");
 const VertexAiWrapper_1 = require("./aichat/VertexAiWrapper");
@@ -34,7 +34,9 @@ Object.defineProperty(exports, "isContinuationRequest", { enumerable: true, get:
 Object.defineProperty(exports, "isContinuationCommand", { enumerable: true, get: function () { return firebase_ai_chat_core_7.isContinuationCommand; } });
 Object.defineProperty(exports, "isContinuationCommandRequest", { enumerable: true, get: function () { return firebase_ai_chat_core_7.isContinuationCommandRequest; } });
 var firebase_ai_chat_core_8 = require("@motorro/firebase-ai-chat-core");
-Object.defineProperty(exports, "handOverMiddleware", { enumerable: true, get: function () { return firebase_ai_chat_core_8.handOverMiddleware; } });
+Object.defineProperty(exports, "HandOverDelegate", { enumerable: true, get: function () { return firebase_ai_chat_core_8.HandOverDelegate; } });
+var firebase_ai_chat_core_9 = require("@motorro/firebase-ai-chat-core");
+Object.defineProperty(exports, "handOverMiddleware", { enumerable: true, get: function () { return firebase_ai_chat_core_9.handOverMiddleware; } });
 var VertexAiChatCommand_1 = require("./aichat/data/VertexAiChatCommand");
 Object.defineProperty(exports, "isVertexAiChatReq", { enumerable: true, get: function () { return VertexAiChatCommand_1.isVertexAiChatReq; } });
 Object.defineProperty(exports, "isVertexAiChatCommand", { enumerable: true, get: function () { return VertexAiChatCommand_1.isVertexAiChatCommand; } });
