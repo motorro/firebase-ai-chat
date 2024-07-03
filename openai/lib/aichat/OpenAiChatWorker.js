@@ -11,6 +11,7 @@ const PostExplicitWorker_1 = require("./workers/PostExplicitWorker");
 const CleanupWorker_1 = require("./workers/CleanupWorker");
 const RunContinuationWorker_1 = require("./workers/RunContinuationWorker");
 const OpenAiChatCommand_1 = require("./data/OpenAiChatCommand");
+const HandOver_1 = require("./workers/HandOver");
 const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiChatWorker");
 /**
  * Chat worker that dispatches chat commands and runs AI
@@ -66,13 +67,13 @@ class OpenAiChatWorker {
             logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker_1.SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
-        if ((0, firebase_ai_chat_core_1.isHandOverAction)(action)) {
+        if (HandOver_1.HandOverWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with HandOverWorker");
-            return new firebase_ai_chat_core_1.HandOverWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+            return new HandOver_1.HandOverWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
         }
-        if ((0, firebase_ai_chat_core_1.isHandBackAction)(action)) {
+        if (HandOver_1.HandBackWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with HandBackWorker");
-            return new firebase_ai_chat_core_1.HandBackWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+            return new HandOver_1.HandBackWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
         }
         logger.w("Unsupported command:", command);
         return undefined;

@@ -7,10 +7,6 @@ import {
     ChatWorker,
     CommandScheduler,
     DispatchError,
-    HandBackWorker,
-    HandOverWorker,
-    isHandBackAction,
-    isHandOverAction,
     MessageMiddleware,
     Meta,
     tagLogger,
@@ -27,6 +23,7 @@ import {AiWrapper} from "./AiWrapper";
 import {VertexAiSystemInstructions} from "./data/VertexAiSystemInstructions";
 import {CleanupWorker} from "./workers/CleanupWorker";
 import {isVertexAiChatReq, VertexAiChatCommand} from "./data/VertexAiChatCommand";
+import {HandBackWorker, HandOverWorker} from "./workers/HandOver";
 
 const logger = tagLogger("VertexAiChatWorker");
 
@@ -104,13 +101,13 @@ export class VertexAiChatWorker implements ChatWorker {
             logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
-        if (isHandOverAction(action)) {
+        if (HandOverWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with HandOverWorker");
-            return new HandOverWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+            return new HandOverWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
         }
-        if (isHandBackAction(action)) {
+        if (HandBackWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with HandBackWorker");
-            return new HandBackWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+            return new HandBackWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
         }
 
         logger.w("Unsupported command:", command);

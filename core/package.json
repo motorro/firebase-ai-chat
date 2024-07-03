@@ -1,6 +1,6 @@
 {
   "name": "@motorro/firebase-ai-chat-core",
-  "version": "10.0.0",
+  "version": "10.0.2",
   "description": "A core library to run AI chats on Firebase",
   "publishConfig": {
     "access": "public"

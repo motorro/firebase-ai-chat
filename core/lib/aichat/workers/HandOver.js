@@ -36,12 +36,7 @@ class HandBackWorker extends BaseChatWorker_1.BaseChatWorker {
     async doDispatch(command, state, control) {
         const hbAction = (command.actionData);
         await control.safeUpdate(async (tx) => {
-            await this.handOver.handOver(tx, command.commonData.chatDocumentPath, state, {
-                config: hbAction.config,
-                messages: hbAction.messages,
-                chatMeta: hbAction.chatMeta,
-                workerMeta: command.commonData.meta
-            });
+            await this.handOver.handBack(tx, command.commonData.chatDocumentPath, state, hbAction.messages, command.commonData.meta);
         });
     }
 }

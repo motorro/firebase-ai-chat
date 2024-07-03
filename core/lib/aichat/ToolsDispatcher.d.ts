@@ -15,7 +15,7 @@ export interface ChatDispatchData<CM extends ChatMeta = ChatMeta> {
 /**
  * Some arbitrary data to return from function
  */
-export type FunctionSuccessResult = Record<string, unknown> | Record<string, unknown>[] | null;
+export type FunctionSuccessResult = Record<string, unknown> | Record<string, unknown>[] | string | null;
 /**
  * Function Dispatch was successful. Contains function result
  */

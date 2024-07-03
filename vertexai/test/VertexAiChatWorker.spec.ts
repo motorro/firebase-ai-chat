@@ -14,6 +14,7 @@ import {
 } from "@johanblumenberg/ts-mockito";
 import {chatState, data, Data, instructions1, instructionsId, threadId, toolsDefinition, userId} from "./mock";
 import {
+    AssistantConfig,
     ChatCleaner,
     ChatCleanupRegistrar,
     ChatCommand,
@@ -29,6 +30,7 @@ import {
     Continuation,
     Dispatch,
     getReducerSuccess,
+    HandOverDelegate,
     MessageMiddleware,
     Meta,
     TaskScheduler,
@@ -121,6 +123,17 @@ describe("Chat worker", function() {
         commonData: commandData,
         actionData: [{name: "cleanup", config: config}]
     };
+    const handoverCommand: VertexAiChatCommand = {
+        engine: "vertexai",
+        commonData: commandData,
+        actionData: [{name: "handOver", config: {engine: "other"}, messages: ["Message 1"]}]
+    };
+    const handbackCommand: VertexAiChatCommand = {
+        engine: "vertexai",
+        commonData: commandData,
+        actionData: [{name: "handBack", messages: ["Message 1"]}]
+    };
+
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     const instructions: Record<string, VertexAiSystemInstructions<any>> = {
         [instructionsId]: {
@@ -994,5 +1007,78 @@ describe("Chat worker", function() {
 
         verify(wrapper.createThread(anything())).once();
         handlerCalled.should.be.true;
+    });
+
+    it("runs hand-over command", async function() {
+        when(commandScheduler.handOver(anything(), anything())).thenResolve();
+        await createChat(undefined, "processing");
+        createWorker();
+
+        when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
+
+        const request: Request<VertexAiChatCommand> = {
+            ...context,
+            data: handoverCommand
+        };
+
+        const result = await worker.dispatch(request);
+
+        result.should.be.true;
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<AssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            config: {
+                assistantConfig: {
+                    engine: "other"
+                }
+            }
+        });
+
+        verify(commandScheduler.isSupported(deepEqual({engine: "other"}))).once();
+        verify(commandScheduler.handOver(anything(), deepEqual(["Message 1"]))).once();
+    });
+
+    it("runs hand-back command", async function() {
+        when(commandScheduler.handOver(anything(), anything())).thenResolve();
+        await createChat(undefined, "userInput");
+        await db.runTransaction(async (tx) => {
+            await new HandOverDelegate(db, [instance(commandScheduler)]).handOver(
+                tx,
+                chatDoc,
+                chatState,
+                {
+                    config: {engine: "other"}
+                }
+            );
+        });
+
+        when(commandScheduler.handBack(anything(), anything())).thenReturn(Promise.resolve());
+
+        createWorker();
+
+        const request: Request<VertexAiChatCommand> = {
+            ...context,
+            data: handbackCommand
+        };
+
+        const result = await worker.dispatch(request);
+
+        result.should.be.true;
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<AssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            config: chatState.config
+        });
+
+        verify(commandScheduler.isSupported(deepEqual(chatState.config.assistantConfig))).once();
+        verify(commandScheduler.handBack(anything(), deepEqual(["Message 1"]))).once();
     });
 });

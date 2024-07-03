@@ -13,5 +13,6 @@ export declare class OpenAICommandScheduler implements CommandScheduler {
     singleRun(common: ChatCommandData): Promise<void>;
     postAndRun(common: ChatCommandData): Promise<void>;
     handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void>;
+    handBack(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void>;
     private schedule;
 }

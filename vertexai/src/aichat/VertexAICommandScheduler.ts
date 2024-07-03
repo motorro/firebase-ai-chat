@@ -44,6 +44,14 @@ export class VertexAICommandScheduler implements CommandScheduler {
         logger.d("Scheduling hand-over: ", JSON.stringify(common));
         await this.schedule(common, ["create", {name: "postExplicit", messages: handOverMessages}, "switchToUserInput"]);
     }
+    async handBack(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void> {
+        logger.d("Scheduling hand-over: ", JSON.stringify(common));
+        let actions: VertexAiChatActions = ["switchToUserInput"];
+        if (0 !== handOverMessages.length) {
+            actions = ["create", {name: "postExplicit", messages: handOverMessages}, ...actions];
+        }
+        await this.schedule(common, actions);
+    }
 
     private async schedule(common: ChatCommandData, actions: VertexAiChatActions, schedule?: DeliverySchedule): Promise<void> {
         const command: VertexAiChatCommand = {

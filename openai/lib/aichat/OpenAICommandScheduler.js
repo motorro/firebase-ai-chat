@@ -39,6 +39,14 @@ class OpenAICommandScheduler {
         logger.d("Scheduling hand-over: ", JSON.stringify(common));
         await this.schedule(common, ["create", { name: "postExplicit", messages: handOverMessages }, "run", "retrieve", "switchToUserInput"]);
     }
+    async handBack(common, handOverMessages) {
+        logger.d("Scheduling hand-over: ", JSON.stringify(common));
+        let actions = ["switchToUserInput"];
+        if (0 !== handOverMessages.length) {
+            actions = ["create", { name: "postExplicit", messages: handOverMessages }, "run", "retrieve", ...actions];
+        }
+        await this.schedule(common, actions);
+    }
     async schedule(common, actions, schedule) {
         const command = {
             engine: engineId_1.engineId,

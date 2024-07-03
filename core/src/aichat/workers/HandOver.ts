@@ -62,12 +62,13 @@ export class HandBackWorker<DATA extends ChatData, CM extends ChatMeta = ChatMet
     protected async doDispatch(command: ChatCommand<unknown>, state: ChatState<AssistantConfig, DATA, CM>, control: DispatchControl<DATA, CM>): Promise<void> {
         const hbAction = <HandOverAction>(command.actionData);
         await control.safeUpdate(async (tx) => {
-            await this.handOver.handOver(tx, command.commonData.chatDocumentPath, state, {
-                config: hbAction.config,
-                messages: hbAction.messages,
-                chatMeta: hbAction.chatMeta,
-                workerMeta: command.commonData.meta
-            });
+            await this.handOver.handBack(
+                tx,
+                command.commonData.chatDocumentPath,
+                state,
+                hbAction.messages,
+                command.commonData.meta
+            );
         });
     }
 }

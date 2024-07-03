@@ -14,6 +14,7 @@ import {
 } from "@johanblumenberg/ts-mockito";
 import {assistantId, chatState, Data, data, dispatcherId, threadId, userId} from "./mock";
 import {
+    AssistantConfig,
     ChatCleaner,
     ChatCleanupRegistrar,
     ChatCommand,
@@ -28,7 +29,7 @@ import {
     CommandScheduler,
     Continuation,
     Dispatch, getFunctionSuccess,
-    getReducerSuccess,
+    getReducerSuccess, HandOverDelegate,
     MessageMiddleware,
     Meta,
     Run,
@@ -133,6 +134,16 @@ describe("Chat worker", function() {
         commonData: commandData,
         actionData: [{name: "cleanup", config: config}]
     };
+    const handoverCommand: OpenAiChatCommand = {
+        engine: "openai",
+        commonData: commandData,
+        actionData: [{name: "handOver", config: {engine: "other"}, messages: ["Message 1"]}]
+    };
+    const handbackCommand: OpenAiChatCommand = {
+        engine: "openai",
+        commonData: commandData,
+        actionData: [{name: "handBack", messages: ["Message 1"]}]
+    };
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
@@ -149,7 +160,6 @@ describe("Chat worker", function() {
         toolContinuationDispatcherFactory = imock<ToolContinuationDispatcherFactory>();
         cleaner = imock();
         cleanupRegistrar = imock();
-        when(commandScheduler.isSupported(anything())).thenReturn(true);
         when(cleaner.cleanup(anything())).thenResolve();
         when(cleanupRegistrar.register(anything())).thenResolve();
     });
@@ -172,10 +182,15 @@ describe("Chat worker", function() {
         test.cleanup();
     });
 
+    beforeEach(function() {
+        when(commandScheduler.isSupported(anything())).thenReturn(true);
+    })
+
     afterEach(async function() {
         await db.recursiveDelete(chats);
         reset(wrapper);
         reset(scheduler);
+        reset(commandScheduler);
         reset(toolContinuationDispatcherFactory);
         reset(cleaner);
         reset(cleanupRegistrar);
@@ -1086,5 +1101,78 @@ describe("Chat worker", function() {
 
         verify(wrapper.createThread(anything())).once();
         handlerCalled.should.be.true;
+    });
+
+    it("runs hand-over command", async function() {
+        when(commandScheduler.handOver(anything(), anything())).thenResolve();
+        await createChat(undefined, "processing");
+        createWorker();
+
+        when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
+
+        const request: Request<OpenAiChatCommand> = {
+            ...context,
+            data: handoverCommand
+        };
+
+        const result = await worker.dispatch(request);
+
+        result.should.be.true;
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<AssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            config: {
+                assistantConfig: {
+                    engine: "other"
+                }
+            }
+        });
+
+        verify(commandScheduler.isSupported(deepEqual({engine: "other"}))).once();
+        verify(commandScheduler.handOver(anything(), deepEqual(["Message 1"]))).once();
+    });
+
+    it("runs hand-back command", async function() {
+        when(commandScheduler.handOver(anything(), anything())).thenResolve();
+        await createChat(undefined, "userInput");
+        await db.runTransaction(async (tx) => {
+            await new HandOverDelegate(db, [instance(commandScheduler)]).handOver(
+                tx,
+                chatDoc,
+                chatState,
+                {
+                    config: {engine: "other"}
+                }
+            );
+        });
+
+        when(commandScheduler.handBack(anything(), anything())).thenReturn(Promise.resolve());
+
+        createWorker();
+
+        const request: Request<OpenAiChatCommand> = {
+            ...context,
+            data: handbackCommand
+        };
+
+        const result = await worker.dispatch(request);
+
+        result.should.be.true;
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<AssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            config: chatState.config
+        });
+
+        verify(commandScheduler.isSupported(deepEqual(chatState.config.assistantConfig))).once();
+        verify(commandScheduler.handBack(anything(), deepEqual(["Message 1"]))).once();
     });
 });

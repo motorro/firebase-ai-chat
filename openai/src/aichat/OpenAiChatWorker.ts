@@ -4,7 +4,8 @@ import {
     ChatCleanupRegistrar,
     ChatCommand,
     ChatData,
-    ChatWorker, CommandScheduler, HandBackWorker, HandOverWorker, isHandBackAction, isHandOverAction,
+    ChatWorker,
+    CommandScheduler,
     MessageMiddleware,
     Meta,
     tagLogger,
@@ -21,6 +22,7 @@ import {PostExplicitWorker} from "./workers/PostExplicitWorker";
 import {CleanupWorker} from "./workers/CleanupWorker";
 import {RunContinuationWorker} from "./workers/RunContinuationWorker";
 import {isOpenAiChatReq, OpenAiChatCommand} from "./data/OpenAiChatCommand";
+import {HandBackWorker, HandOverWorker} from "./workers/HandOver";
 
 const logger = tagLogger("OpenAiChatWorker");
 
@@ -108,13 +110,13 @@ export class OpenAiChatWorker implements ChatWorker {
             logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
-        if (isHandOverAction(action)) {
+        if (HandOverWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with HandOverWorker");
-            return new HandOverWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+            return new HandOverWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
         }
-        if (isHandBackAction(action)) {
+        if (HandBackWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with HandBackWorker");
-            return new HandBackWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+            return new HandBackWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
         }
 
         logger.w("Unsupported command:", command);

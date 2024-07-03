@@ -119,16 +119,14 @@ export class HandOverDelegate {
         tx.set(chatDoc, newState);
         tx.delete(stackEntry.ref);
 
-        if (undefined !== messages && 0 !== messages?.length) {
-            const scheduler = getScheduler(this.schedulers, stackEntryData.config.assistantConfig);
-            const command: ChatCommandData = {
-                ownerId: chatState.userId,
-                chatDocumentPath: "string" === typeof chatDocument ? chatDocument : chatDocument.path,
-                dispatchId: chatState.latestDispatchId,
-                meta: workerMeta || null
-            };
-            await scheduler.handOver(command, messages);
-        }
+        const scheduler = getScheduler(this.schedulers, stackEntryData.config.assistantConfig);
+        const command: ChatCommandData = {
+            ownerId: chatState.userId,
+            chatDocumentPath: "string" === typeof chatDocument ? chatDocument : chatDocument.path,
+            dispatchId: chatState.latestDispatchId,
+            meta: workerMeta || null
+        };
+        await scheduler.handBack(command, messages || []);
 
         return {
             formerAssistantConfig: chatState.config.assistantConfig,

@@ -51,16 +51,14 @@ class HandOverDelegate {
         const newState = Object.assign(Object.assign(Object.assign(Object.assign({}, chatState), { config: stackEntryData.config, status: newStatus, meta: stackEntryData.meta }), (stackEntryData.sessionId ? { sessionId: stackEntryData.sessionId } : {})), { updatedAt: FieldValue.serverTimestamp() });
         tx.set(chatDoc, newState);
         tx.delete(stackEntry.ref);
-        if (undefined !== messages && 0 !== (messages === null || messages === void 0 ? void 0 : messages.length)) {
-            const scheduler = (0, CommandScheduler_1.getScheduler)(this.schedulers, stackEntryData.config.assistantConfig);
-            const command = {
-                ownerId: chatState.userId,
-                chatDocumentPath: "string" === typeof chatDocument ? chatDocument : chatDocument.path,
-                dispatchId: chatState.latestDispatchId,
-                meta: workerMeta || null
-            };
-            await scheduler.handOver(command, messages);
-        }
+        const scheduler = (0, CommandScheduler_1.getScheduler)(this.schedulers, stackEntryData.config.assistantConfig);
+        const command = {
+            ownerId: chatState.userId,
+            chatDocumentPath: "string" === typeof chatDocument ? chatDocument : chatDocument.path,
+            dispatchId: chatState.latestDispatchId,
+            meta: workerMeta || null
+        };
+        await scheduler.handBack(command, messages || []);
         return Object.assign({ formerAssistantConfig: chatState.config.assistantConfig, formerChatMeta: chatState.meta }, (chatState.sessionId ? { formerSessionId: chatState.sessionId } : {}));
     }
 }
