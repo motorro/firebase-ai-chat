@@ -1,12 +1,12 @@
-import { ChatData, Continuation, NewMessage, ToolCallRequest, ToolCallsResult } from "@motorro/firebase-ai-chat-core";
+import { ChatData, Continuation, NewMessage, ToolCallRequest, ToolCallsResult, ToolContinuationSoFar } from "@motorro/firebase-ai-chat-core";
 import { GenerativeModel } from "@google-cloud/vertexai";
 import { VertexAiSystemInstructions } from "./data/VertexAiSystemInstructions";
 import { firestore } from "firebase-admin";
 import { AiWrapper, PostMessageResult } from "./AiWrapper";
 import { ThreadMessage } from "./data/ThreadMessage";
 import { RunContinuationRequest } from "./data/RunResponse";
-import CollectionReference = firestore.CollectionReference;
 import { VertexAiMessageMapper } from "./VertexAiMessageMapper";
+import CollectionReference = firestore.CollectionReference;
 /**
  * Wraps Open AI assistant use
  */
@@ -56,19 +56,28 @@ export declare class VertexAiWrapper implements AiWrapper {
      */
     getThreadMessages(threadId: string): Promise<ReadonlyArray<[string, ThreadMessage]>>;
     createThread(meta: Readonly<Record<string, string>>): Promise<string>;
-    postMessage<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, messages: ReadonlyArray<NewMessage>, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
+    postMessage<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, messages: ReadonlyArray<NewMessage>, soFar: DATA, dispatch: (data: ToolContinuationSoFar<DATA>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
+    /**
+     * Processes AI tools response
+     * @param threadId Thread ID
+     * @param instructions VertexAI system instructions
+     * @param request Tools dispatch request
+     * @param soFar Data so far
+     * @param dispatch Tool dispatch function
+     * @return New data state
+     */
+    processToolsResponse<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, request: RunContinuationRequest<DATA>, soFar: DATA, dispatch: (data: ToolContinuationSoFar<DATA>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
     /**
      * Maintains conversation data
      * @param threadId Thread ID
      * @param instructions Instructions
      * @param parts Parts to post
-     * @param dataSoFar Data so far
+     * @param soFar Data so far
      * @param dispatch Dispatch function
      * @return Post result
      * @private
      */
     private doPost;
-    processToolsResponse<DATA extends ChatData>(threadId: string, instructions: VertexAiSystemInstructions<DATA>, request: RunContinuationRequest<DATA>, dataSoFar: DATA, dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>): Promise<Continuation<PostMessageResult<DATA>>>;
     /**
      * Runs AI
      * @param chat Chat session

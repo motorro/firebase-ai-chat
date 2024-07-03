@@ -83,8 +83,8 @@ taskScheduler, formatContinuationError = firebase_ai_chat_core_1.commonFormatCon
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         instructions, messageMapper, chatCleaner, 
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        messageMiddleware) {
-            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath, debugAi, messageMapper), instructions, formatContinuationError, _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData, messageMiddleware || []);
+        messageMiddleware, commandSchedulers = defaultSchedulers) {
+            return new VertexAiChatWorker_1.VertexAiChatWorker(firestore, _taskScheduler, new VertexAiWrapper_1.VertexAiWrapper(model, firestore, threadsPath, debugAi, messageMapper), instructions, formatContinuationError, _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData, messageMiddleware || [], (queueName) => commandSchedulers(queueName, _taskScheduler));
         },
         continuationScheduler(queueName) {
             return _continuationSchedulerFactory.create(queueName);

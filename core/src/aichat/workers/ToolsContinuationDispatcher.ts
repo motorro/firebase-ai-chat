@@ -13,56 +13,82 @@ import {Continuation} from "../data/Continuation";
 import {tagLogger} from "../../logging";
 import {Collections} from "../data/Collections";
 import {firestore} from "firebase-admin";
+import {ChatError} from "../data/ChatError";
+import {ChatDispatchData} from "../ToolsDispatcher";
+import {ChatMeta, Meta} from "../data/Meta";
 import DocumentReference = firestore.DocumentReference;
 import Timestamp = firestore.Timestamp;
 import CollectionReference = firestore.CollectionReference;
-import {ChatError} from "../data/ChatError";
 import FieldValue = firestore.FieldValue;
-import {ChatDispatchData} from "../ToolsDispatcher";
+import {HandBackAction, HandOverAction} from "../data/HandOverAction";
 
 const logger = tagLogger("ToolsContinuationDispatcher");
 
 /**
+ * Tools for dispatchers
+ */
+export interface ToolsContinuationDispatcherTools {
+    /**
+     * Continuation command factory
+     * @param continuationRequest Continuation request
+     * @return Created continuation command
+     */
+    readonly getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>
+}
+
+export type ToolContinuationSoFar<DATA extends ChatData> = DATA | {
+    readonly data: DATA
+    readonly handOver: HandOverAction | HandBackAction | null
+};
+
+export function hasHandOver<DATA extends ChatData>(data: ToolContinuationSoFar<DATA>): data is {
+    readonly data: DATA
+    readonly handOver: HandOverAction | HandBackAction | null
+} {
+    return "data" in data && "handOver" in data;
+}
+
+/**
  * Tools dispatch continuation
  */
-export interface ToolsContinuationDispatcher<A, C extends ContinuationCommand<A>, DATA extends ChatData> {
+export interface ToolsContinuationDispatcher<DATA extends ChatData> {
     /**
      * Dispatches tool calls
-     * @param soFar Chat state so far
+     * @param soFar Dispatch data so far
      * @param toolCalls Tool calls
      * @param updateChatData Function to update chat data
-     * @param getContinuationCommand Continuation command factory
+     * @param dispatchControl Tools dispatch control
      * @return Tool calls continuation with at-once processed data or suspended
      */
     dispatch(
-        soFar: DATA,
+        soFar: ToolContinuationSoFar<DATA>,
         toolCalls: ReadonlyArray<ToolCallRequest>,
         updateChatData: (data: DATA) => Promise<DATA>,
-        getContinuationCommand: (continuationRequest: ContinuationRequest) => C
+        dispatchControl: ToolsContinuationDispatcherTools
     ): Promise<Continuation<ToolCallsResult<DATA>>>
 
     /**
      * Dispatches next tool call
-     * @param soFar Chat state so far
+     * @param soFar Dispatch data so far
      * @param command Continuation command
      * @param updateChatData Function to update chat data
-     * @param getContinuationCommand Continuation command factory
+     * @param dispatchControl Tools dispatch control
      * @return Tool calls continuation with at-once processed data or suspended
      */
     dispatchCommand(
         soFar: DATA,
-        command: C,
+        command: ContinuationCommand<unknown>,
         updateChatData: (data: DATA) => Promise<DATA>,
-        getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>
+        dispatchControl: ToolsContinuationDispatcherTools
     ): Promise<Continuation<ToolCallsResult<DATA>>>
 }
 
 /**
  * Continuation dispatcher implementation
  */
-export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>, DATA extends ChatData> implements ToolsContinuationDispatcher<A, C, DATA> {
+export class ToolsContinuationDispatcherImpl<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatcher<DATA> {
     private readonly dispatcherId: string;
-    private readonly chatDocument: DocumentReference<ChatState<AssistantConfig, DATA>>;
+    private readonly chatDocument: DocumentReference<ChatState<AssistantConfig, DATA, CM>>;
     private readonly db: FirebaseFirestore.Firestore;
     private readonly dispatchRunner: ToolsContinuationDispatchRunner<DATA>;
     private readonly logData: boolean;
@@ -80,21 +106,21 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
         chatDocumentPath: string,
         dispatcherId: string,
         db: FirebaseFirestore.Firestore,
-        dispatchRunner: ToolsContinuationDispatchRunner<DATA>,
+        dispatchRunner: ToolsContinuationDispatchRunner<DATA, WM, CM>,
         logData = false
     ) {
         this.dispatcherId = dispatcherId;
-        this.chatDocument = db.doc(chatDocumentPath) as DocumentReference<ChatState<AssistantConfig, DATA>>;
+        this.chatDocument = db.doc(chatDocumentPath) as DocumentReference<ChatState<AssistantConfig, DATA, CM>>;
         this.db = db;
         this.dispatchRunner = dispatchRunner;
         this.logData = logData;
     }
 
     async dispatch(
-        soFar: DATA,
+        soFar: ToolContinuationSoFar<DATA>,
         toolCalls: ReadonlyArray<ToolCallRequest>,
         updateChatData: (data: DATA) => Promise<DATA>,
-        getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>
+        dispatchControl: ToolsContinuationDispatcherTools
     ): Promise<Continuation<ToolCallsResult<DATA>>> {
         logger.d("Dispatching tool calls");
         if (this.logData) {
@@ -106,6 +132,7 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
         const continuation: ToolsContinuationData = {
             dispatcherId: this.dispatcherId,
             state: "suspended",
+            handOver: hasHandOver(soFar) ? soFar.handOver : null,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now()
         };
@@ -126,10 +153,10 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
             batch,
             updateChatData,
             continuationDocument,
-            soFar,
+            hasHandOver(soFar) ? soFar.data : soFar,
             continuation,
             tools,
-            getContinuationCommand
+            dispatchControl
         );
 
         // Save only if suspended
@@ -143,9 +170,9 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
 
     async dispatchCommand(
         soFar: DATA,
-        command: C,
+        command: ContinuationCommand<unknown>,
         updateChatData: (data: DATA) => Promise<DATA>,
-        getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>
+        dispatchControl: ToolsContinuationDispatcherTools
     ): Promise<Continuation<ToolCallsResult<DATA>>> {
         logger.d("Continuation processing. Moving forward:", JSON.stringify(command));
         if (this.logData) {
@@ -178,7 +205,7 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
             soFar,
             continuation,
             toolCalls,
-            getContinuationCommand
+            dispatchControl
         );
         logger.d("Saving continuation to:", continuationDocument.path);
         await batch.commit();
@@ -192,17 +219,19 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
         soFar: DATA,
         continuation: ToolsContinuationData,
         toolCalls: Array<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>,
-        getContinuationCommand: (continuationRequest: ContinuationRequest) => ContinuationCommand<unknown>
+        dispatchControl: ToolsContinuationDispatcherTools
     ): Promise<Continuation<ToolCallsResult<DATA>>> {
         const dispatched = await this.dispatchRunner.dispatch(
             soFar,
             continuation,
             toolCalls,
             await this.getChatData(),
-            (continuationToolCall) => getContinuationCommand({
-                continuationId: continuationDoc.id,
-                tool: continuationToolCall
-            })
+            {
+                getContinuationCommand: (continuationToolCall) => dispatchControl.getContinuationCommand({
+                    continuationId: continuationDoc.id,
+                    tool: continuationToolCall
+                })
+            }
         );
 
         const result: Array<ToolCallResponse<DATA>> = [];
@@ -225,6 +254,7 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
             continuationDoc,
             {
                 state: dispatched.suspended ? "suspended": "resolved",
+                handOver: dispatched.handOver,
                 updatedAt: FieldValue.serverTimestamp()
             },
             {merge: true}
@@ -242,12 +272,13 @@ export class ToolsContinuationDispatcherImpl<A, C extends ContinuationCommand<A>
             logger.d("Dispatch resolved");
             return Continuation.resolve({
                 data: dispatched.data,
+                handOver: dispatched.handOver,
                 responses: result
             });
         }
     }
 
-    private async getChatData(): Promise<ChatDispatchData> {
+    private async getChatData(): Promise<ChatDispatchData<CM>> {
         const chat = (await this.chatDocument.get()).data();
         if (undefined === chat) {
             return Promise.reject(new ChatError("not-found", true, "Chat not found"));

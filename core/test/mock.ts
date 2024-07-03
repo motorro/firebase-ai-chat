@@ -89,6 +89,7 @@ export const commandData: ChatCommandData = {
 export const continuationData: ToolsContinuationData = {
     dispatcherId: dispatcherId,
     state: "suspended",
+    handOver: null,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now()
 };

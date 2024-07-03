@@ -63,6 +63,7 @@ export {
     DispatchResult,
     ToolDispatcherReturnValue,
     ToolsDispatcher,
+    ToolsHandOver,
     isDispatchResult,
     getDispatchError,
     isDispatchError,
@@ -161,6 +162,7 @@ export interface AiChat {
      * @param messageMapper Maps messages to/from VertexAI
      * @param chatCleaner Optional chat resource cleaner extension
      * @param messageMiddleware Optional Message processing middleware
+     * @param commandSchedulers Creates a list of command schedulers. Should return schedulers for each platform
      * @return Worker interface
      */
     worker(
@@ -171,7 +173,8 @@ export interface AiChat {
         messageMapper?: VertexAiMessageMapper,
         chatCleaner?: ChatCleaner,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
+        messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>,
+        commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>
     ): ChatWorker
 
     /**
@@ -253,7 +256,8 @@ export function factory(
             messageMapper?: VertexAiMessageMapper,
             chatCleaner?: ChatCleaner,
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-            messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
+            messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>,
+            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers
         ): ChatWorker {
             return new VertexAiChatWorker(
                 firestore,
@@ -264,7 +268,8 @@ export function factory(
                 _chatCleanupRegistrar,
                 (queueName) => _chatCleanerFactory(queueName, chatCleaner),
                 logData,
-                messageMiddleware || []
+                messageMiddleware || [],
+                (queueName) => commandSchedulers(queueName, _taskScheduler)
             );
         },
         continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {

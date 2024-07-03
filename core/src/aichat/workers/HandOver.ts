@@ -8,7 +8,7 @@ import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {DispatchControl} from "./ChatWorker";
 import {CommandScheduler} from "../CommandScheduler";
 import {HandOverDelegate} from "../chat/handOver";
-import {HandOverCommand, isHandBackCommand, isHandOverCommand} from "../data/HandOverCommand";
+import {HandOverAction, isHandBackAction, isHandOverAction} from "../data/HandOverAction";
 
 export class HandOverWorker<DATA extends ChatData, CM extends ChatMeta = ChatMeta> extends BaseChatWorker<ChatAction, AssistantConfig, DATA, CM> {
     private readonly handOver: HandOverDelegate
@@ -25,17 +25,17 @@ export class HandOverWorker<DATA extends ChatData, CM extends ChatMeta = ChatMet
     }
 
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<unknown>> {
-        return isHandOverCommand(req.data);
+        return isHandOverAction(req.data.actionData);
     }
 
     protected async doDispatch(command: ChatCommand<ChatAction>, state: ChatState<AssistantConfig, DATA, CM>, control: DispatchControl<DATA, CM>): Promise<void> {
-        const hoCommand = <HandOverCommand>command;
+        const hoAction = <HandOverAction>(command.actionData);
         await control.safeUpdate(async (tx) => {
             await this.handOver.handOver(tx, command.commonData.chatDocumentPath, state, {
-                config: hoCommand.config,
-                messages: hoCommand.messages,
-                chatMeta: hoCommand.chatMeta,
-                workerMeta: hoCommand.commonData.meta
+                config: hoAction.config,
+                messages: hoAction.messages,
+                chatMeta: hoAction.chatMeta,
+                workerMeta: command.commonData.meta
             });
         });
     }
@@ -56,17 +56,17 @@ export class HandBackWorker<DATA extends ChatData, CM extends ChatMeta = ChatMet
     }
 
     protected isSupportedCommand(req: Request<ChatCommand<unknown>>): req is Request<ChatCommand<unknown>> {
-        return isHandBackCommand(req.data);
+        return isHandBackAction(req.data.actionData);
     }
 
     protected async doDispatch(command: ChatCommand<unknown>, state: ChatState<AssistantConfig, DATA, CM>, control: DispatchControl<DATA, CM>): Promise<void> {
-        const hoCommand = <HandOverCommand>command;
+        const hbAction = <HandOverAction>(command.actionData);
         await control.safeUpdate(async (tx) => {
             await this.handOver.handOver(tx, command.commonData.chatDocumentPath, state, {
-                config: hoCommand.config,
-                messages: hoCommand.messages,
-                chatMeta: hoCommand.chatMeta,
-                workerMeta: hoCommand.commonData.meta
+                config: hbAction.config,
+                messages: hbAction.messages,
+                chatMeta: hbAction.chatMeta,
+                workerMeta: command.commonData.meta
             });
         });
     }

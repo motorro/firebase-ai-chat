@@ -8,10 +8,10 @@ import {
     ToolCallRequest,
     Continuation,
     ToolCallsResult,
-    ContinuationRequest, tagLogger, ChatCleaner
+    ContinuationRequest, tagLogger, ChatCleaner, HandOverAction, HandBackAction
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
+import {OpenAiChatAction} from "../data/OpenAiChatAction";
 import {AiWrapper} from "../AiWrapper";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand, OpenAiContinuationCommand} from "../data/OpenAiChatCommand";
@@ -40,7 +40,7 @@ export class RunWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, ChatData>
+        control: DispatchControl<ChatData>
     ): Promise<void> {
         logger.d("Running assistant...");
         const threadId = state.config.assistantConfig.threadId;
@@ -49,10 +49,12 @@ export class RunWorker extends OpenAiQueueWorker {
             return Promise.reject(new ChatError("internal", true, "Thread ID is not defined at running"));
         }
 
-        const dispatcher = this.toolsDispatchFactory.getDispatcher<OpenAiChatActions, OpenAiContinuationCommand, ChatData>(
+        const dispatcher = this.toolsDispatchFactory.getDispatcher<ChatData>(
             command.commonData.chatDocumentPath,
             state.config.assistantConfig.dispatcherId
         );
+
+        let handOver: HandOverAction | HandBackAction | null = null;
 
         const dispatch = async (
             data: ChatData,
@@ -69,15 +71,21 @@ export class RunWorker extends OpenAiQueueWorker {
                 }
             });
 
-            return await dispatcher.dispatch(
+            const result = await dispatcher.dispatch(
                 data,
                 toolCalls,
                 async (data) => {
                     await control.safeUpdate(async (_tx, updateChatState) => updateChatState({data: data}));
                     return data;
                 },
-                getContinuationCommand
+                {
+                    getContinuationCommand: getContinuationCommand
+                }
             );
+            if (result.isResolved()) {
+                handOver = result.value.handOver;
+            }
+            return result;
         };
 
         const continuation = await this.wrapper.run(
@@ -91,7 +99,12 @@ export class RunWorker extends OpenAiQueueWorker {
             await control.safeUpdate(async (_tx, updateChatState) => {
                 updateChatState({data: continuation.value});
             });
-            await this.continueNextInQueue(control, command);
+            if (null !== handOver) {
+                logger.d("Hand-over by tools: ", JSON.stringify(handOver));
+                await control.continueQueue({...command, actionData: ["retrieve", handOver]});
+            } else {
+                await this.continueNextInQueue(control, command);
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ import {
     tagLogger
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
+import {OpenAiChatAction} from "../data/OpenAiChatAction";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
@@ -19,7 +19,7 @@ export class PostWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, ChatData>
+        control: DispatchControl<ChatData>
     ): Promise<void> {
         logger.d("Posting messages...");
         const threadId = state.config.assistantConfig.threadId;

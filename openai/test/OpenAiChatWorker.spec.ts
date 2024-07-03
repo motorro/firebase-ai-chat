@@ -6,40 +6,46 @@ import {
     capture,
     deepEqual,
     imock,
-    instance, reset,
+    instance,
+    reset,
     strictEqual,
     verify,
     when
 } from "@johanblumenberg/ts-mockito";
 import {assistantId, chatState, Data, data, dispatcherId, threadId, userId} from "./mock";
 import {
-    ChatCleaner, ChatCleanupRegistrar,
+    ChatCleaner,
+    ChatCleanupRegistrar,
     ChatCommand,
-    ChatCommandData, ChatData,
+    ChatCommandData,
+    ChatData,
     ChatError,
     ChatMessage,
     ChatState,
     ChatStatus,
     ChatWorker,
     Collections,
-    Continuation, ContinuationRequest,
-    Dispatch, getReducerSuccess, MessageMiddleware,
+    CommandScheduler,
+    Continuation,
+    Dispatch, getFunctionSuccess,
+    getReducerSuccess,
+    MessageMiddleware,
     Meta,
     Run,
-    TaskScheduler, ToolCallRequest,
+    TaskScheduler,
+    ToolCallRequest,
     ToolCallsResult,
     ToolContinuationDispatcherFactory,
     ToolsContinuationDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
-import {OpenAiChatWorker, OpenAiAssistantConfig, OpenAiChatCommand, AiWrapper} from "../src";
+import {AiWrapper, OpenAiAssistantConfig, OpenAiChatCommand, OpenAiChatWorker} from "../src";
+import {OpenAiContinuationCommand} from "../lib/aichat/data/OpenAiChatCommand";
 import CollectionReference = admin.firestore.CollectionReference;
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
-import {OpenAiChatActions} from "../lib/aichat/data/OpenAiChatAction";
-import {OpenAiContinuationCommand} from "../lib/aichat/data/OpenAiChatCommand";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -130,6 +136,7 @@ describe("Chat worker", function() {
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
+    let commandScheduler: CommandScheduler;
     let toolContinuationDispatcherFactory: ToolContinuationDispatcherFactory;
     let cleaner: ChatCleaner;
     let cleanupRegistrar: ChatCleanupRegistrar;
@@ -138,9 +145,11 @@ describe("Chat worker", function() {
     before(async function() {
         wrapper = imock<AiWrapper>();
         scheduler = imock<TaskScheduler>();
+        commandScheduler = imock<CommandScheduler>()
         toolContinuationDispatcherFactory = imock<ToolContinuationDispatcherFactory>();
         cleaner = imock();
         cleanupRegistrar = imock();
+        when(commandScheduler.isSupported(anything())).thenReturn(true);
         when(cleaner.cleanup(anything())).thenResolve();
         when(cleanupRegistrar.register(anything())).thenResolve();
     });
@@ -154,7 +163,8 @@ describe("Chat worker", function() {
             instance(cleanupRegistrar),
             () => instance(cleaner),
             false,
-            middleware || []
+            middleware || [],
+            () => [instance(commandScheduler)]
         );
     };
 
@@ -354,15 +364,16 @@ describe("Chat worker", function() {
                 response: getReducerSuccess({
                     value: "Test2"
                 })
-            }]
+            }],
+            handOver: null
         };
 
-        const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
         // eslint-disable-next-line max-len
-        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _updateState, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _updateState, getCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
-            const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
+            const command = getCommand.getContinuationCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
             command.actionData.should.deep.equal(["continueRun", "retrieve"]);
             command.continuation.should.deep.equal({
                 continuationId: continuationId,
@@ -407,11 +418,68 @@ describe("Chat worker", function() {
         verify(scheduler.schedule(anything(), anything())).once();
     });
 
+    it("processes run command with hand-over", async function() {
+        await createChat(threadId, "processing", dispatchId);
+        createWorker();
+
+        const toolCall: ToolCallRequest = {
+            toolCallId: "call1",
+            toolName: "callOne",
+            args: {a: 1}
+        };
+        const toolResponse: ToolCallsResult<Data> = {
+            data: {
+                value: "Test2"
+            },
+            responses: [{
+                toolCallId: "toolId",
+                toolName: "toolName",
+                response: getFunctionSuccess({
+                    value: "Test2"
+                })
+            }],
+            handOver: {name: "handBack", messages: ["Message 1"]}
+        };
+
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async () => {
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        });
+
+        when(toolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+
+        when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _dataSoFar, dispatch) => {
+            const dispatchResult = await dispatch(data, [toolCall], runId);
+            return Continuation.resolve(dispatchResult.value.data);
+        });
+
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: runCommand
+        };
+
+        await worker.dispatch(request);
+
+        verify(wrapper.run(strictEqual(threadId), strictEqual(assistantId), deepEqual(data), anything())).once();
+        const [, command] = capture(scheduler.schedule).last();
+        command.should.deep.include({
+            actionData: [
+                "retrieve",
+                {
+                    name: "handBack",
+                    messages: ["Message 1"],
+                }
+            ]
+        });
+    });
+
     it("processes run command when tools are suspended", async function() {
         await createChat(threadId, "processing", dispatchId);
         createWorker();
 
-        const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
         when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenResolve(Continuation.suspend());
         when(toolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
         when(wrapper.run(anything(), anything(), anything(), anything())).thenCall(() => {
@@ -451,18 +519,19 @@ describe("Chat worker", function() {
                 response: getReducerSuccess({
                     value: "Test2"
                 })
-            }]
+            }],
+            handOver: null
         };
 
-        const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
         when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenCall(async () => {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
         // eslint-disable-next-line max-len
-        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _updateState, getCommand: (continuationRequest: ContinuationRequest) => OpenAiContinuationCommand) => {
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _updateState, getCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
-            const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
+            const command = getCommand.getContinuationCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
             command.actionData.should.deep.equal(continueRunCommand.actionData);
             command.continuation.should.deep.equal({
                 continuationId: continuationId,
@@ -504,11 +573,69 @@ describe("Chat worker", function() {
         verify(scheduler.schedule(anything(), anything())).once();
     });
 
+    it("processes continuation command with saved hand-over", async function() {
+        await createChat(threadId, "processing", dispatchId);
+        createWorker();
+
+        const toolCall: ToolCallRequest = {
+            toolCallId: "call1",
+            toolName: "callOne",
+            args: {a: 1}
+        };
+        const toolResponse: ToolCallsResult<Data> = {
+            data: {
+                value: "Test2"
+            },
+            responses: [{
+                toolCallId: "toolId",
+                toolName: "toolName",
+                response: getReducerSuccess({
+                    value: "Test2"
+                })
+            }],
+            handOver: {name: "handBack", messages: ["Message 1"]}
+        };
+
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
+        when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenCall(async () => {
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        });
+        // eslint-disable-next-line max-len
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _updateState, getCommand) => {
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        });
+
+        when(toolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+
+        // eslint-disable-next-line max-len
+        when(wrapper.processToolsResponse(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _dataSoFar, dispatch) => {
+            const dispatchResult = await dispatch(data, [toolCall], runId);
+            return Continuation.resolve(dispatchResult.value.data);
+        });
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: continueRunCommand
+        };
+
+        await worker.dispatch(request);
+        const [, command] = capture(scheduler.schedule).last();
+        command.should.deep.include({
+            actionData: [
+                "retrieve",
+                {
+                    name: "handBack",
+                    messages: ["Message 1"],
+                }
+            ]
+        });
+    });
+
     it("processes continuation command when tools are suspended", async function() {
         await createChat(threadId, "processing", dispatchId);
         createWorker();
 
-        const toolDispatcher: ToolsContinuationDispatcher<OpenAiChatActions, OpenAiContinuationCommand, Data> = imock();
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
         when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenResolve(Continuation.suspend());
         when(toolContinuationDispatcherFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
 

@@ -39,7 +39,8 @@ export {
     getFunctionSuccess,
     getReducerSuccess,
     isFunctionSuccess,
-    isReducerSuccess
+    isReducerSuccess,
+    ToolsHandOver
 } from "./aichat/ToolsDispatcher";
 export {AssistantChat} from "./aichat/AssistantChat";
 export {HandOverResult} from "./aichat/data/HandOverResult";
@@ -48,7 +49,7 @@ export {BaseChatWorker} from "./aichat/workers/BaseChatWorker";
 export {DispatchRunner} from "./aichat/workers/DispatchRunner";
 export {ToolContinuationDispatcherFactory} from "./aichat/workers/ToolContinuationDispatcherFactory";
 export {ToolsContinuationScheduler} from "./aichat/workers/ToolsContinuationScheduler";
-export {ToolsContinuationDispatcher} from "./aichat/workers/ToolsContinuationDispatcher";
+export {ToolsContinuationDispatcher, ToolsContinuationDispatcherTools, ToolContinuationSoFar, hasHandOver} from "./aichat/workers/ToolsContinuationDispatcher";
 export {CommandScheduler} from "./aichat/CommandScheduler";
 export {TaskScheduler} from "./aichat/TaskScheduler";
 export {ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand} from "./aichat/data/ChatCommand";
@@ -73,7 +74,7 @@ export {ChatCleaner, ChatCleanupRegistrar, CommonChatCleaner, CommonChatCleanupR
 export {PartialChatState, MessageProcessingControl, MessageMiddleware} from "./aichat/middleware/MessageMiddleware";
 export {HandOverData, HandOverDelegate} from "./aichat/chat/handOver";
 export {HandOverControl, handOverMiddleware} from "./aichat/middleware/handOverMiddleware";
-export {HandOverCommand, HandBackCommand, isHandOverCommand, isHandBackCommand} from "./aichat/data/HandOverCommand";
+export {HandOverAction, HandBackAction, isHandOverAction, isHandBackAction} from "./aichat/data/HandOverAction";
 export {HandOverWorker, HandBackWorker} from "./aichat/workers/HandOver";
 
 /**
@@ -88,7 +89,7 @@ export {HandOverWorker, HandBackWorker} from "./aichat/workers/HandOver";
 export function toolContinuationDispatcherFactory(
     db: FirebaseFirestore.Firestore,
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>,
+    dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>,
     taskScheduler: TaskScheduler,
     formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError,
     logData = false

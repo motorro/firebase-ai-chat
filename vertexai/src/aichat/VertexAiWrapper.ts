@@ -2,11 +2,17 @@ import {
     ChatData,
     ChatError,
     Continuation,
-    DispatchError, isStructuredMessage, NewMessage,
+    DispatchError,
+    HandBackAction,
+    HandOverAction,
+    hasHandOver,
+    isStructuredMessage,
+    NewMessage,
     printAiExample,
     tagLogger,
     ToolCallRequest,
-    ToolCallsResult
+    ToolCallsResult,
+    ToolContinuationSoFar
 } from "@motorro/firebase-ai-chat-core";
 import {ChatSession, Content, GenerativeModel, Part, StartChatParams} from "@google-cloud/vertexai";
 import {FunctionCallPart, GenerateContentCandidate} from "@google-cloud/vertexai/src/types/content";
@@ -16,16 +22,20 @@ import {Thread} from "./data/Thread";
 import {AiWrapper, PostMessageResult} from "./AiWrapper";
 import {ChatThreadMessage, ThreadMessage} from "./data/ThreadMessage";
 import {RunContinuationRequest} from "./data/RunResponse";
+import {DefaultVertexAiMessageMapper, VertexAiMessageMapper} from "./VertexAiMessageMapper";
 import CollectionReference = firestore.CollectionReference;
 import Timestamp = firestore.Timestamp;
-import {DefaultVertexAiMessageMapper, VertexAiMessageMapper} from "./VertexAiMessageMapper";
 
 const logger = tagLogger("VertexAiWrapper");
 
 /**
  * Inter AI call state
  */
-type InterPostState<DATA extends ChatData> = Readonly<{data: DATA, messages: ReadonlyArray<ThreadMessage>}>;
+type InterPostState<DATA extends ChatData> = Readonly<{
+    data: DATA,
+    messages: ReadonlyArray<ThreadMessage>,
+    handOver: HandOverAction | HandBackAction | null
+}>;
 
 /**
  * Wraps Open AI assistant use
@@ -133,16 +143,49 @@ export class VertexAiWrapper implements AiWrapper {
         threadId: string,
         instructions: VertexAiSystemInstructions<DATA>,
         messages: ReadonlyArray<NewMessage>,
-        dataSoFar: DATA,
-        dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>
+        soFar: DATA,
+        dispatch: (data: ToolContinuationSoFar<DATA>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>
     ): Promise<Continuation<PostMessageResult<DATA>>> {
         logger.d("Posting messages...");
         return await this.doPost(
             threadId,
             instructions,
             messages.map((it) => this.messageMapper.toAi(it)).flat(),
-            dataSoFar,
+            soFar,
             dispatch
+        );
+    }
+
+    /**
+     * Processes AI tools response
+     * @param threadId Thread ID
+     * @param instructions VertexAI system instructions
+     * @param request Tools dispatch request
+     * @param soFar Data so far
+     * @param dispatch Tool dispatch function
+     * @return New data state
+     */
+    processToolsResponse<DATA extends ChatData>(
+        threadId: string,
+        instructions: VertexAiSystemInstructions<DATA>,
+        request: RunContinuationRequest<DATA>,
+        soFar: DATA,
+        dispatch: (data: ToolContinuationSoFar<DATA>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>
+    ): Promise<Continuation<PostMessageResult<DATA>>> {
+        return this.doPost(
+            threadId,
+            instructions,
+            request.toolsResult.map((it) => ({
+                functionResponse: {
+                    name: it.toolName,
+                    response: it.response
+                }
+            })),
+            {
+                data: soFar,
+                handOver: request.handOver
+            },
+            dispatch,
         );
     }
 
@@ -151,7 +194,7 @@ export class VertexAiWrapper implements AiWrapper {
      * @param threadId Thread ID
      * @param instructions Instructions
      * @param parts Parts to post
-     * @param dataSoFar Data so far
+     * @param soFar Data so far
      * @param dispatch Dispatch function
      * @return Post result
      * @private
@@ -160,8 +203,8 @@ export class VertexAiWrapper implements AiWrapper {
         threadId: string,
         instructions: VertexAiSystemInstructions<DATA>,
         parts: Array<Part>,
-        dataSoFar: DATA,
-        dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>
+        soFar: ToolContinuationSoFar<DATA>,
+        dispatch: (data: ToolContinuationSoFar<DATA>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>
     ): Promise<Continuation<PostMessageResult<DATA>>> {
         const tools = instructions.tools;
         const params: StartChatParams = {
@@ -174,11 +217,15 @@ export class VertexAiWrapper implements AiWrapper {
         const result = await this.run(
             chat,
             parts,
-            {data: dataSoFar, messages: []},
+            {
+                data: hasHandOver(soFar) ? soFar.data : soFar,
+                messages: [],
+                handOver: hasHandOver(soFar) ? soFar.handOver : null
+            },
             dispatch
         );
 
-        const {data: stateData, messages: stateMessages} = result.state;
+        const {data: stateData, messages: stateMessages, handOver} = result.state;
 
         const resultMessages: Array<ChatThreadMessage> = [];
         const batch = this.firestore.batch();
@@ -204,32 +251,12 @@ export class VertexAiWrapper implements AiWrapper {
         if (false === result.suspended) {
             return Continuation.resolve({
                 data: stateData,
-                messages: resultMessages
+                messages: resultMessages,
+                handOver: handOver
             });
         }
 
         return Continuation.suspend();
-    }
-
-    processToolsResponse<DATA extends ChatData>(
-        threadId: string,
-        instructions: VertexAiSystemInstructions<DATA>,
-        request: RunContinuationRequest<DATA>,
-        dataSoFar: DATA,
-        dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>
-    ): Promise<Continuation<PostMessageResult<DATA>>> {
-        return this.doPost(
-            threadId,
-            instructions,
-            request.toolsResult.map((it) => ({
-                functionResponse: {
-                    name: it.toolName,
-                    response: it.response
-                }
-            })),
-            dataSoFar,
-            dispatch,
-        );
     }
 
     /**
@@ -245,9 +272,10 @@ export class VertexAiWrapper implements AiWrapper {
         chat: ChatSession,
         parts: Array<Part>,
         soFar: InterPostState<DATA>,
-        dispatch: (data: DATA, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>
+        dispatch: (data: ToolContinuationSoFar<DATA>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<DATA>>>
     ): Promise<{ suspended: boolean, state: InterPostState<DATA>}> {
         let data = soFar.data;
+        let handOver = soFar.handOver;
         let nextBatchSortIndex = soFar.messages[soFar.messages.length - 1]?.inBatchSortIndex || 0;
         const messages: Array<ThreadMessage> = [
             ...soFar.messages,
@@ -268,7 +296,7 @@ export class VertexAiWrapper implements AiWrapper {
          */
         const runTools = async (toolCalls: Array<FunctionCallPart>): Promise<{ suspended: boolean, state: InterPostState<DATA>}> => {
             if (0 === toolCalls.length) {
-                return {suspended: false, state: {data: data, messages: messages}};
+                return {suspended: false, state: {data: data, messages: messages, handOver: handOver}};
             }
 
             logger.d("Dispatching tools...");
@@ -300,23 +328,23 @@ export class VertexAiWrapper implements AiWrapper {
                             response: index === nameErrorIn ? thisError : otherError
                         }
                     })),
-                    {data: data, messages: messages},
+                    {data: data, messages: messages, handOver: handOver},
                     dispatch
                 );
             }
 
             const result: Continuation<ToolCallsResult<DATA>> = await dispatch(
-                data,
+                {data: data, handOver: handOver},
                 toolCalls.map((part) => ({
                     toolCallId: part.functionCall.name,
                     toolName: part.functionCall.name,
-                    soFar: data,
                     args: <Record<string, unknown>>part.functionCall.args
                 }))
             );
             if (result.isResolved()) {
                 logger.d("All tools dispatched");
                 data = result.value.data;
+                handOver = result.value.handOver;
                 return await this.run(
                     chat,
                     result.value.responses.map((it) => ({
@@ -325,12 +353,12 @@ export class VertexAiWrapper implements AiWrapper {
                             response: it.response
                         }
                     })),
-                    {data: result.value.data, messages: messages},
+                    {data: result.value.data, messages: messages, handOver: handOver},
                     dispatch
                 );
             } else {
                 logger.d("Some tools suspended...");
-                return {suspended: true, state: {data: data, messages: messages}};
+                return {suspended: true, state: {data: data, messages: messages, handOver: handOver}};
             }
         };
 
@@ -363,7 +391,7 @@ export class VertexAiWrapper implements AiWrapper {
             return runTools(functionCalls);
         }
 
-        return {suspended: false, state: {data: data, messages: messages}};
+        return {suspended: false, state: {data: data, messages: messages, handOver: handOver}};
     }
 
     async deleteThread(threadId: string): Promise<void> {

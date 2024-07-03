@@ -5,7 +5,7 @@ import {
     tagLogger, ChatCleanupRegistrar, TaskScheduler, ChatCleaner
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
+import {OpenAiChatAction} from "../data/OpenAiChatAction";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 import {AiWrapper} from "../AiWrapper";
@@ -34,7 +34,7 @@ export class CreateWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, ChatData>
+        control: DispatchControl<ChatData>
     ): Promise<void> {
         if (state.config.assistantConfig.threadId) {
             logger.d("Already has a thread:", state.config.assistantConfig.threadId);

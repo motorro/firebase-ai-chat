@@ -212,7 +212,9 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
             return {
                 safeUpdate: async (update) => {
                     return await control.safeUpdate(async (tx, updateChatState) => {
-                        const dispatchDoc = this.db.doc(command.commonData.chatDocumentPath).collection(Collections.dispatches).doc(command.commonData.dispatchId) as DocumentReference<Dispatch>;
+                        const dispatchDoc = this.db.doc(command.commonData.chatDocumentPath)
+                            .collection(Collections.dispatches)
+                            .doc(command.commonData.dispatchId) as DocumentReference<Dispatch>;
                         let nextMessageIndex = (await dispatchDoc.get())?.data()?.nextMessageIndex || 0;
                         await update(
                             tx,

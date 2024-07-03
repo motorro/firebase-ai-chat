@@ -2,11 +2,20 @@ import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {
     ChatCleaner,
     ChatCleanupRegistrar,
-    ChatCommand, ChatData,
-    ChatWorker, DispatchError, MessageMiddleware,
+    ChatCommand,
+    ChatData,
+    ChatWorker,
+    CommandScheduler,
+    DispatchError,
+    HandBackWorker,
+    HandOverWorker,
+    isHandBackAction,
+    isHandOverAction,
+    MessageMiddleware,
     Meta,
     tagLogger,
-    TaskScheduler, ToolCallRequest,
+    TaskScheduler,
+    ToolCallRequest,
     ToolContinuationDispatcherFactory,
     toolContinuationDispatcherFactory,
     ToolsDispatcher
@@ -35,6 +44,7 @@ export class VertexAiChatWorker implements ChatWorker {
     private readonly chatCleanupRegistrar: ChatCleanupRegistrar;
     private readonly logData: boolean;
     private readonly messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>;
+    private readonly commandSchedulers: (queueName: string) => ReadonlyArray<CommandScheduler>;
 
     private getWorker(command: VertexAiChatCommand, queueName: string): ChatWorker | undefined {
         logger.d("Dispatching VertexAi command...");
@@ -94,6 +104,14 @@ export class VertexAiChatWorker implements ChatWorker {
             logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
+        if (isHandOverAction(action)) {
+            logger.d("Action to be handled with HandOverWorker");
+            return new HandOverWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+        }
+        if (isHandBackAction(action)) {
+            logger.d("Action to be handled with HandBackWorker");
+            return new HandBackWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+        }
 
         logger.w("Unsupported command:", command);
         return undefined;
@@ -111,12 +129,14 @@ export class VertexAiChatWorker implements ChatWorker {
         logData: boolean,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         messageMiddleware: ReadonlyArray<MessageMiddleware<any, any>>,
+        commandSchedulers: (queueName: string) => ReadonlyArray<CommandScheduler>,
         getContinuationFactory?: () => ToolContinuationDispatcherFactory,
     ) {
         this.firestore = firestore;
         this.scheduler = scheduler;
         this.wrapper = wrapper;
         this.instructions = instructions;
+        this.commandSchedulers = commandSchedulers;
         this.getContinuationFactory = getContinuationFactory || (() => {
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
             const dispatchers: Record<string, ToolsDispatcher<any>> = {};

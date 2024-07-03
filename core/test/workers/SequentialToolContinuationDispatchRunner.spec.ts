@@ -7,29 +7,36 @@ import {
     continuationData,
     data,
     Data,
-    data2, data3,
+    data2,
+    data3,
     DispatchAction,
-    dispatcherId, threadId,
-    toolCall1, toolCall2, userId
+    dispatcherId,
+    threadId,
+    toolCall1,
+    toolCall2,
+    userId
 } from "../mock";
 import {
     AssistantConfig,
-    ChatDispatchData, ChatState,
+    ChatDispatchData,
+    ChatState,
     Collections,
     Continuation,
-    ContinuationCommand, ContinuationRequestToolData,
+    ContinuationCommand,
+    ContinuationRequestToolData,
     DispatchResult,
     getReducerSuccess,
     ToolsDispatcher
 } from "../../src";
 import {
-    commonFormatContinuationError, SequentialToolsContinuationDispatchRunner,
+    commonFormatContinuationError,
+    SequentialToolsContinuationDispatchRunner,
     ToolsContinuationDispatchRunner
 } from "../../src/aichat/workers/ToolsContinuationDispatchRunner";
 import {ToolCallData, ToolsContinuationData} from "../../src/aichat/data/ContinuationCommand";
+import {afterEach} from "mocha";
 import CollectionReference = admin.firestore.CollectionReference;
 import DocumentReference = firestore.DocumentReference;
-import {afterEach} from "mocha";
 
 const db = firestore();
 const chatDoc = db.collection(CHATS).doc() as DocumentReference<ChatState<AssistantConfig, Data>>;
@@ -96,7 +103,9 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
-            () => continuationCommand1
+            {
+                getContinuationCommand: () => continuationCommand1
+            }
         );
         result.should.deep.equal({
             suspended: false,
@@ -106,7 +115,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall1Id,
                     {...toolCall1, call: {...toolCall1.call, response: {result: data2}}}
                 ]
-            ]
+            ],
+            handOver: null
         });
     });
 
@@ -119,7 +129,9 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
-            () => continuationCommand1
+            {
+                getContinuationCommand: () => continuationCommand1
+            }
         );
         result.should.deep.equal({
             suspended: false,
@@ -129,7 +141,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall1Id,
                     {...toolCall1, call: {...toolCall1.call, response: {data: data2, comment: "comment"}}}
                 ]
-            ]
+            ],
+            handOver: null
         });
     });
 
@@ -142,7 +155,9 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
-            () => continuationCommand1
+            {
+                getContinuationCommand: () => continuationCommand1
+            }
         );
         result.should.deep.equal({
             suspended: false,
@@ -152,7 +167,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall1Id,
                     {...toolCall1, call: {...toolCall1.call, response: {result: data2}}}
                 ]
-            ]
+            ],
+            handOver: null
         });
     });
 
@@ -165,7 +181,9 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
-            () => continuationCommand1
+            {
+                getContinuationCommand: () => continuationCommand1
+            }
         );
         result.should.deep.equal({
             suspended: false,
@@ -175,30 +193,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall1Id,
                     {...toolCall1, call: {...toolCall1.call, response: {data: data2, comment: "comment"}}}
                 ]
-            ]
-        });
-    });
-
-    it("processes failing tool calls", async function() {
-        const runner = createRunner(() => {
-            return Promise.reject(new Error("Error"));
-        });
-        const result = await runner.dispatch(
-            data,
-            continuationData,
-            [[toolCall1Id, toolCall1]],
-            chatData,
-            () => continuationCommand1
-        );
-        result.should.deep.equal({
-            suspended: false,
-            data: data,
-            tools: [
-                [
-                    toolCall1Id,
-                    {...toolCall1, call: {...toolCall1.call, response: {error: "Error"}}}
-                ]
-            ]
+            ],
+            handOver: null
         });
     });
 
@@ -233,9 +229,11 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
             chatData,
-            (toolCall) => {
-                passedToolCalls.push(toolCall);
-                return commands[commandIndex++];
+            {
+                getContinuationCommand: (toolCall) => {
+                    passedToolCalls.push(toolCall);
+                    return commands[commandIndex++];
+                }
             }
         );
         result.should.deep.equal({
@@ -250,7 +248,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall2Id,
                     {...toolCall2, call: {...toolCall2.call, response: {result: data3}}}
                 ]
-            ]
+            ],
+            handOver: null
         });
 
         passedData.should.deep.equal([data, data2]);
@@ -263,6 +262,56 @@ describe("Tool continuation dispatch runner", function() {
         ]);
     });
 
+    it("maintains one hand-over for tools", async function() {
+        let resultIndex = 0;
+        const handOvers = [
+            ["Message 1"],
+            ["Message 2"]
+        ];
+        const results = [
+            {data: data2},
+            data3
+        ];
+
+        const commands = [
+            continuationCommand1,
+            continuationCommand2
+        ];
+        let commandIndex = 0;
+
+        const runner = createRunner((_data, _name, _args, _continuation, _chatData, handOver) => {
+            handOver.handBack(handOvers[resultIndex]);
+            return results[resultIndex++];
+        });
+
+        const result = await runner.dispatch(
+            data,
+            continuationData,
+            [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
+            chatData,
+            {
+                getContinuationCommand: (toolCall) => {
+                    return commands[commandIndex++];
+                }
+            }
+        );
+        result.should.deep.equal({
+            suspended: false,
+            data: data2,
+            tools: [
+                [
+                    toolCall1Id,
+                    {...toolCall1, call: {...toolCall1.call, response: {data: data2}}}
+                ],
+                [
+                    toolCall2Id,
+                    {...toolCall2, call: {...toolCall2.call, response: {result: data3}}}
+                ]
+            ],
+            handOver: {name: "handBack", messages: ["Message 2"]},
+        });
+    });
+
     it("processes failing tool calls", async function() {
         const runner = createRunner(() => {
             return Promise.reject(new Error("Error"));
@@ -272,7 +321,9 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, toolCall1]],
             chatData,
-            () => continuationCommand1
+            {
+                getContinuationCommand: () => continuationCommand1
+            }
         );
         result.should.deep.equal({
             suspended: false,
@@ -282,7 +333,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall1Id,
                     {...toolCall1, call: {...toolCall1.call, response: {error: "Error"}}}
                 ]
-            ]
+            ],
+            handOver: null
         });
     });
 
@@ -309,7 +361,9 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
             chatData,
-            () => commands[commandIndex++]
+            {
+                getContinuationCommand: () => commands[commandIndex++]
+            }
         );
         result.should.deep.equal({
             suspended: true,
@@ -323,7 +377,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall2Id,
                     toolCall2
                 ]
-            ]
+            ],
+            handOver: null
         });
     });
 
@@ -350,7 +405,9 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
             chatData,
-            () => commands[commandIndex++]
+            {
+                getContinuationCommand: () => commands[commandIndex++]
+            }
         );
         result.should.deep.equal({
             suspended: true,
@@ -364,7 +421,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall2Id,
                     toolCall2
                 ]
-            ]
+            ],
+            handOver: null
         });
     });
 
@@ -385,8 +443,10 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
             chatData,
-            () => {
-                return commands[commandIndex++];
+            {
+                getContinuationCommand: () => {
+                    return commands[commandIndex++];
+                }
             }
         );
         result.should.deep.equal({
@@ -401,7 +461,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall2Id,
                     {...toolCall2, call: {...toolCall2.call, response: commonFormatContinuationError(toolCall1.call.request)}}
                 ]
-            ]
+            ],
+            handOver: null
         });
         calls.should.be.equal(1);
     });
@@ -421,8 +482,10 @@ describe("Tool continuation dispatch runner", function() {
             continuationData,
             [[toolCall1Id, {...toolCall1, call: {...toolCall1.call, response: {error: "Error"}}}], [toolCall2Id, toolCall2]],
             chatData,
-            () => {
-                return commands[commandIndex++];
+            {
+                getContinuationCommand: () => {
+                    return commands[commandIndex++];
+                }
             }
         );
         result.should.deep.equal({
@@ -437,7 +500,8 @@ describe("Tool continuation dispatch runner", function() {
                     toolCall2Id,
                     {...toolCall2, call: {...toolCall2.call, response: commonFormatContinuationError(toolCall1.call.request)}}
                 ]
-            ]
+            ],
+            handOver: null
         });
     });
 });

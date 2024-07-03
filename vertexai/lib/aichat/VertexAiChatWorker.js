@@ -40,6 +40,14 @@ class VertexAiChatWorker {
             logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker_1.SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
         }
+        if ((0, firebase_ai_chat_core_1.isHandOverAction)(action)) {
+            logger.d("Action to be handled with HandOverWorker");
+            return new firebase_ai_chat_core_1.HandOverWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+        }
+        if ((0, firebase_ai_chat_core_1.isHandBackAction)(action)) {
+            logger.d("Action to be handled with HandBackWorker");
+            return new firebase_ai_chat_core_1.HandBackWorker(this.firestore, this.scheduler, cleaner, this.logData, this.commandSchedulers(queueName));
+        }
         logger.w("Unsupported command:", command);
         return undefined;
     }
@@ -47,11 +55,12 @@ class VertexAiChatWorker {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     instructions, formatContinuationError, chatCleanupRegistrar, chatCleanerFactory, logData, 
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    messageMiddleware, getContinuationFactory) {
+    messageMiddleware, commandSchedulers, getContinuationFactory) {
         this.firestore = firestore;
         this.scheduler = scheduler;
         this.wrapper = wrapper;
         this.instructions = instructions;
+        this.commandSchedulers = commandSchedulers;
         this.getContinuationFactory = getContinuationFactory || (() => {
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
             const dispatchers = {};

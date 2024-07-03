@@ -1,5 +1,5 @@
 import {isOpenAiAssistantConfig, OpenAiAssistantConfig} from "./OpenAiAssistantConfig";
-import {NewMessage} from "@motorro/firebase-ai-chat-core";
+import {HandBackAction, HandOverAction, NewMessage} from "@motorro/firebase-ai-chat-core";
 
 export interface PostExplicit {
     name: "postExplicit",
@@ -26,7 +26,7 @@ export function isCleanupAction(data: unknown): data is Cleanup {
 /**
  * OpenAI Assistant chat actions
  */
-export type OpenAiChatAction = "create" | "post" | PostExplicit | "run" | "continueRun" | "retrieve" | "switchToUserInput" | "close" | Cleanup;
+export type OpenAiChatAction = "create" | "post" | PostExplicit | "run" | "continueRun" | "retrieve" | "switchToUserInput" | "close" | Cleanup | HandOverAction | HandBackAction;
 
 /**
  * OpenAI Assistant chat actions

@@ -52,7 +52,7 @@ describe("Tool continuation dispatcher", function() {
         await db.recursiveDelete(chatDoc);
     });
 
-    function createDispatcher(dispatcher: ToolsDispatcher<Data>): ToolsContinuationDispatcherImpl<DispatchAction, ContinuationCommand<DispatchAction>, Data> {
+    function createDispatcher(dispatcher: ToolsDispatcher<Data>): ToolsContinuationDispatcherImpl<Data> {
         const dispatchRunner: ToolsContinuationDispatchRunner<Data> = new SequentialToolsContinuationDispatchRunner<Data>({[dispatcherId]: dispatcher});
         return new ToolsContinuationDispatcherImpl(
             chatDoc.path,
@@ -87,14 +87,17 @@ describe("Tool continuation dispatcher", function() {
                 data,
                 [toolCall1.call.request, toolCall2.call.request],
                 updateChatData,
-                (request) => {
-                    passedRequests.push(request);
-                    return {
-                        commonData: commandData,
-                        actionData: "close",
-                        continuation: request
-                    };
+                {
+                    getContinuationCommand: (request) => {
+                        passedRequests.push(request);
+                        return {
+                            commonData: commandData,
+                            actionData: "close",
+                            continuation: request
+                        };
+                    }
                 }
+
             );
 
             let resolvedData: ToolCallsResult<Data> | undefined = undefined;
@@ -118,7 +121,8 @@ describe("Tool continuation dispatcher", function() {
                         toolName: toolCall2.call.request.toolName,
                         response: {result: data3}
                     }
-                ]
+                ],
+                handOver: null
             });
             dataUpdated.should.be.true;
 
@@ -152,13 +156,15 @@ describe("Tool continuation dispatcher", function() {
                 data,
                 [toolCall1.call.request, toolCall2.call.request],
                 updateChatData,
-                (request) => {
-                    passedRequests.push(request);
-                    return {
-                        commonData: commandData,
-                        actionData: "close",
-                        continuation: request
-                    };
+                {
+                    getContinuationCommand: (request) => {
+                        passedRequests.push(request);
+                        return {
+                            commonData: commandData,
+                            actionData: "close",
+                            continuation: request
+                        };
+                    }
                 }
             );
 
@@ -239,6 +245,7 @@ describe("Tool continuation dispatcher", function() {
             await continuationDoc.set({
                 dispatcherId: dispatcherId,
                 state: "suspended",
+                handOver: null,
                 createdAt: FieldValue.serverTimestamp(),
                 updatedAt: FieldValue.serverTimestamp()
             });
@@ -275,13 +282,15 @@ describe("Tool continuation dispatcher", function() {
                 data,
                 command,
                 updateChatData,
-                (request) => {
-                    passedRequests.push(request);
-                    return {
-                        commonData: commandData,
-                        actionData: "close",
-                        continuation: request
-                    };
+                {
+                    getContinuationCommand: (request) => {
+                        passedRequests.push(request);
+                        return {
+                            commonData: commandData,
+                            actionData: "close",
+                            continuation: request
+                        };
+                    }
                 }
             );
 
@@ -306,7 +315,8 @@ describe("Tool continuation dispatcher", function() {
                         toolName: toolCall2.call.request.toolName,
                         response: {result: data3}
                     }
-                ]
+                ],
+                handOver: null
             });
 
             const continuation = (await continuationDoc.get()).data();
@@ -380,13 +390,15 @@ describe("Tool continuation dispatcher", function() {
                 data,
                 command,
                 updateChatData,
-                (request) => {
-                    passedRequests.push(request);
-                    return {
-                        commonData: commandData,
-                        actionData: "close",
-                        continuation: request
-                    };
+                {
+                    getContinuationCommand: (request) => {
+                        passedRequests.push(request);
+                        return {
+                            commonData: commandData,
+                            actionData: "close",
+                            continuation: request
+                        };
+                    }
                 }
             );
 
@@ -464,13 +476,15 @@ describe("Tool continuation dispatcher", function() {
                 data2,
                 command,
                 updateChatData,
-                (request) => {
-                    passedRequests.push(request);
-                    return {
-                        commonData: commandData,
-                        actionData: "close",
-                        continuation: request
-                    };
+                {
+                    getContinuationCommand: (request) => {
+                        passedRequests.push(request);
+                        return {
+                            commonData: commandData,
+                            actionData: "close",
+                            continuation: request
+                        };
+                    }
                 }
             );
 
@@ -495,7 +509,8 @@ describe("Tool continuation dispatcher", function() {
                         toolName: toolCall2.call.request.toolName,
                         response: {data: data3}
                     }
-                ]
+                ],
+                handOver: null
             });
 
             const continuation = (await continuationDoc.get()).data();
@@ -552,12 +567,14 @@ describe("Tool continuation dispatcher", function() {
                 data3,
                 command,
                 updateChatData,
-                (request) => {
-                    return {
-                        commonData: commandData,
-                        actionData: "close",
-                        continuation: request
-                    };
+                {
+                    getContinuationCommand: (request) => {
+                        return {
+                            commonData: commandData,
+                            actionData: "close",
+                            continuation: request
+                        };
+                    }
                 }
             );
 
@@ -582,7 +599,8 @@ describe("Tool continuation dispatcher", function() {
                         toolName: toolCall2.call.request.toolName,
                         response: {data: data3}
                     }
-                ]
+                ],
+                handOver: null
             });
             dataUpdated.should.be.true;
         });
@@ -612,12 +630,14 @@ describe("Tool continuation dispatcher", function() {
                 data2,
                 command,
                 updateChatData,
-                (request) => {
-                    return {
-                        commonData: commandData,
-                        actionData: "close",
-                        continuation: request
-                    };
+                {
+                    getContinuationCommand: (request) => {
+                        return {
+                            commonData: commandData,
+                            actionData: "close",
+                            continuation: request
+                        };
+                    }
                 }
             );
 
@@ -642,7 +662,8 @@ describe("Tool continuation dispatcher", function() {
                         toolName: toolCall2.call.request.toolName,
                         response: {error: "Error"}
                     }
-                ]
+                ],
+                handOver: null
             });
             dataUpdated.should.be.true;
         });

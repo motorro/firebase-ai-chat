@@ -7,6 +7,7 @@ import {
     Continuation,
     ContinuationRequest,
     DispatchControl,
+    ToolContinuationSoFar,
     MessageMiddleware,
     tagLogger,
     TaskScheduler,
@@ -15,7 +16,7 @@ import {
     ToolContinuationDispatcherFactory
 } from "@motorro/firebase-ai-chat-core";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
-import {isPostExplicitAction, PostExplicit, VertexAiChatActions} from "../data/VertexAiChatAction";
+import {isPostExplicitAction, PostExplicit} from "../data/VertexAiChatAction";
 import {VertexAiQueueWorker} from "./VertexAiQueueWorker";
 import {VertexAiSystemInstructions} from "../data/VertexAiSystemInstructions";
 import {AiWrapper, PostMessageResult} from "../AiWrapper";
@@ -93,14 +94,13 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
         command: VertexAiChatCommand,
         dispatcherId: string,
         updateData: (data: ChatData) => Promise<ChatData>
-    ): (data: ChatData, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<ChatData>>> {
-        const dispatcher = this.getDispatcherFactory().getDispatcher<VertexAiChatActions, VertexAiContinuationCommand, ChatData>(
+    ): (data: ToolContinuationSoFar<ChatData>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<ChatData>>> {
+        const dispatcher = this.getDispatcherFactory().getDispatcher<ChatData>(
             command.commonData.chatDocumentPath,
             dispatcherId
         );
-
         return async (
-            data: ChatData,
+            data: ToolContinuationSoFar<ChatData>,
             toolCalls: ReadonlyArray<ToolCallRequest>
         ): Promise<Continuation<ToolCallsResult<ChatData>>> => {
             const getContinuationCommand = (continuationRequest: ContinuationRequest): VertexAiContinuationCommand => ({
@@ -114,7 +114,9 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
                 data,
                 toolCalls,
                 updateData,
-                getContinuationCommand
+                {
+                    getContinuationCommand: getContinuationCommand
+                }
             );
         };
     }
@@ -122,7 +124,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
     async doDispatch(
         command: VertexAiChatCommand,
         state: ChatState<VertexAiAssistantConfig, ChatData>,
-        control: DispatchControl<VertexAiChatActions, ChatData>
+        control: DispatchControl<ChatData>
     ): Promise<void> {
         logger.d("Posting messages...");
         const threadId = state.config.assistantConfig.threadId;
@@ -152,6 +154,7 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
             logger.d("Resolved");
 
             const newData = response.value.data;
+            const handOver = response.value.handOver;
 
             await control.safeUpdate(async (_tx, updateChatState) => {
                 updateChatState({data: newData});
@@ -164,7 +167,12 @@ abstract class BasePostWorker extends VertexAiQueueWorker {
                     await mpc.safeUpdate(async (_tx, _updateState, saveMessages) => {
                         saveMessages(messages);
                     });
-                    await this.continueNextInQueue(control, command);
+                    if (null !== handOver) {
+                        logger.d("Hand-over by tools: ", JSON.stringify(handOver));
+                        await control.continueQueue({...command, actionData: [handOver]});
+                    } else {
+                        await this.continueNextInQueue(control, command);
+                    }
                 },
                 control,
                 this.messageMiddleware,
@@ -235,7 +243,7 @@ export class ContinuePostWorker extends BasePostWorker {
         soFar: ChatData,
         updateStateData: (data: ChatData) => Promise<ChatData>
     ): Promise<Continuation<PostMessageResult<ChatData>>> {
-        const dispatcher = this.getDispatcherFactory().getDispatcher<VertexAiChatActions, VertexAiContinuationCommand, ChatData>(
+        const dispatcher = this.getDispatcherFactory().getDispatcher<ChatData>(
             command.commonData.chatDocumentPath,
             dispatcherId
         );
@@ -244,12 +252,14 @@ export class ContinuePostWorker extends BasePostWorker {
             soFar,
             command,
             updateStateData,
-            (continuationRequest: ContinuationRequest): VertexAiContinuationCommand => ({
-                // Already a continuation command so if suspended we use the same set of actions
-                // Alter continuation data and meta
-                ...command,
-                continuation: continuationRequest
-            })
+            {
+                getContinuationCommand: (continuationRequest: ContinuationRequest): VertexAiContinuationCommand => ({
+                    // Already a continuation command so if suspended we use the same set of actions
+                    // Alter continuation data and meta
+                    ...command,
+                    continuation: continuationRequest
+                })
+            }
         );
 
         if (dc.isResolved()) {
@@ -261,12 +271,14 @@ export class ContinuePostWorker extends BasePostWorker {
                     data,
                     toolCalls,
                     updateStateData,
-                    (continuationRequest: ContinuationRequest): VertexAiContinuationCommand => ({
-                        // Already a continuation command so if suspended we use the same set of actions
-                        // Alter continuation data and meta
-                        ...command,
-                        continuation: continuationRequest
-                    })
+                    {
+                        getContinuationCommand: (continuationRequest: ContinuationRequest): VertexAiContinuationCommand => ({
+                            // Already a continuation command so if suspended we use the same set of actions
+                            // Alter continuation data and meta
+                            ...command,
+                            continuation: continuationRequest
+                        })
+                    }
                 );
             };
 
@@ -274,7 +286,8 @@ export class ContinuePostWorker extends BasePostWorker {
                 threadId,
                 instructions,
                 {
-                    toolsResult: dc.value.responses
+                    toolsResult: dc.value.responses,
+                    handOver: dc.value.handOver
                 },
                 dc.value.data,
                 dispatch

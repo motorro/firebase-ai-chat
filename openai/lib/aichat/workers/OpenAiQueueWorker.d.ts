@@ -4,7 +4,7 @@ import { OpenAiAssistantConfig } from "../data/OpenAiAssistantConfig";
 import { AiWrapper } from "../AiWrapper";
 import { Request } from "firebase-functions/lib/common/providers/tasks";
 import { OpenAiChatCommand } from "../data/OpenAiChatCommand";
-export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, ChatData>;
+export type OpenAiDispatchControl = DispatchControl<ChatData>;
 export declare abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;
     /**

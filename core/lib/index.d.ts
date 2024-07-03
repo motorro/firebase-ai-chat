@@ -12,7 +12,7 @@ export { ChatError } from "./aichat/data/ChatError";
 export { Dispatch, Run, RunStatus } from "./aichat/data/Dispatch";
 export { Meta, ChatMeta } from "./aichat/data/Meta";
 export { Logger, logger, setLogger, tagLogger } from "./logging";
-export { ChatDispatchData, FunctionSuccessResult, FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolDispatcherReturnValue, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess } from "./aichat/ToolsDispatcher";
+export { ChatDispatchData, FunctionSuccessResult, FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolDispatcherReturnValue, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess, ToolsHandOver } from "./aichat/ToolsDispatcher";
 export { AssistantChat } from "./aichat/AssistantChat";
 export { HandOverResult } from "./aichat/data/HandOverResult";
 export { DispatchControl, ChatWorker } from "./aichat/workers/ChatWorker";
@@ -20,7 +20,7 @@ export { BaseChatWorker } from "./aichat/workers/BaseChatWorker";
 export { DispatchRunner } from "./aichat/workers/DispatchRunner";
 export { ToolContinuationDispatcherFactory } from "./aichat/workers/ToolContinuationDispatcherFactory";
 export { ToolsContinuationScheduler } from "./aichat/workers/ToolsContinuationScheduler";
-export { ToolsContinuationDispatcher } from "./aichat/workers/ToolsContinuationDispatcher";
+export { ToolsContinuationDispatcher, ToolsContinuationDispatcherTools, ToolContinuationSoFar, hasHandOver } from "./aichat/workers/ToolsContinuationDispatcher";
 export { CommandScheduler } from "./aichat/CommandScheduler";
 export { TaskScheduler } from "./aichat/TaskScheduler";
 export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from "./aichat/data/ChatCommand";
@@ -34,6 +34,8 @@ export { ChatCleaner, ChatCleanupRegistrar, CommonChatCleaner, CommonChatCleanup
 export { PartialChatState, MessageProcessingControl, MessageMiddleware } from "./aichat/middleware/MessageMiddleware";
 export { HandOverData, HandOverDelegate } from "./aichat/chat/handOver";
 export { HandOverControl, handOverMiddleware } from "./aichat/middleware/handOverMiddleware";
+export { HandOverAction, HandBackAction, isHandOverAction, isHandBackAction } from "./aichat/data/HandOverAction";
+export { HandOverWorker, HandBackWorker } from "./aichat/workers/HandOver";
 /**
  * Tools continuation dispatcher factory
  * @param db Firestore
@@ -43,7 +45,7 @@ export { HandOverControl, handOverMiddleware } from "./aichat/middleware/handOve
  * @param logData If true, logs data when dispatching
  * @return Continuation tools factory
  */
-export declare function toolContinuationDispatcherFactory(db: FirebaseFirestore.Firestore, dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>, taskScheduler: TaskScheduler, formatContinuationError?: (failed: ToolCallRequest, error: DispatchError) => DispatchError, logData?: boolean): ToolContinuationDispatcherFactory;
+export declare function toolContinuationDispatcherFactory(db: FirebaseFirestore.Firestore, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>, taskScheduler: TaskScheduler, formatContinuationError?: (failed: ToolCallRequest, error: DispatchError) => DispatchError, logData?: boolean): ToolContinuationDispatcherFactory;
 /**
  * Tools continuation scheduler factory
  * @param db Firestore

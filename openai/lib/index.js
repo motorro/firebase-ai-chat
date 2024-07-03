@@ -79,10 +79,12 @@ function factory(firestore, functions, location, taskScheduler, formatContinuati
         handOverMiddleware(queueName, process, commandSchedulers = defaultSchedulers) {
             return (0, firebase_ai_chat_core_1.handOverMiddleware)(firestore, commandSchedulers(queueName, _taskScheduler), process);
         },
-        worker(openAi, dispatchers, messageMapper, chatCleaner, 
+        worker(openAi, 
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        messageMiddleware) {
-            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi, debugAi, messageMapper), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler, formatContinuationError, logData), _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData, messageMiddleware || []);
+        dispatchers, messageMapper, chatCleaner, 
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        messageMiddleware, commandSchedulers = defaultSchedulers) {
+            return new OpenAiChatWorker_1.OpenAiChatWorker(firestore, _taskScheduler, new OpenAiWrapper_1.OpenAiWrapper(openAi, debugAi, messageMapper), (0, firebase_ai_chat_core_1.toolContinuationDispatcherFactory)(firestore, dispatchers, _taskScheduler, formatContinuationError, logData), _chatCleanupRegistrar, (queueName) => _chatCleanerFactory(queueName, chatCleaner), logData, messageMiddleware || [], (queueName) => commandSchedulers(queueName, _taskScheduler));
         },
         continuationScheduler(queueName) {
             return _continuationSchedulerFactory.create(queueName);

@@ -3,23 +3,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HandBackWorker = exports.HandOverWorker = void 0;
 const BaseChatWorker_1 = require("./BaseChatWorker");
 const handOver_1 = require("../chat/handOver");
-const HandOverCommand_1 = require("../data/HandOverCommand");
+const HandOverAction_1 = require("../data/HandOverAction");
 class HandOverWorker extends BaseChatWorker_1.BaseChatWorker {
     constructor(firestore, scheduler, cleaner, logData, schedulers) {
         super(firestore, scheduler, cleaner, logData);
         this.handOver = new handOver_1.HandOverDelegate(firestore, schedulers);
     }
     isSupportedCommand(req) {
-        return (0, HandOverCommand_1.isHandOverCommand)(req.data);
+        return (0, HandOverAction_1.isHandOverAction)(req.data.actionData);
     }
     async doDispatch(command, state, control) {
-        const hoCommand = command;
+        const hoAction = (command.actionData);
         await control.safeUpdate(async (tx) => {
             await this.handOver.handOver(tx, command.commonData.chatDocumentPath, state, {
-                config: hoCommand.config,
-                messages: hoCommand.messages,
-                chatMeta: hoCommand.chatMeta,
-                workerMeta: hoCommand.commonData.meta
+                config: hoAction.config,
+                messages: hoAction.messages,
+                chatMeta: hoAction.chatMeta,
+                workerMeta: command.commonData.meta
             });
         });
     }
@@ -31,16 +31,16 @@ class HandBackWorker extends BaseChatWorker_1.BaseChatWorker {
         this.handOver = new handOver_1.HandOverDelegate(firestore, schedulers);
     }
     isSupportedCommand(req) {
-        return (0, HandOverCommand_1.isHandBackCommand)(req.data);
+        return (0, HandOverAction_1.isHandBackAction)(req.data.actionData);
     }
     async doDispatch(command, state, control) {
-        const hoCommand = command;
+        const hbAction = (command.actionData);
         await control.safeUpdate(async (tx) => {
             await this.handOver.handOver(tx, command.commonData.chatDocumentPath, state, {
-                config: hoCommand.config,
-                messages: hoCommand.messages,
-                chatMeta: hoCommand.chatMeta,
-                workerMeta: hoCommand.commonData.meta
+                config: hbAction.config,
+                messages: hbAction.messages,
+                chatMeta: hbAction.chatMeta,
+                workerMeta: command.commonData.meta
             });
         });
     }

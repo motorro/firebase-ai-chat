@@ -8,7 +8,7 @@ import { OpenAiAssistantConfig } from "./aichat/data/OpenAiAssistantConfig";
 import OpenAI from "openai";
 import { OpenAiMessageMapper } from "./aichat/OpenAiMessageMapper";
 export { AssistantChat, HandOverResult, ChatData, ChatState, ChatStatus, ChatMessage, Meta, ChatMeta, Logger, setLogger, tagLogger, TaskScheduler, CommandScheduler, Collections, SystemInstructions, AiExample, AiResponseExample, AiFunctionCallExample, printAiExample, commonFormatContinuationError } from "@motorro/firebase-ai-chat-core";
-export { ChatDispatchData, FunctionSuccessResult, FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolDispatcherReturnValue, ToolsDispatcher, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess, NewMessage, StructuredMessage, isStructuredMessage, ChatCleaner } from "@motorro/firebase-ai-chat-core";
+export { ChatDispatchData, FunctionSuccessResult, FunctionSuccess, ReducerSuccess, DispatchError, DispatchResult, ToolDispatcherReturnValue, ToolsDispatcher, ToolsHandOver, isDispatchResult, getDispatchError, isDispatchError, getFunctionSuccess, getReducerSuccess, isFunctionSuccess, isReducerSuccess, NewMessage, StructuredMessage, isStructuredMessage, ChatCleaner } from "@motorro/firebase-ai-chat-core";
 export { ChatCommand, BoundChatCommand, isChatCommand, isBoundChatCommand } from "@motorro/firebase-ai-chat-core";
 export { FirebaseQueueTaskScheduler } from "@motorro/firebase-ai-chat-core";
 export { Continuation, SuspendedContinuation, ResolvedContinuation } from "@motorro/firebase-ai-chat-core";
@@ -62,9 +62,10 @@ export interface AiChat {
      * @param messageMapper Maps messages to/from OpenAI
      * @param chatCleaner Optional chat resource cleaner extension
      * @param messageMiddleware Optional Message processing middleware
+     * @param commandSchedulers Creates a list of command schedulers. Should return schedulers for each platform
      * @return Worker interface
      */
-    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>, messageMapper?: OpenAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>): OpenAiChatWorker;
+    worker(openAi: OpenAI, dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>, messageMapper?: OpenAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>): OpenAiChatWorker;
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
      * @param queueName The name of the queue the dispatch will be continued on

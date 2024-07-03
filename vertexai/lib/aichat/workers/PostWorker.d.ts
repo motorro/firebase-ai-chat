@@ -1,6 +1,6 @@
-import { ChatCleaner, ChatCommand, ChatData, ChatState, Continuation, DispatchControl, MessageMiddleware, TaskScheduler, ToolCallRequest, ToolCallsResult, ToolContinuationDispatcherFactory } from "@motorro/firebase-ai-chat-core";
+import { ChatCleaner, ChatCommand, ChatData, ChatState, Continuation, DispatchControl, ToolContinuationSoFar, MessageMiddleware, TaskScheduler, ToolCallRequest, ToolCallsResult, ToolContinuationDispatcherFactory } from "@motorro/firebase-ai-chat-core";
 import { VertexAiAssistantConfig } from "../data/VertexAiAssistantConfig";
-import { PostExplicit, VertexAiChatActions } from "../data/VertexAiChatAction";
+import { PostExplicit } from "../data/VertexAiChatAction";
 import { VertexAiQueueWorker } from "./VertexAiQueueWorker";
 import { VertexAiSystemInstructions } from "../data/VertexAiSystemInstructions";
 import { AiWrapper, PostMessageResult } from "../AiWrapper";
@@ -41,8 +41,8 @@ declare abstract class BasePostWorker extends VertexAiQueueWorker {
      * @returns Tools dispatching function
      * @protected
      */
-    protected getPostDispatch(command: VertexAiChatCommand, dispatcherId: string, updateData: (data: ChatData) => Promise<ChatData>): (data: ChatData, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<ChatData>>>;
-    doDispatch(command: VertexAiChatCommand, state: ChatState<VertexAiAssistantConfig, ChatData>, control: DispatchControl<VertexAiChatActions, ChatData>): Promise<void>;
+    protected getPostDispatch(command: VertexAiChatCommand, dispatcherId: string, updateData: (data: ChatData) => Promise<ChatData>): (data: ToolContinuationSoFar<ChatData>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<ChatData>>>;
+    doDispatch(command: VertexAiChatCommand, state: ChatState<VertexAiAssistantConfig, ChatData>, control: DispatchControl<ChatData>): Promise<void>;
 }
 export declare class PostWorker extends BasePostWorker {
     static isSupportedAction(action: unknown): action is "post";
