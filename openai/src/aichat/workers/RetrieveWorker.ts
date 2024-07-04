@@ -2,7 +2,6 @@ import {
     ChatCleaner,
     ChatData,
     ChatError,
-    ChatMeta,
     ChatState,
     DispatchControl,
     MessageMiddleware,
@@ -10,7 +9,7 @@ import {
     TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
+import {OpenAiChatAction} from "../data/OpenAiChatAction";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 import {AiWrapper} from "../AiWrapper";
@@ -39,7 +38,7 @@ export class RetrieveWorker extends OpenAiQueueWorker {
         wrapper: AiWrapper,
         cleaner: ChatCleaner,
         logData: boolean,
-        messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData, ChatMeta>>
+        messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>
     ) {
         super(firestore, scheduler, wrapper, cleaner, logData);
         this.messageMiddleware = messageMiddleware;
@@ -48,7 +47,7 @@ export class RetrieveWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, ChatData>
+        control: DispatchControl<ChatData>
     ): Promise<void> {
         logger.d("Retrieving messages...");
         const threadId = state.config.assistantConfig.threadId;

@@ -7,7 +7,7 @@ import PartialWithFieldValue = firestore.PartialWithFieldValue;
 /**
  * Dispatch control structure passed to processing function
  */
-export interface DispatchControl<A, DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
+export interface DispatchControl<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
     /**
      * Updates database if dispatch state is valid
      * @param update Update function
@@ -23,7 +23,7 @@ export interface DispatchControl<A, DATA extends ChatData, CM extends ChatMeta =
      * Continues queue if dispatch sequence is valid
      * @param next
      */
-    continueQueue: (next: ChatCommand<A> | BoundChatCommand<A>) => Promise<boolean>;
+    continueQueue: (next: ChatCommand<ChatAction> | BoundChatCommand<ChatAction>) => Promise<boolean>;
     /**
      * Completes queue if dispatch sequence is valid
      */

@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VertexAiWrapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const firebase_admin_1 = require("firebase-admin");
-var Timestamp = firebase_admin_1.firestore.Timestamp;
 const VertexAiMessageMapper_1 = require("./VertexAiMessageMapper");
+var Timestamp = firebase_admin_1.firestore.Timestamp;
 const logger = (0, firebase_ai_chat_core_1.tagLogger)("VertexAiWrapper");
 /**
  * Wraps Open AI assistant use
@@ -88,26 +88,50 @@ class VertexAiWrapper {
         await doc.set({ meta: meta });
         return doc.id;
     }
-    async postMessage(threadId, instructions, messages, dataSoFar, dispatch) {
+    async postMessage(threadId, instructions, messages, soFar, dispatch) {
         logger.d("Posting messages...");
-        return await this.doPost(threadId, instructions, messages.map((it) => this.messageMapper.toAi(it)).flat(), dataSoFar, dispatch);
+        return await this.doPost(threadId, instructions, messages.map((it) => this.messageMapper.toAi(it)).flat(), soFar, dispatch);
+    }
+    /**
+     * Processes AI tools response
+     * @param threadId Thread ID
+     * @param instructions VertexAI system instructions
+     * @param request Tools dispatch request
+     * @param soFar Data so far
+     * @param dispatch Tool dispatch function
+     * @return New data state
+     */
+    processToolsResponse(threadId, instructions, request, soFar, dispatch) {
+        return this.doPost(threadId, instructions, request.toolsResult.map((it) => ({
+            functionResponse: {
+                name: it.toolName,
+                response: it.response
+            }
+        })), {
+            data: soFar,
+            handOver: request.handOver
+        }, dispatch);
     }
     /**
      * Maintains conversation data
      * @param threadId Thread ID
      * @param instructions Instructions
      * @param parts Parts to post
-     * @param dataSoFar Data so far
+     * @param soFar Data so far
      * @param dispatch Dispatch function
      * @return Post result
      * @private
      */
-    async doPost(threadId, instructions, parts, dataSoFar, dispatch) {
+    async doPost(threadId, instructions, parts, soFar, dispatch) {
         const tools = instructions.tools;
         const params = Object.assign(Object.assign({ systemInstruction: VertexAiWrapper.generateSystemInstructions(instructions) }, (undefined !== tools ? { tools: tools.definition } : {})), { history: (await this.getThreadMessages(threadId)).map((it) => it[1].content) });
         const chat = this.model.startChat(params);
-        const result = await this.run(chat, parts, { data: dataSoFar, messages: [] }, dispatch);
-        const { data: stateData, messages: stateMessages } = result.state;
+        const result = await this.run(chat, parts, {
+            data: (0, firebase_ai_chat_core_1.hasHandOver)(soFar) ? soFar.data : soFar,
+            messages: [],
+            handOver: (0, firebase_ai_chat_core_1.hasHandOver)(soFar) ? soFar.handOver : null
+        }, dispatch);
+        const { data: stateData, messages: stateMessages, handOver } = result.state;
         const resultMessages = [];
         const batch = this.firestore.batch();
         stateMessages.forEach((threadMessage) => {
@@ -124,18 +148,11 @@ class VertexAiWrapper {
         if (false === result.suspended) {
             return firebase_ai_chat_core_1.Continuation.resolve({
                 data: stateData,
-                messages: resultMessages
+                messages: resultMessages,
+                handOver: handOver
             });
         }
         return firebase_ai_chat_core_1.Continuation.suspend();
-    }
-    processToolsResponse(threadId, instructions, request, dataSoFar, dispatch) {
-        return this.doPost(threadId, instructions, request.toolsResult.map((it) => ({
-            functionResponse: {
-                name: it.toolName,
-                response: it.response
-            }
-        })), dataSoFar, dispatch);
     }
     /**
      * Runs AI
@@ -149,6 +166,7 @@ class VertexAiWrapper {
     async run(chat, parts, soFar, dispatch) {
         var _a, _b, _c;
         let data = soFar.data;
+        let handOver = soFar.handOver;
         let nextBatchSortIndex = ((_a = soFar.messages[soFar.messages.length - 1]) === null || _a === void 0 ? void 0 : _a.inBatchSortIndex) || 0;
         const messages = [
             ...soFar.messages,
@@ -168,7 +186,7 @@ class VertexAiWrapper {
          */
         const runTools = async (toolCalls) => {
             if (0 === toolCalls.length) {
-                return { suspended: false, state: { data: data, messages: messages } };
+                return { suspended: false, state: { data: data, messages: messages, handOver: handOver } };
             }
             logger.d("Dispatching tools...");
             // Gemini misses function names from time to time
@@ -195,27 +213,27 @@ class VertexAiWrapper {
                         name: it.functionCall.name || "function name was not provided",
                         response: index === nameErrorIn ? thisError : otherError
                     }
-                })), { data: data, messages: messages }, dispatch);
+                })), { data: data, messages: messages, handOver: handOver }, dispatch);
             }
-            const result = await dispatch(data, toolCalls.map((part) => ({
+            const result = await dispatch({ data: data, handOver: handOver }, toolCalls.map((part) => ({
                 toolCallId: part.functionCall.name,
                 toolName: part.functionCall.name,
-                soFar: data,
                 args: part.functionCall.args
             })));
             if (result.isResolved()) {
                 logger.d("All tools dispatched");
                 data = result.value.data;
+                handOver = result.value.handOver;
                 return await this.run(chat, result.value.responses.map((it) => ({
                     functionResponse: {
                         name: it.toolName,
                         response: it.response
                     }
-                })), { data: result.value.data, messages: messages }, dispatch);
+                })), { data: result.value.data, messages: messages, handOver: handOver }, dispatch);
             }
             else {
                 logger.d("Some tools suspended...");
-                return { suspended: true, state: { data: data, messages: messages } };
+                return { suspended: true, state: { data: data, messages: messages, handOver: handOver } };
             }
         };
         let aiResult = undefined;
@@ -245,7 +263,7 @@ class VertexAiWrapper {
         if (0 !== functionCalls.length) {
             return runTools(functionCalls);
         }
-        return { suspended: false, state: { data: data, messages: messages } };
+        return { suspended: false, state: { data: data, messages: messages, handOver: handOver } };
     }
     async deleteThread(threadId) {
         await this.firestore.recursiveDelete(this.threads.doc(threadId));

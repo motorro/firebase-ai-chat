@@ -134,7 +134,7 @@ describe("Base chat worker", function() {
             async (
                 command: ChatCommand<DispatchAction>,
                 state: ChatState<AiConfig, Data>,
-                control: DispatchControl<DispatchAction, Data>
+                control: DispatchControl<Data>
             ): Promise<void> => {
                 passedCommand = command;
                 passedState = state;
@@ -184,7 +184,7 @@ describe("Base chat worker", function() {
                 this: TestWorker,
                 command: ChatCommand<DispatchAction>,
                 state: ChatState<AiConfig, Data>,
-                control: DispatchControl<DispatchAction, Data>
+                control: DispatchControl<Data>
             ): Promise<void> {
                 await this.process(command, state, control, {value: "Test2"}, ["Message to add"]);
             }
@@ -552,7 +552,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     private readonly doDispatchImpl: (
         command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
-        control: DispatchControl<DispatchAction, Data>
+        control: DispatchControl<Data>
     ) => Promise<void>;
 
     constructor(
@@ -563,7 +563,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
             this: TestWorker,
             command: ChatCommand<DispatchAction>,
             state: ChatState<AiConfig, Data>,
-            control: DispatchControl<DispatchAction, Data>
+            control: DispatchControl<Data>
         ) => Promise<void>
     ) {
         super(firestore, scheduler, instance(imock()), false);
@@ -578,7 +578,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     protected doDispatch(
         command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
-        control: DispatchControl<DispatchAction, Data>
+        control: DispatchControl<Data>
     ): Promise<void> {
         return this.doDispatchImpl(command, state, control);
     }
@@ -586,7 +586,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
     async process(
         command: ChatCommand<DispatchAction>,
         state: ChatState<AiConfig, Data>,
-        control: DispatchControl<DispatchAction, Data>,
+        control: DispatchControl<Data>,
         newData: Data,
         messages: ReadonlyArray<NewMessage>
     ): Promise<void> {

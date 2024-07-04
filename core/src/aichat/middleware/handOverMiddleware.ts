@@ -15,8 +15,8 @@ export interface HandOverControl<DATA extends ChatData, WM extends Meta = Meta, 
         ) => Promise<void>
     ) => Promise<boolean>
     next: (messages: ReadonlyArray<NewMessage>) => Promise<void>,
-    handOver: (data: HandOverData<WM, CM>) => Promise<HandOverResult>,
-    handBack: (messages?: ReadonlyArray<NewMessage>, workerMeta?: WM | null) => Promise<HandOverResult>
+    handOver: (data: HandOverData<WM, CM>) => Promise<HandOverResult | undefined>,
+    handBack: (messages?: ReadonlyArray<NewMessage>, workerMeta?: WM | null) => Promise<HandOverResult | undefined>
 }
 
 export function handOverMiddleware<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta>(
@@ -35,14 +35,18 @@ export function handOverMiddleware<DATA extends ChatData, WM extends Meta = Meta
             safeUpdate: control.safeUpdate,
             next: control.next,
             handOver: async (data: HandOverData<WM, CM>) => {
-                return await db.runTransaction(async (tx) => {
-                    return handOver.handOver(tx, chatDocumentPath, chatState, data);
+                let result: HandOverResult | undefined = undefined;
+                await control.safeUpdate(async (tx) => {
+                    result = await handOver.handOver(tx, chatDocumentPath, chatState, data);
                 });
+                return result;
             },
             handBack: async (messages, workerMeta) => {
-                return await db.runTransaction(async (tx) => {
-                    return handOver.handBack(tx, chatDocumentPath, chatState, messages, workerMeta);
+                let result: HandOverResult | undefined = undefined;
+                await control.safeUpdate(async (tx) => {
+                    result = await handOver.handBack(tx, chatDocumentPath, chatState, messages, workerMeta);
                 });
+                return result;
             }
         };
         return process(messages, chatDocumentPath, chatState, hoControl);

@@ -5,6 +5,7 @@ import {
     ChatCommand,
     ChatData,
     ChatWorker,
+    CommandScheduler,
     MessageMiddleware,
     Meta,
     tagLogger,
@@ -21,6 +22,7 @@ import {PostExplicitWorker} from "./workers/PostExplicitWorker";
 import {CleanupWorker} from "./workers/CleanupWorker";
 import {RunContinuationWorker} from "./workers/RunContinuationWorker";
 import {isOpenAiChatReq, OpenAiChatCommand} from "./data/OpenAiChatCommand";
+import {HandBackWorker, HandOverWorker} from "./workers/HandOver";
 
 const logger = tagLogger("OpenAiChatWorker");
 
@@ -36,6 +38,7 @@ export class OpenAiChatWorker implements ChatWorker {
     private readonly chatCleanupRegistrar: ChatCleanupRegistrar;
     private readonly logData: boolean;
     private readonly messageMiddleware: ReadonlyArray<MessageMiddleware<ChatData>>;
+    private readonly commandSchedulers: (queueName: string) => ReadonlyArray<CommandScheduler>;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -46,7 +49,8 @@ export class OpenAiChatWorker implements ChatWorker {
         chatCleanerFactory: (queueName: string) => ChatCleaner,
         logData: boolean,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        messageMiddleware: ReadonlyArray<MessageMiddleware<any, any>>
+        messageMiddleware: ReadonlyArray<MessageMiddleware<any, any>>,
+        commandSchedulers: (queueName: string) => ReadonlyArray<CommandScheduler>
     ) {
         this.firestore = firestore;
         this.firestore = firestore;
@@ -57,6 +61,7 @@ export class OpenAiChatWorker implements ChatWorker {
         this.chatCleanupRegistrar = chatCleanupRegistrar;
         this.logData = logData;
         this.messageMiddleware = messageMiddleware;
+        this.commandSchedulers = commandSchedulers;
     }
 
     private getWorker(command: OpenAiChatCommand, queueName: string): ChatWorker | undefined {
@@ -104,6 +109,14 @@ export class OpenAiChatWorker implements ChatWorker {
         if (SwitchToUserWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
+        }
+        if (HandOverWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with HandOverWorker");
+            return new HandOverWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
+        }
+        if (HandBackWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with HandBackWorker");
+            return new HandBackWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
         }
 
         logger.w("Unsupported command:", command);

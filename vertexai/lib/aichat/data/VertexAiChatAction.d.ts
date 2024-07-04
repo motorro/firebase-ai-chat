@@ -1,5 +1,5 @@
 import { VertexAiAssistantConfig } from "./VertexAiAssistantConfig";
-import { NewMessage } from "@motorro/firebase-ai-chat-core";
+import { HandBackAction, HandOverAction, NewMessage } from "@motorro/firebase-ai-chat-core";
 export interface PostExplicit {
     name: "postExplicit";
     messages: ReadonlyArray<NewMessage>;
@@ -13,7 +13,7 @@ export declare function isCleanupAction(data: unknown): data is Cleanup;
 /**
  * VertexAI Assistant chat actions
  */
-export type VertexAiChatAction = "create" | "post" | "continuePost" | PostExplicit | "switchToUserInput" | "close" | Cleanup;
+export type VertexAiChatAction = "create" | "post" | "continuePost" | PostExplicit | "switchToUserInput" | "close" | Cleanup | HandOverAction | HandBackAction;
 /**
  * VertexAI Assistant chat actions
  */

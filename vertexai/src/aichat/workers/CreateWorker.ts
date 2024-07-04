@@ -8,7 +8,6 @@ import {
     TaskScheduler
 } from "@motorro/firebase-ai-chat-core";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
-import {VertexAiChatActions} from "../data/VertexAiChatAction";
 import {VertexAiQueueWorker} from "./VertexAiQueueWorker";
 import {VertexAiChatCommand} from "../data/VertexAiChatCommand";
 import {AiWrapper} from "../AiWrapper";
@@ -37,7 +36,7 @@ export class CreateWorker extends VertexAiQueueWorker {
     async doDispatch(
         command: VertexAiChatCommand,
         state: ChatState<VertexAiAssistantConfig, ChatData>,
-        control: DispatchControl<VertexAiChatActions, ChatData>
+        control: DispatchControl<ChatData>
     ): Promise<void> {
         if (state.config.assistantConfig.threadId) {
             logger.d("Already has a thread:", state.config.assistantConfig.threadId);

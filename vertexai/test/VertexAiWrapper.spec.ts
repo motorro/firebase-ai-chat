@@ -4,7 +4,7 @@ import {
     Continuation,
     getReducerSuccess,
     ToolCallRequest,
-    ToolCallsResult
+    ToolCallsResult, ToolContinuationSoFar
 } from "@motorro/firebase-ai-chat-core";
 import {Data, data, data2, instructions1, toolsDefinition} from "./mock";
 import {VertexAiSystemInstructions} from "../src";
@@ -33,7 +33,7 @@ describe("VertexAI wrapper", function() {
     const threads = db.collection("threads") as CollectionReference<Thread>;
     let session: ChatSession;
     let wrapper: VertexAiWrapper;
-    let dispatcher: (data: Data, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>;
+    let dispatcher: (data: ToolContinuationSoFar<Data>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>;
 
     const instructions: VertexAiSystemInstructions<Data> = {
         instructions: instructions1,
@@ -46,7 +46,8 @@ describe("VertexAI wrapper", function() {
     function createDispatcher() {
         dispatcher = () => Promise.resolve(Continuation.resolve({
             data: data,
-            responses: []
+            responses: [],
+            handOver: null
         }));
     }
 
@@ -148,13 +149,13 @@ describe("VertexAI wrapper", function() {
                 toolCallId: "someFun",
                 toolName: "someFun",
                 response: getReducerSuccess(data2)
-            }]
+            }],
+            handOver: null
         };
         dispatcher = (d, tc) => {
-            d.should.deep.equal(data);
+            d.should.deep.equal({data, handOver: null});
             tc.should.deep.equal([{
                 toolCallId: "someFun",
-                soFar: data,
                 toolName: "someFun",
                 args: {a: "b"}
             }]);

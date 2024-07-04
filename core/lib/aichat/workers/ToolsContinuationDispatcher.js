@@ -1,14 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToolsContinuationDispatcherImpl = void 0;
+exports.ToolsContinuationDispatcherImpl = exports.hasHandOver = void 0;
 const Continuation_1 = require("../data/Continuation");
 const logging_1 = require("../../logging");
 const Collections_1 = require("../data/Collections");
 const firebase_admin_1 = require("firebase-admin");
-var Timestamp = firebase_admin_1.firestore.Timestamp;
 const ChatError_1 = require("../data/ChatError");
+var Timestamp = firebase_admin_1.firestore.Timestamp;
 var FieldValue = firebase_admin_1.firestore.FieldValue;
 const logger = (0, logging_1.tagLogger)("ToolsContinuationDispatcher");
+function hasHandOver(data) {
+    return "data" in data && "handOver" in data;
+}
+exports.hasHandOver = hasHandOver;
 /**
  * Continuation dispatcher implementation
  */
@@ -29,7 +33,7 @@ class ToolsContinuationDispatcherImpl {
         this.dispatchRunner = dispatchRunner;
         this.logData = logData;
     }
-    async dispatch(soFar, toolCalls, updateChatData, getContinuationCommand) {
+    async dispatch(soFar, toolCalls, updateChatData, dispatchControl) {
         logger.d("Dispatching tool calls");
         if (this.logData) {
             (0, logging_1.tagLogger)("DATA").d("Data so far: ", JSON.stringify(soFar));
@@ -39,6 +43,7 @@ class ToolsContinuationDispatcherImpl {
         const continuation = {
             dispatcherId: this.dispatcherId,
             state: "suspended",
+            handOver: hasHandOver(soFar) ? soFar.handOver : null,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now()
         };
@@ -52,7 +57,7 @@ class ToolsContinuationDispatcherImpl {
             tools.push([doc, tool]);
             batch.set(doc, tool);
         });
-        const result = await this.doDispatch(batch, updateChatData, continuationDocument, soFar, continuation, tools, getContinuationCommand);
+        const result = await this.doDispatch(batch, updateChatData, continuationDocument, hasHandOver(soFar) ? soFar.data : soFar, continuation, tools, dispatchControl);
         // Save only if suspended
         if (result.isSuspended()) {
             logger.d("Saving continuation to:", continuationDocument.path);
@@ -60,7 +65,7 @@ class ToolsContinuationDispatcherImpl {
         }
         return result;
     }
-    async dispatchCommand(soFar, command, updateChatData, getContinuationCommand) {
+    async dispatchCommand(soFar, command, updateChatData, dispatchControl) {
         logger.d("Continuation processing. Moving forward:", JSON.stringify(command));
         if (this.logData) {
             (0, logging_1.tagLogger)("DATA").d("Data so far: ", JSON.stringify(soFar));
@@ -82,16 +87,18 @@ class ToolsContinuationDispatcherImpl {
             }
         });
         const batch = this.db.batch();
-        const result = await this.doDispatch(batch, updateChatData, continuationDocument, soFar, continuation, toolCalls, getContinuationCommand);
+        const result = await this.doDispatch(batch, updateChatData, continuationDocument, soFar, continuation, toolCalls, dispatchControl);
         logger.d("Saving continuation to:", continuationDocument.path);
         await batch.commit();
         return result;
     }
-    async doDispatch(batch, updateChatData, continuationDoc, soFar, continuation, toolCalls, getContinuationCommand) {
-        const dispatched = await this.dispatchRunner.dispatch(soFar, continuation, toolCalls, await this.getChatData(), (continuationToolCall) => getContinuationCommand({
-            continuationId: continuationDoc.id,
-            tool: continuationToolCall
-        }));
+    async doDispatch(batch, updateChatData, continuationDoc, soFar, continuation, toolCalls, dispatchControl) {
+        const dispatched = await this.dispatchRunner.dispatch(soFar, continuation, toolCalls, await this.getChatData(), {
+            getContinuationCommand: (continuationToolCall) => dispatchControl.getContinuationCommand({
+                continuationId: continuationDoc.id,
+                tool: continuationToolCall
+            })
+        });
         const result = [];
         for (let i = 0; i < dispatched.tools.length; i++) {
             const [id, call] = dispatched.tools[i];
@@ -110,6 +117,7 @@ class ToolsContinuationDispatcherImpl {
         }
         batch.set(continuationDoc, {
             state: dispatched.suspended ? "suspended" : "resolved",
+            handOver: dispatched.handOver,
             updatedAt: FieldValue.serverTimestamp()
         }, { merge: true });
         if (this.logData) {
@@ -124,6 +132,7 @@ class ToolsContinuationDispatcherImpl {
             logger.d("Dispatch resolved");
             return Continuation_1.Continuation.resolve({
                 data: dispatched.data,
+                handOver: dispatched.handOver,
                 responses: result
             });
         }
@@ -136,6 +145,8 @@ class ToolsContinuationDispatcherImpl {
         return {
             ownerId: chat.userId,
             chatDocumentPath: this.chatDocument.path,
+            dispatchId: chat.latestDispatchId,
+            sessionId: chat.sessionId || null,
             assistantConfig: chat.config.assistantConfig,
             meta: chat.meta
         };

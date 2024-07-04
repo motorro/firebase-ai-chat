@@ -24,15 +24,27 @@ class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
         const dc = await dispatcher.dispatchCommand(state.data, command, async (data) => {
             (await control.safeUpdate(async (_tx, updateChatState) => updateChatState({ data: data })));
             return data;
-        }, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
+        }, {
+            getContinuationCommand: (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest }))
+        });
         if (dc.isResolved()) {
+            let handOver = dc.value.handOver;
             const dispatch = async (data, toolCalls, runId) => {
-                return await dispatcher.dispatch(data, toolCalls, async (data) => {
+                const result = await dispatcher.dispatch({
+                    data: data,
+                    handOver: handOver
+                }, toolCalls, async (data) => {
                     (await control.safeUpdate(async (_tx, updateChatState) => updateChatState({ data: data })));
                     return data;
-                }, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest, meta: {
-                        runId: runId
-                    } })));
+                }, {
+                    getContinuationCommand: (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest, meta: {
+                            runId: runId
+                        } }))
+                });
+                if (result.isResolved()) {
+                    handOver = result.value.handOver;
+                }
+                return result;
             };
             const rc = await this.wrapper.processToolsResponse(threadId, state.config.assistantConfig.assistantId, dc.value.data, dispatch, {
                 runId: command.meta.runId,
@@ -42,7 +54,13 @@ class RunContinuationWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
                 await control.safeUpdate(async (_tx, updateChatState) => updateChatState({
                     data: rc.value
                 }));
-                await this.continueNextInQueue(control, command);
+                if (null !== handOver) {
+                    logger.d("Hand-over by tools: ", JSON.stringify(handOver));
+                    await control.continueQueue(Object.assign(Object.assign({}, command), { actionData: ["retrieve", handOver] }));
+                }
+                else {
+                    await this.continueNextInQueue(control, command);
+                }
             }
         }
     }

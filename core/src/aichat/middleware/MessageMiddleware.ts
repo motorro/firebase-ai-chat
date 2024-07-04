@@ -34,7 +34,7 @@ export interface MessageProcessingControl<DATA extends ChatData, CM extends Chat
      */
     next: (messages: ReadonlyArray<NewMessage>) => Promise<void>
     /**
-     * Resets current processing queue and sets a new command to execute
+     * Adds commands to processing queue
      * @param next Next command to execute.
      */
     enqueue: (command: ChatCommand<ChatAction> | BoundChatCommand<ChatAction>) => Promise<void>

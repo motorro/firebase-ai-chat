@@ -96,7 +96,13 @@ export const calculator = onTaskDispatched(
     async (req) => {
       // Create and run a worker
       // See the `dispatchers` definitions below
-      await chatFactory.worker(new OpenAI({apiKey: openAiApiKey.value()}), dispatchers, myMessageMapper, cleaner, [handOver]).dispatch(
+      await chatFactory.worker(
+          new OpenAI({apiKey: openAiApiKey.value()}), 
+          dispatchers, 
+          myMessageMapper, 
+          cleaner, 
+          [handOver]
+      ).dispatch(
           req,
           (chatDocumentPath: string, meta: Meta) => {
              // Optional task completion handler

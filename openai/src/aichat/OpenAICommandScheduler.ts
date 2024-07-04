@@ -47,6 +47,14 @@ export class OpenAICommandScheduler implements CommandScheduler {
         logger.d("Scheduling hand-over: ", JSON.stringify(common));
         await this.schedule(common, ["create", {name: "postExplicit", messages: handOverMessages}, "run", "retrieve", "switchToUserInput"]);
     }
+    async handBack(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void> {
+        logger.d("Scheduling hand-over: ", JSON.stringify(common));
+        let actions: OpenAiChatActions = ["switchToUserInput"];
+        if (0 !== handOverMessages.length) {
+            actions = ["create", {name: "postExplicit", messages: handOverMessages}, "run", "retrieve", ...actions];
+        }
+        await this.schedule(common, actions);
+    }
 
     private async schedule(common: ChatCommandData, actions: OpenAiChatActions, schedule?: DeliverySchedule): Promise<void> {
         const command: OpenAiChatCommand = {

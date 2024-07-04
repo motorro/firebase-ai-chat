@@ -4,6 +4,7 @@ import {firestore} from "firebase-admin";
 import Timestamp = firestore.Timestamp;
 import {ChatCommand, isChatCommand} from "./ChatCommand";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
+import {HandBackAction, HandOverAction} from "./HandOverAction";
 
 /**
  * Continuation request
@@ -93,6 +94,7 @@ export interface ToolCallResponse<DATA extends ChatData> {
 export interface ToolCallsResult<DATA extends ChatData> {
     readonly data: DATA,
     readonly responses: ReadonlyArray<ToolCallResponse<DATA>>
+    readonly handOver: HandOverAction | HandBackAction | null
 }
 
 export interface ToolCall<DATA extends ChatData> {
@@ -102,7 +104,8 @@ export interface ToolCall<DATA extends ChatData> {
 
 export interface ToolsContinuationData {
     readonly dispatcherId: string
-    readonly state: "suspended" | "resolved"
+    readonly state: "suspended" | "resolved",
+    readonly handOver: HandOverAction | HandBackAction | null
     readonly createdAt: Timestamp
     readonly updatedAt: Timestamp
 }

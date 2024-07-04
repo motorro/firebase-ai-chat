@@ -31,9 +31,13 @@ Supported AI engines:
   * [Running AI](#running-ai)
   * [Using AI function tools](#using-ai-function-tools)
 - [Tool continuation](#tool-continuation)
+  * [Note on suspending the engine in tool calls with continuation](#note-on-suspending-the-engine-in-tool-calls-with-continuation)
 - [AI message mapping](#ai-message-mapping)
 - [Message middleware](#message-middleware)
 - [Assistant switching and assistant crew](#assistant-switching-and-assistant-crew)
+  * [Switching in method middleware](#switching-in-method-middleware)
+  * [Switching in tools reducers](#switching-in-tools-reducers)
+- [Using multiple engines in a single project](#using-multiple-engines-in-a-single-project)
 - [Client application](#client-application)
 
 <!-- tocstop -->
@@ -461,10 +465,13 @@ For our simple project we define the dispatcher like this:
 ```typescript
 import {ToolsDispatcher} from "@motorro/firebase-ai-chat-openai";
 
-const dispatcher: ToolsDispatcher<CalculateChatData> = function(
-        data: CalculateChatData,
-        name: string,
-        args: Record<string, unknown>
+const dispatcher: ToolsDispatcher<CalculateChatData> = async function(
+        data: DATA, // Chat data so far
+        name: string, // Function name
+        args: Record<string, unknown>, // Function arguments
+        continuation: ContinuationCommand<unknown>, // Continuation in case of suspension. See below
+        chatData: ChatDispatchData<CM>, // Chat data
+        handOver: ToolsHandOver<WM, CM> // Chat hand-over to another assistant. See below
 ): ToolDispatcherReturnValue<CalculateChatData> {
   switch (name) {
     case "getSum":
@@ -478,10 +485,38 @@ const dispatcher: ToolsDispatcher<CalculateChatData> = function(
         sum: data.sum + (args.value as number)
       };
     case "subtract":
-      logger.d("Subtracting: ", args);
+      logger.d("Handing-over subtract: ", args.value);
+      handOver.handOver(
+              {
+                config: {
+                  engine: "vertexai",
+                  instructionsId: SUBTRACTOR_NAME
+                },
+                messages: [
+                  `User wants to subtract ${args.value as number}`
+                ],
+                chatMeta: {
+                  aiMessageMeta: {
+                    name: SUBTRACTOR_NAME,
+                    engine: "VertexAi"
+                  }
+                }
+              }
+      );
       return {
-        sum: data.sum - (args.value as number)
+        result: "The request was passed to Divider. The number is being subtracted. Divider will come back with a new accumulated state"
       };
+    case "multiply":
+      logger.d("Multiply. Suspending multiplication: ", args.value);
+      await taskScheduler.schedule(
+              multiplierQueueName,
+              {
+                data: data,
+                factor: (args.value as number),
+                continuationCommand: continuation
+              }
+      );
+      return Continuation.suspend();
     default:
       logger.e("Unimplemented function call: ", name, args);
       throw new HttpsError("unimplemented", "Unimplemented function call");
@@ -534,6 +569,11 @@ const whenResultIsReady = async (data: string) => {
 Example of suspending tool dispatch in tools reducer could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L42).
 Example of resuming AI run could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts#L136).
 
+### Note on suspending the engine in tool calls with continuation
+Take a note that suspending the assistant within tool suspending the calls with continuation may fail if the new assistant
+takes a long time to hand back. For example, currently (2024-06-28), OpenAI calls tools during the assistant run and times
+out after 10 minutes.
+
 ## AI message mapping
 By default, the library takes text messages from AI and makes text chat messages of them. If you use images or want to 
 parse custom data (or metadata) when exchanging messages between the client chat and AI you may want to add a custom 
@@ -581,8 +621,8 @@ To provide the middleware to your workers, pass the array of them to the `worker
 As your tasks grow more complex it is worth considering delegating different tasks to different assistants each of them
 trained to perform certain scope of tasks. Thus, a crew of assistants work as a team to decompose the task and move step
 by step to fulfill it. One of the famous frameworks to build such a team is [Crew AI](https://docs.crewai.com/). This 
-library also supports changing assistants on-demand. For example, consider our main Calculator who could add and subtract
-numbers. If user wants to divide the accumulated value by some number we could switch chat context to another assistant
+library also supports changing assistants on-demand. For example, consider our main Calculator who could add numbers. 
+If user wants to subtract or to divide the accumulated value by some number we could switch chat context to another assistant
 "trained" to divide numbers. Here is the example:
 ![Switching](/readme/Switching.png)
 
@@ -594,6 +634,7 @@ To be able to do it there are two methods in [AssistantChat](core/src/aichat/Ass
 - `handOver` - changes the context of chat to use with another assistant.
 - `handBack` - restores context to main assistant
 
+### Switching in method middleware
 You may also switch during message processing. There is a special [middleware](core/src/aichat/middleware/handOverMiddleware.ts)
 available to do the switch during the message processing. The `HandOverControl` object in your middleware function will get the
 methods to hand over and to hand back the chat control.
@@ -604,10 +645,28 @@ The example is available in a sample project.
 3. Set up a middleware [function](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L137).
 4. Provide mappers and middleware to workers: [OpenAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L104), [VertexAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/vertexai/vertexai.ts#L124).
 
-### Note on switching the engine in tool calls
-Take a note that changing the assistant within tool calls may fail if the new assistant takes a long time to hand back. 
-For example, currently (2024-06-28), OpenAI calls tools during the assistant run and times out after 10 minutes. So it
-turns out that hand over during tool calls with suspension is not generally a good idea :(
+### Switching in tools reducers
+Since core version 10 the library supports switching in tools reducers. You will get a [ToolsHandOver](core/src/aichat/ToolsDispatcher.ts#L70)
+object to your reducer. Use it to request `handOver` and reply to AI with some message. The tool run will complete and when
+you return back from the other assistant, add some summary messages to `handBack` to run the calling assistant again.
+The example is available in a [sample project](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L53).
+
+## Using multiple engines in a single project
+You may mix several engines in a single project. For example, you may handle different tasks with different engines.
+To be able to do it:
+1. Import both engine libraries and (optionally) the core.
+2. Create a common function to resolve chat command schedulers:
+   ```typescript
+   export const commandSchedulers = (queueName: string, taskScheduler: TaskScheduler): ReadonlyArray<CommandScheduler> => {
+      return [
+          ...openAiFactory(firestore(), getFunctions(), region, undefined, undefined, true, true).createDefaultCommandSchedulers(queueName, taskScheduler),
+          ...vertexAiFactory(firestore(), getFunctions(), region, undefined, undefined, true, true).createDefaultCommandSchedulers(queueName, taskScheduler)
+      ];
+   };
+   ```
+3. Pass the function to the [chat factory function](openai/src/index.ts#L135) and to the [worker factory function](openai/src/index.ts#L171)
+4. [ChatWorker](core/src/aichat/workers/ChatWorker.ts) returns `true` if it dispatches successfully and `false` if not.
+   Use this value to iterate workers and [get the one](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts#L137) supporting the command.
 
 ## Client application
 The sample project includes a sample KMP [Android application](https://github.com/motorro/firebase-openai-chat-project/tree/master/Client)

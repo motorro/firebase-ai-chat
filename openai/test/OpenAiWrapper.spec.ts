@@ -91,7 +91,8 @@ describe("OpenAI wrapper", function() {
         when(openAi.beta).thenReturn(instance(beta));
         dispatcher = () => Promise.resolve(Continuation.resolve({
             data: data,
-            responses: []
+            responses: [],
+            handOver: null
         }));
         wrapper = new OpenAiWrapper(instance(openAi));
     });
@@ -216,7 +217,8 @@ describe("OpenAI wrapper", function() {
                 response: getReducerSuccess({
                     value: "4"
                 })
-            }]
+            }],
+            handOver: null
         };
         dispatcher = (d, tc, runId) => {
             d.should.deep.equal(data);

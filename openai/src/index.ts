@@ -65,6 +65,7 @@ export {
     DispatchResult,
     ToolDispatcherReturnValue,
     ToolsDispatcher,
+    ToolsHandOver,
     isDispatchResult,
     getDispatchError,
     isDispatchError,
@@ -164,16 +165,18 @@ export interface AiChat {
      * @param messageMapper Maps messages to/from OpenAI
      * @param chatCleaner Optional chat resource cleaner extension
      * @param messageMiddleware Optional Message processing middleware
+     * @param commandSchedulers Creates a list of command schedulers. Should return schedulers for each platform
      * @return Worker interface
      */
     worker(
         openAi: OpenAI,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        dispatchers: Readonly<Record<string, ToolsDispatcher<any, any>>>,
+        dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>,
         messageMapper?: OpenAiMessageMapper,
         chatCleaner?: ChatCleaner,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
+        messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>,
+        commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>
     ): OpenAiChatWorker
 
     /**
@@ -242,19 +245,19 @@ export function factory(
                 chatState: ChatState<AssistantConfig, DATA, CM>,
                 control: HandOverControl<DATA, WM, CM>
             ) => Promise<void>,
-            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers,
+            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers
         ): MessageMiddleware<DATA, CM> {
             return handOverMiddleware(firestore, commandSchedulers(queueName, _taskScheduler), process);
         },
         worker(
             openAi: OpenAI,
-            dispatchers: Readonly<Record<string,
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-            ToolsDispatcher<any, any>>>,
+            dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>,
             messageMapper?: OpenAiMessageMapper,
             chatCleaner?: ChatCleaner,
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-            messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>
+            messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>,
+            commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers
         ): OpenAiChatWorker {
             return new OpenAiChatWorker(
                 firestore,
@@ -264,7 +267,8 @@ export function factory(
                 _chatCleanupRegistrar,
                 (queueName) => _chatCleanerFactory(queueName, chatCleaner),
                 logData,
-                messageMiddleware || []
+                messageMiddleware || [],
+                (queueName) => commandSchedulers(queueName, _taskScheduler)
             );
         },
         continuationScheduler<DATA extends ChatData>(queueName: string): ToolsContinuationScheduler<DATA> {

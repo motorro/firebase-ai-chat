@@ -100,7 +100,7 @@ class BaseChatWorker {
      */
     saveMessages(tx, nextInBatchIndex, ownerId, chatDocumentPath, dispatchId, sessionId, messages, chatMeta) {
         const messageCollectionRef = this.getMessageCollection(chatDocumentPath);
-        messages.forEach((message, i) => {
+        messages.forEach((message) => {
             let text;
             let data = null;
             let meta = (chatMeta === null || chatMeta === void 0 ? void 0 : chatMeta.aiMessageMeta) || null;
@@ -140,7 +140,9 @@ class BaseChatWorker {
                 safeUpdate: async (update) => {
                     return await control.safeUpdate(async (tx, updateChatState) => {
                         var _a, _b;
-                        const dispatchDoc = this.db.doc(command.commonData.chatDocumentPath).collection(Collections_1.Collections.dispatches).doc(command.commonData.dispatchId);
+                        const dispatchDoc = this.db.doc(command.commonData.chatDocumentPath)
+                            .collection(Collections_1.Collections.dispatches)
+                            .doc(command.commonData.dispatchId);
                         let nextMessageIndex = ((_b = (_a = (await dispatchDoc.get())) === null || _a === void 0 ? void 0 : _a.data()) === null || _b === void 0 ? void 0 : _b.nextMessageIndex) || 0;
                         await update(tx, (newState) => {
                             const update = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (newState.config ? { config: newState.config } : {})), (newState.status ? { status: newState.status } : {})), (newState.data ? { data: newState.data } : {})), (newState.meta ? { meta: newState.meta } : {})), (newState.sessionId ? { sessionId: newState.sessionId } : {}));

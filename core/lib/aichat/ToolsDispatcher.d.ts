@@ -1,17 +1,21 @@
 import { AssistantConfig, ChatData } from "./data/ChatState";
 import { Continuation } from "./data/Continuation";
 import { ContinuationCommand } from "./data/ContinuationCommand";
-import { ChatMeta } from "./data/Meta";
+import { ChatMeta, Meta } from "./data/Meta";
+import { HandOverData } from "./chat/handOver";
+import { NewMessage } from "./data/NewMessage";
 export interface ChatDispatchData<CM extends ChatMeta = ChatMeta> {
     readonly ownerId: string;
     readonly chatDocumentPath: string;
+    readonly dispatchId: string;
+    readonly sessionId: string | null;
     readonly assistantConfig: AssistantConfig;
     readonly meta: CM | null;
 }
 /**
  * Some arbitrary data to return from function
  */
-export type FunctionSuccessResult = Record<string, unknown> | Record<string, unknown>[] | null;
+export type FunctionSuccessResult = Record<string, unknown> | Record<string, unknown>[] | string | null;
 /**
  * Function Dispatch was successful. Contains function result
  */
@@ -50,17 +54,33 @@ export declare function isDispatchResult<DATA extends ChatData>(data: unknown): 
  */
 export type ToolDispatcherReturnValue<DATA extends ChatData> = DATA | DispatchResult<DATA> | Continuation<DATA | DispatchResult<DATA>>;
 /**
+ * Hand-over for tools
+ */
+export interface ToolsHandOver<WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
+    /**
+     * Does the hand-over
+     * @param data Hand-over data
+     */
+    handOver: (data: HandOverData<WM, CM>) => void;
+    /**
+     * Does the hand-back
+     * @param messages Hand-over messages
+     */
+    handBack: (messages?: ReadonlyArray<NewMessage>) => void;
+}
+/**
  * Represents a functions tools dispatcher that can execute different tools based on their names
  * @typedef {function} ToolsDispatcher
  * @param {string} name - The name of the tool to be executed
  * @param {Record<string, unknown>} args - The arguments to be passed to the tool
  * @param {ChatCommand} continuation - Command to dispatch when result is ready in case you want to suspend
  * @param {ChatCommandData} chatData - Chat data
+ * @param {ToolsHandOver} Hand-over control
  * @returns {PromiseLike<DispatchResult>} A promise that resolves with the result of the tool execution or suspension
  * @see ToolsContinuation
  */
-export interface ToolsDispatcher<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
-    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>, chatData: ChatDispatchData<CM>): ToolDispatcherReturnValue<DATA> | PromiseLike<ToolDispatcherReturnValue<DATA>>;
+export interface ToolsDispatcher<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
+    (data: DATA, name: string, args: Record<string, unknown>, continuation: ContinuationCommand<unknown>, chatData: ChatDispatchData<CM>, handOver: ToolsHandOver<WM, CM>): ToolDispatcherReturnValue<DATA> | PromiseLike<ToolDispatcherReturnValue<DATA>>;
 }
 /**
  * Creates a function success result

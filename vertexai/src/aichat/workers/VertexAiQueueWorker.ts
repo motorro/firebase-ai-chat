@@ -14,7 +14,7 @@ import {VertexAiChatCommand} from "../data/VertexAiChatCommand";
 
 const logger = tagLogger("VertexAiQueueWorker");
 
-export type VertexAiDispatchControl = DispatchControl<VertexAiChatActions, ChatData>;
+export type VertexAiDispatchControl = DispatchControl<ChatData>;
 
 export abstract class VertexAiQueueWorker extends BaseChatWorker<VertexAiChatActions, VertexAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;

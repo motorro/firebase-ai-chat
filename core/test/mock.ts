@@ -1,6 +1,6 @@
 import {firestore} from "firebase-admin";
 import Timestamp = firestore.Timestamp;
-import {AssistantConfig, ChatCommandData, ChatData, ChatState} from "../src";
+import {AssistantConfig, ChatCommandData, ChatData, ChatState, HandBackAction, HandOverAction} from "../src";
 import {ToolCallData, ToolsContinuationData} from "../src/aichat/data/ContinuationCommand";
 
 export const CHATS = "chats";
@@ -16,7 +16,7 @@ export interface Data2 extends ChatData {
     readonly value: string
 }
 
-export type DispatchAction = "create" | "process" | "close";
+export type DispatchAction = "create" | "process" | "close" | HandOverAction | HandBackAction;
 
 export const runId = "run-1";
 export const userId = "123456";
@@ -89,6 +89,7 @@ export const commandData: ChatCommandData = {
 export const continuationData: ToolsContinuationData = {
     dispatcherId: dispatcherId,
     state: "suspended",
+    handOver: null,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now()
 };

@@ -14,7 +14,7 @@ import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
 const logger = tagLogger("OpenAiQueueWorker");
 
-export type OpenAiDispatchControl = DispatchControl<OpenAiChatActions, ChatData>;
+export type OpenAiDispatchControl = DispatchControl<ChatData>;
 
 export abstract class OpenAiQueueWorker extends BaseChatWorker<OpenAiChatActions, OpenAiAssistantConfig, ChatData> {
     protected readonly wrapper: AiWrapper;

@@ -2,7 +2,7 @@ import {ChatData} from "../data/ChatState";
 import {DispatchError, ToolsDispatcher} from "../ToolsDispatcher";
 import {SequentialToolsContinuationDispatchRunner} from "./ToolsContinuationDispatchRunner";
 import {ToolsContinuationDispatcher, ToolsContinuationDispatcherImpl} from "./ToolsContinuationDispatcher";
-import {ContinuationCommand, ToolCallRequest} from "../data/ContinuationCommand";
+import {ToolCallRequest} from "../data/ContinuationCommand";
 import {TaskScheduler} from "../TaskScheduler";
 
 /**
@@ -15,16 +15,16 @@ export interface ToolContinuationDispatcherFactory {
      * @param dispatcherId Dispatcher to use
      * @return Tool continuation dispatcher
      */
-    getDispatcher<A, C extends ContinuationCommand<A>, DATA extends ChatData>(
+    getDispatcher<DATA extends ChatData>(
         chatDocumentPath: string,
         dispatcherId: string
-    ): ToolsContinuationDispatcher<A, C, DATA>
+    ): ToolsContinuationDispatcher<DATA>
 }
 
 export class ToolContinuationDispatcherFactoryImpl implements ToolContinuationDispatcherFactory {
     readonly db: FirebaseFirestore.Firestore;
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
+    readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>;
     readonly scheduler: TaskScheduler;
     private readonly formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError;
     private readonly logData: boolean;
@@ -32,7 +32,7 @@ export class ToolContinuationDispatcherFactoryImpl implements ToolContinuationDi
     constructor(
         db: FirebaseFirestore.Firestore,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>,
+        dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>,
         scheduler: TaskScheduler,
         formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError,
         logData: boolean
@@ -44,11 +44,11 @@ export class ToolContinuationDispatcherFactoryImpl implements ToolContinuationDi
         this.logData = logData;
     }
 
-    getDispatcher<A, C extends ContinuationCommand<A>, DATA extends ChatData>(
+    getDispatcher<DATA extends ChatData>(
         chatDocumentPath: string,
         dispatcherId: string
-    ): ToolsContinuationDispatcher<A, C, DATA> {
-        return new ToolsContinuationDispatcherImpl<A, C, DATA>(
+    ): ToolsContinuationDispatcher<DATA> {
+        return new ToolsContinuationDispatcherImpl<DATA>(
             chatDocumentPath,
             dispatcherId,
             this.db,

@@ -20,21 +20,34 @@ class RunWorker extends OpenAiQueueWorker_1.OpenAiQueueWorker {
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("internal", true, "Thread ID is not defined at running"));
         }
         const dispatcher = this.toolsDispatchFactory.getDispatcher(command.commonData.chatDocumentPath, state.config.assistantConfig.dispatcherId);
+        let handOver = null;
         const dispatch = async (data, toolCalls, runId) => {
             const getContinuationCommand = (continuationRequest) => (Object.assign(Object.assign({}, command), { actionData: ["continueRun", ...command.actionData.slice(1)], continuation: continuationRequest, meta: {
                     runId: runId
                 } }));
-            return await dispatcher.dispatch(data, toolCalls, async (data) => {
+            const result = await dispatcher.dispatch(data, toolCalls, async (data) => {
                 await control.safeUpdate(async (_tx, updateChatState) => updateChatState({ data: data }));
                 return data;
-            }, getContinuationCommand);
+            }, {
+                getContinuationCommand: getContinuationCommand
+            });
+            if (result.isResolved()) {
+                handOver = result.value.handOver;
+            }
+            return result;
         };
         const continuation = await this.wrapper.run(threadId, state.config.assistantConfig.assistantId, state.data, dispatch);
         if (continuation.isResolved()) {
             await control.safeUpdate(async (_tx, updateChatState) => {
                 updateChatState({ data: continuation.value });
             });
-            await this.continueNextInQueue(control, command);
+            if (null !== handOver) {
+                logger.d("Hand-over by tools: ", JSON.stringify(handOver));
+                await control.continueQueue(Object.assign(Object.assign({}, command), { actionData: ["retrieve", handOver] }));
+            }
+            else {
+                await this.continueNextInQueue(control, command);
+            }
         }
     }
 }

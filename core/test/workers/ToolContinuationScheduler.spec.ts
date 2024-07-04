@@ -84,6 +84,7 @@ describe("Tool continuation scheduler", function() {
         await continuationDoc.set({
             dispatcherId: dispatcherId,
             state: "suspended",
+            handOver: null,
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp()
         });

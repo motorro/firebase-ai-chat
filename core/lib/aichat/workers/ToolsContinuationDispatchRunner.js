@@ -18,17 +18,34 @@ class SequentialToolsContinuationDispatchRunner {
         this.formatContinuationError = formatContinuationError;
         this.logData = logData;
     }
-    async dispatch(soFar, continuationData, tools, chatData, getContinuationCommand) {
+    async dispatch(soFar, continuationData, tools, chatData, dispatchControl) {
         let suspended = false;
         let failed = null;
         let currentData = soFar;
         const dispatchedTools = [];
+        let handOverAction = continuationData.handOver;
         function pushResult(id, call, response) {
             dispatchedTools.push([id, Object.assign(Object.assign({}, call), { call: Object.assign(Object.assign({}, call.call), { response: response }) })]);
             if (null != response && (0, ToolsDispatcher_1.isReducerSuccess)(response)) {
                 currentData = response.data;
             }
         }
+        const handOver = {
+            handOver(data) {
+                handOverAction = {
+                    name: "handOver",
+                    config: data.config,
+                    messages: data.messages,
+                    chatMeta: data.chatMeta
+                };
+            },
+            handBack(messages) {
+                handOverAction = {
+                    name: "handBack",
+                    messages: messages
+                };
+            }
+        };
         for (const [callId, callData] of tools) {
             if (suspended || null !== callData.call.response) {
                 pushResult(callId, callData, callData.call.response);
@@ -46,9 +63,9 @@ class SequentialToolsContinuationDispatchRunner {
                 (0, logging_1.tagLogger)("DATA").d("Data so far:", currentData);
                 (0, logging_1.tagLogger)("DATA").d("Arguments:", JSON.stringify(callData.call.request.args));
             }
-            const continuationCommand = getContinuationCommand({ toolId: callId.id });
+            const continuationCommand = dispatchControl.getContinuationCommand({ toolId: callId.id });
             const result = await (0, ToolsDispatcher_1.dispatchToContinuation)(async () => {
-                return this.getDispatcher(continuationData.dispatcherId)(currentData, callData.call.request.toolName, callData.call.request.args, continuationCommand, chatData);
+                return this.getDispatcher(continuationData.dispatcherId)(currentData, callData.call.request.toolName, callData.call.request.args, continuationCommand, chatData, handOver);
             });
             let response = null;
             if (result.isResolved()) {
@@ -73,7 +90,7 @@ class SequentialToolsContinuationDispatchRunner {
             }
             pushResult(callId, callData, response);
         }
-        return { suspended: suspended, data: currentData, tools: dispatchedTools };
+        return { suspended: suspended, data: currentData, tools: dispatchedTools, handOver: handOverAction };
     }
     getDispatcher(dispatcherId) {
         const dispatcher = this.dispatchers[dispatcherId];

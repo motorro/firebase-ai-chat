@@ -37,6 +37,12 @@ export interface CommandScheduler {
      * @param handOverMessages Messages used to hand-over chat
      */
     handOver(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void>;
+    /**
+     * Hands back chat to parent assistant
+     * @param common Common command data
+     * @param handOverMessages Messages used to hand-back chat
+     */
+    handBack(common: ChatCommandData, handOverMessages: ReadonlyArray<NewMessage>): Promise<void>;
 }
 /**
  * Returns a scheduler to schedule a command

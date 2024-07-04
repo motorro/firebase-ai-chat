@@ -3,7 +3,15 @@ import {db, test} from "./functionsTest";
 
 import {anything, capture, deepEqual, imock, instance, reset, verify, when} from "@johanblumenberg/ts-mockito";
 import {AiConfig, assistantId, CHATS, chatState, config, data, Data, userId} from "./mock";
-import {AssistantChat, ChatCleaner, ChatState, Collections, CommandScheduler, Dispatch, Meta} from "../src";
+import {
+    AssistantChat,
+    ChatCleaner,
+    ChatState,
+    Collections,
+    CommandScheduler,
+    Dispatch,
+    Meta
+} from "../src";
 import {AssistantConfig} from "../lib";
 import {ChatContextStackEntry} from "../src/aichat/data/ChatState";
 import {beforeEach} from "mocha";
@@ -513,11 +521,21 @@ describe("Assistant Chat", function() {
             .limit(1)
             .get();
         savedStateDocs.docs.length.should.equal(0);
+
+        verify(scheduler.isSupported(deepEqual(config))).once();
+        const [command, passedMessages] = capture(scheduler.handBack).last();
+        command.should.deep.include(
+            {
+                ownerId: userId,
+                chatDocumentPath: chatDoc.path
+            }
+        );
+        passedMessages.should.have.lengthOf(0);
     });
 
     it("hands back chat with messages", async function() {
         await chatDoc.set(chatState);
-        when(scheduler.handOver(anything(), anything())).thenReturn(Promise.resolve());
+        when(scheduler.handBack(anything(), anything())).thenReturn(Promise.resolve());
 
         const config: AssistantConfig = {engine: "other"};
         const messages = ["Please help me with this"];
@@ -543,7 +561,7 @@ describe("Assistant Chat", function() {
 
         verify(scheduler.isSupported(deepEqual(config))).once();
         verify(scheduler.isSupported(deepEqual(config))).once();
-        const [command, passedMessages] = capture(scheduler.handOver).last();
+        const [command, passedMessages] = capture(scheduler.handBack).last();
         command.should.deep.include(
             {
                 ownerId: userId,

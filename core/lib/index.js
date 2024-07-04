@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.handOverMiddleware = exports.HandOverDelegate = exports.CommonChatCleanupRegistrar = exports.CommonChatCleaner = exports.isStructuredMessage = exports.commonFormatContinuationError = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.tagLogger = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
+exports.toolContinuationSchedulerFactory = exports.toolContinuationDispatcherFactory = exports.HandBackWorker = exports.HandOverWorker = exports.isHandBackAction = exports.isHandOverAction = exports.handOverMiddleware = exports.HandOverDelegate = exports.CommonChatCleanupRegistrar = exports.CommonChatCleaner = exports.isStructuredMessage = exports.commonFormatContinuationError = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.Collections = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.hasHandOver = exports.DispatchRunner = exports.BaseChatWorker = exports.AssistantChat = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.tagLogger = exports.setLogger = exports.logger = exports.ChatError = exports.printAiExample = exports.isPermanentError = void 0;
 const ToolContinuationDispatcherFactory_1 = require("./aichat/workers/ToolContinuationDispatcherFactory");
 const ToolsContinuationScheduler_1 = require("./aichat/workers/ToolsContinuationScheduler");
 const ToolsContinuationDispatchRunner_1 = require("./aichat/workers/ToolsContinuationDispatchRunner");
@@ -28,6 +28,8 @@ var BaseChatWorker_1 = require("./aichat/workers/BaseChatWorker");
 Object.defineProperty(exports, "BaseChatWorker", { enumerable: true, get: function () { return BaseChatWorker_1.BaseChatWorker; } });
 var DispatchRunner_1 = require("./aichat/workers/DispatchRunner");
 Object.defineProperty(exports, "DispatchRunner", { enumerable: true, get: function () { return DispatchRunner_1.DispatchRunner; } });
+var ToolsContinuationDispatcher_1 = require("./aichat/workers/ToolsContinuationDispatcher");
+Object.defineProperty(exports, "hasHandOver", { enumerable: true, get: function () { return ToolsContinuationDispatcher_1.hasHandOver; } });
 var ChatCommand_1 = require("./aichat/data/ChatCommand");
 Object.defineProperty(exports, "isChatCommand", { enumerable: true, get: function () { return ChatCommand_1.isChatCommand; } });
 Object.defineProperty(exports, "isBoundChatCommand", { enumerable: true, get: function () { return ChatCommand_1.isBoundChatCommand; } });
@@ -52,6 +54,12 @@ var handOver_1 = require("./aichat/chat/handOver");
 Object.defineProperty(exports, "HandOverDelegate", { enumerable: true, get: function () { return handOver_1.HandOverDelegate; } });
 var handOverMiddleware_1 = require("./aichat/middleware/handOverMiddleware");
 Object.defineProperty(exports, "handOverMiddleware", { enumerable: true, get: function () { return handOverMiddleware_1.handOverMiddleware; } });
+var HandOverAction_1 = require("./aichat/data/HandOverAction");
+Object.defineProperty(exports, "isHandOverAction", { enumerable: true, get: function () { return HandOverAction_1.isHandOverAction; } });
+Object.defineProperty(exports, "isHandBackAction", { enumerable: true, get: function () { return HandOverAction_1.isHandBackAction; } });
+var HandOver_1 = require("./aichat/workers/HandOver");
+Object.defineProperty(exports, "HandOverWorker", { enumerable: true, get: function () { return HandOver_1.HandOverWorker; } });
+Object.defineProperty(exports, "HandBackWorker", { enumerable: true, get: function () { return HandOver_1.HandBackWorker; } });
 /**
  * Tools continuation dispatcher factory
  * @param db Firestore

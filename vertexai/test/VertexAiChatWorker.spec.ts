@@ -12,48 +12,44 @@ import {
     verify,
     when
 } from "@johanblumenberg/ts-mockito";
+import {chatState, data, Data, instructions1, instructionsId, threadId, toolsDefinition, userId} from "./mock";
 import {
-    chatState, data,
-    Data,
-    instructions1,
-    instructionsId,
-    threadId,
-    toolsDefinition,
-    userId
-} from "./mock";
-import {
+    AssistantConfig,
     ChatCleaner,
     ChatCleanupRegistrar,
     ChatCommand,
-    ChatCommandData, ChatData,
+    ChatCommandData,
+    ChatData,
     ChatMessage,
     ChatState,
     ChatStatus,
     ChatWorker,
-    Collections, commonFormatContinuationError,
+    Collections,
+    CommandScheduler,
+    commonFormatContinuationError,
     Continuation,
-    ContinuationRequest,
     Dispatch,
     getReducerSuccess,
+    HandOverDelegate,
     MessageMiddleware,
     Meta,
     TaskScheduler,
     ToolCallRequest,
     ToolCallsResult,
     ToolContinuationDispatcherFactory,
+    ToolContinuationSoFar,
     ToolsContinuationDispatcher
 } from "@motorro/firebase-ai-chat-core";
 import {Request, TaskContext} from "firebase-functions/lib/common/providers/tasks";
 import {AiWrapper, VertexAiAssistantConfig, VertexAiChatCommand, VertexAiSystemInstructions} from "../src";
 import {VertexAiChatWorker} from "../src/aichat/VertexAiChatWorker";
 import {ChatThreadMessage} from "../src/aichat/data/ThreadMessage";
+import {VertexAiContinuationCommand} from "../src/aichat/data/VertexAiChatCommand";
 import CollectionReference = admin.firestore.CollectionReference;
 import QueryDocumentSnapshot = admin.firestore.QueryDocumentSnapshot;
 import DocumentData = admin.firestore.DocumentData;
 import Timestamp = admin.firestore.Timestamp;
 import FieldValue = firestore.FieldValue;
-import {VertexAiChatActions} from "../src/aichat/data/VertexAiChatAction";
-import {VertexAiContinuationCommand} from "../src/aichat/data/VertexAiChatCommand";
 
 const messages: ReadonlyArray<string> = ["Hello", "How are you?"];
 describe("Chat worker", function() {
@@ -127,6 +123,17 @@ describe("Chat worker", function() {
         commonData: commandData,
         actionData: [{name: "cleanup", config: config}]
     };
+    const handoverCommand: VertexAiChatCommand = {
+        engine: "vertexai",
+        commonData: commandData,
+        actionData: [{name: "handOver", config: {engine: "other"}, messages: ["Message 1"]}]
+    };
+    const handbackCommand: VertexAiChatCommand = {
+        engine: "vertexai",
+        commonData: commandData,
+        actionData: [{name: "handBack", messages: ["Message 1"]}]
+    };
+
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     const instructions: Record<string, VertexAiSystemInstructions<any>> = {
         [instructionsId]: {
@@ -140,6 +147,7 @@ describe("Chat worker", function() {
 
     let wrapper: AiWrapper;
     let scheduler: TaskScheduler;
+    let commandScheduler: CommandScheduler;
     let cleaner: ChatCleaner;
     let cleanupRegistrar: ChatCleanupRegistrar;
     let worker: ChatWorker;
@@ -147,8 +155,10 @@ describe("Chat worker", function() {
     before(async function() {
         wrapper = imock<AiWrapper>();
         scheduler = imock<TaskScheduler>();
+        commandScheduler = imock<CommandScheduler>()
         cleaner = imock();
         cleanupRegistrar = imock();
+        when(commandScheduler.isSupported(anything())).thenReturn(true);
         when(cleaner.cleanup(anything())).thenResolve();
         when(cleanupRegistrar.register(anything())).thenResolve();
 
@@ -162,7 +172,7 @@ describe("Chat worker", function() {
             factory = ToolContinuationDispatcherFactory;
         } else {
             const f: ToolContinuationDispatcherFactory = imock();
-            const dispatcher: ToolsContinuationDispatcher<VertexAiChatActions, VertexAiContinuationCommand, Data> = imock();
+            const dispatcher: ToolsContinuationDispatcher<Data> = imock();
             when(f.getDispatcher(anything(), anything())).thenReturn(dispatcher);
             factory = instance(f);
         }
@@ -176,6 +186,7 @@ describe("Chat worker", function() {
             () => instance(cleaner),
             false,
             messageMiddleware || [],
+            () => [instance(commandScheduler)],
             () => factory
         );
     }
@@ -186,6 +197,7 @@ describe("Chat worker", function() {
 
     afterEach(async function() {
         reset(wrapper);
+        reset(scheduler);
         await db.recursiveDelete(chats);
     });
 
@@ -291,7 +303,8 @@ describe("Chat worker", function() {
             messages: aiMessages,
             data: {
                 value: "test2"
-            }
+            },
+            handOver: null
         }));
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
         createWorker();
@@ -315,7 +328,7 @@ describe("Chat worker", function() {
         });
 
         // eslint-disable-next-line max-len
-        const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: Data, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
+        const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: ToolContinuationSoFar<Data>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
         thread.should.be.equal(threadId);
         instructions.should.deep.include({instructions: instructions1});
         messages.should.include(messages[0], messages[1]);
@@ -360,7 +373,8 @@ describe("Chat worker", function() {
             messages: aiMessages,
             data: {
                 value: "test2"
-            }
+            },
+            handOver: null
         }));
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
@@ -399,7 +413,7 @@ describe("Chat worker", function() {
         });
 
         // eslint-disable-next-line max-len
-        const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: Data, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
+        const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: ToolContinuationSoFar<Data>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
         thread.should.be.equal(threadId);
         instructions.should.deep.include({instructions: instructions1});
         messages.should.include(messages[0], messages[1]);
@@ -446,7 +460,8 @@ describe("Chat worker", function() {
             messages: aiMessages,
             data: {
                 value: "test2"
-            }
+            },
+            handOver: null
         }));
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
@@ -482,7 +497,7 @@ describe("Chat worker", function() {
         });
 
         // eslint-disable-next-line max-len
-        const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: Data, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
+        const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: ToolContinuationSoFar<Data>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
         thread.should.be.equal(threadId);
         instructions.should.deep.include({instructions: instructions1});
         messages.should.include(messages[0], messages[1]);
@@ -542,15 +557,16 @@ describe("Chat worker", function() {
                 response: getReducerSuccess({
                     value: "Test2"
                 })
-            }]
+            }],
+            handOver: null
         };
 
-        const toolDispatcher: ToolsContinuationDispatcher<VertexAiChatActions, VertexAiContinuationCommand, Data> = imock();
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
         // eslint-disable-next-line max-len
-        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _saveData, getCommand: (continuationRequest: ContinuationRequest) => VertexAiContinuationCommand) => {
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _saveData, getCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
-            const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
+            const command = getCommand.getContinuationCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
             command.actionData.should.deep.equal(["continuePost"]);
             command.continuation.should.deep.equal({
                 continuationId: continuationId,
@@ -568,7 +584,8 @@ describe("Chat worker", function() {
             const dispatchResult = await dispatch(data, [toolCall], runId);
             return Continuation.resolve({
                 data: dispatchResult.value.data,
-                messages: []
+                messages: [],
+                handOver: null
             });
         });
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
@@ -599,6 +616,7 @@ describe("Chat worker", function() {
 
         when(wrapper.postMessage<Data>(anything(), anything(), anything(), anything(), anything())).thenResolve(Continuation.suspend());
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+        createWorker();
 
         const request: Request<ChatCommand<unknown>> = {
             ...context,
@@ -610,6 +628,67 @@ describe("Chat worker", function() {
         verify(scheduler.schedule(anything(), anything())).never();
     });
 
+
+    it("processes post command with hand-over", async function() {
+        await createChat(threadId, "processing", dispatchId);
+
+        const toolCall: ToolCallRequest = {
+            toolCallId: "call1",
+            toolName: "callOne",
+            args: {a: 1}
+        };
+        const toolResponse: ToolCallsResult<Data> = {
+            data: {
+                value: "Test2"
+            },
+            responses: [{
+                toolCallId: "toolId",
+                toolName: "toolName",
+                response: getReducerSuccess({
+                    value: "Test2"
+                })
+            }],
+            handOver: {name: "handBack", messages: ["Message 1"]}
+        };
+
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
+        // eslint-disable-next-line max-len
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async () => {
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        });
+        const continuationFactory: ToolContinuationDispatcherFactory = imock();
+        when(continuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+
+        // eslint-disable-next-line max-len
+        when(wrapper.postMessage<Data>(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _assistantId, _messages, _dataSoFar, dispatch) => {
+            const dispatchResult = await dispatch(data, [toolCall], runId);
+            return Continuation.resolve({
+                data: dispatchResult.value.data,
+                messages: [],
+                handOver: {name: "handBack", messages: ["Message 1"]}
+            });
+        });
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        createWorker(instance(continuationFactory));
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: postCommand
+        };
+
+        await worker.dispatch(request);
+        const [, command] = capture(scheduler.schedule).last();
+        command.should.deep.include({
+            actionData: [
+                {
+                    name: "handBack",
+                    messages: ["Message 1"],
+                }
+            ]
+        });
+    });
+
     it("processes explicit post command", async function() {
         await createChat(threadId, "processing", dispatchId);
 
@@ -617,7 +696,8 @@ describe("Chat worker", function() {
             messages: aiMessages,
             data: {
                 value: "test2"
-            }
+            },
+            handOver: null
         }));
         when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
 
@@ -640,7 +720,7 @@ describe("Chat worker", function() {
         });
 
         // eslint-disable-next-line max-len
-        const [thread, instructions, passedMessages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: Data, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
+        const [thread, instructions, passedMessages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: ToolContinuationSoFar<Data>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
         thread.should.be.equal(threadId);
         instructions.should.deep.include({instructions: instructions1});
         passedMessages.should.include("hand over");
@@ -694,18 +774,19 @@ describe("Chat worker", function() {
                 response: getReducerSuccess({
                     value: "Test2"
                 })
-            }]
+            }],
+            handOver: {name: "handBack", messages: ["Message 1"]}
         };
 
-        const toolDispatcher: ToolsContinuationDispatcher<VertexAiChatActions, VertexAiContinuationCommand, Data> = imock();
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
         when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenCall(async () => {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
         // eslint-disable-next-line max-len
-        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _saveData, getCommand: (continuationRequest: ContinuationRequest) => VertexAiContinuationCommand) => {
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _saveData, getCommand) => {
             data.should.deep.equal(data);
             calls[0].should.deep.equal(toolCall);
-            const command = getCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
+            const command = getCommand.getContinuationCommand({continuationId: continuationId, tool: {toolId: toolCallId}});
             command.actionData.should.deep.equal(continueRunCommand.actionData);
             command.continuation.should.deep.equal({
                 continuationId: continuationId,
@@ -723,7 +804,8 @@ describe("Chat worker", function() {
             const dispatchResult = await dispatch(data, [toolCall], runId);
             return Continuation.resolve({
                 messages: aiMessages,
-                data: dispatchResult.value.data
+                data: dispatchResult.value.data,
+                handOver: null
             });
         });
 
@@ -773,6 +855,70 @@ describe("Chat worker", function() {
             userId: userId,
             author: "ai",
             text: aiMessages[1].text
+        });
+    });
+
+    it("processes continuation command with hand-over", async function() {
+        await createChat(threadId, "processing", dispatchId);
+
+        const toolCall: ToolCallRequest = {
+            toolCallId: "call1",
+            toolName: "callOne",
+            args: {a: 1}
+        };
+        const toolResponse: ToolCallsResult<Data> = {
+            data: {
+                value: "Test2"
+            },
+            responses: [{
+                toolCallId: "toolId",
+                toolName: "toolName",
+                response: getReducerSuccess({
+                    value: "Test2"
+                })
+            }],
+            handOver: {name: "handBack", messages: ["Message 1"]}
+        };
+
+        const toolDispatcher: ToolsContinuationDispatcher<Data> = imock();
+        when(toolDispatcher.dispatchCommand(anything(), anything(), anything(), anything())).thenCall(async () => {
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        });
+        // eslint-disable-next-line max-len
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async () => {
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        });
+        const continuationFactory: ToolContinuationDispatcherFactory = imock();
+        when(continuationFactory.getDispatcher(anything(), anything())).thenReturn(instance(toolDispatcher));
+
+        // eslint-disable-next-line max-len
+        when(wrapper.processToolsResponse(anything(), anything(), anything(), anything(), anything())).thenCall(async (_threadId, _instructions, _request, _dataSoFar, dispatch) => {
+            const dispatchResult = await dispatch(data, [toolCall], runId);
+            return Continuation.resolve({
+                messages: aiMessages,
+                data: dispatchResult.value.data,
+                handOver: {name: "handBack", messages: ["Message 1"]}
+            });
+        });
+
+        when(scheduler.schedule(anything(), anything(), anything())).thenReturn(Promise.resolve());
+
+        createWorker(instance(continuationFactory));
+
+        const request: Request<ChatCommand<unknown>> = {
+            ...context,
+            data: continueRunCommand
+        };
+
+        await worker.dispatch(request);
+        const [, command] = capture(scheduler.schedule).last();
+        command.should.deep.include({
+            actionData: [
+                {
+                    name: "handBack",
+                    messages: ["Message 1"],
+                }
+            ]
         });
     });
 
@@ -861,5 +1007,78 @@ describe("Chat worker", function() {
 
         verify(wrapper.createThread(anything())).once();
         handlerCalled.should.be.true;
+    });
+
+    it("runs hand-over command", async function() {
+        when(commandScheduler.handOver(anything(), anything())).thenResolve();
+        await createChat(undefined, "processing");
+        createWorker();
+
+        when(wrapper.createThread(anything())).thenReturn(Promise.resolve(threadId));
+
+        const request: Request<VertexAiChatCommand> = {
+            ...context,
+            data: handoverCommand
+        };
+
+        const result = await worker.dispatch(request);
+
+        result.should.be.true;
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<AssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            config: {
+                assistantConfig: {
+                    engine: "other"
+                }
+            }
+        });
+
+        verify(commandScheduler.isSupported(deepEqual({engine: "other"}))).once();
+        verify(commandScheduler.handOver(anything(), deepEqual(["Message 1"]))).once();
+    });
+
+    it("runs hand-back command", async function() {
+        when(commandScheduler.handOver(anything(), anything())).thenResolve();
+        await createChat(undefined, "userInput");
+        await db.runTransaction(async (tx) => {
+            await new HandOverDelegate(db, [instance(commandScheduler)]).handOver(
+                tx,
+                chatDoc,
+                chatState,
+                {
+                    config: {engine: "other"}
+                }
+            );
+        });
+
+        when(commandScheduler.handBack(anything(), anything())).thenReturn(Promise.resolve());
+
+        createWorker();
+
+        const request: Request<VertexAiChatCommand> = {
+            ...context,
+            data: handbackCommand
+        };
+
+        const result = await worker.dispatch(request);
+
+        result.should.be.true;
+
+        const chatStateUpdate = await chatDoc.get();
+        const updatedChatState = chatStateUpdate.data() as ChatState<AssistantConfig, Data>;
+        if (undefined === updatedChatState) {
+            throw new Error("Should have chat status");
+        }
+        updatedChatState.should.deep.include({
+            config: chatState.config
+        });
+
+        verify(commandScheduler.isSupported(deepEqual(chatState.config.assistantConfig))).once();
+        verify(commandScheduler.handBack(anything(), deepEqual(["Message 1"]))).once();
     });
 });

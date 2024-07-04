@@ -38,7 +38,9 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
         const dispatcher = this.getDispatcherFactory().getDispatcher(command.commonData.chatDocumentPath, dispatcherId);
         return async (data, toolCalls) => {
             const getContinuationCommand = (continuationRequest) => (Object.assign(Object.assign({}, command), { actionData: ["continuePost", ...command.actionData.slice(1)], continuation: continuationRequest }));
-            return await dispatcher.dispatch(data, toolCalls, updateData, getContinuationCommand);
+            return await dispatcher.dispatch(data, toolCalls, updateData, {
+                getContinuationCommand: getContinuationCommand
+            });
         };
     }
     async doDispatch(command, state, control) {
@@ -60,6 +62,7 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
         if (response.isResolved()) {
             logger.d("Resolved");
             const newData = response.value.data;
+            const handOver = response.value.handOver;
             await control.safeUpdate(async (_tx, updateChatState) => {
                 updateChatState({ data: newData });
             });
@@ -67,7 +70,13 @@ class BasePostWorker extends VertexAiQueueWorker_1.VertexAiQueueWorker {
                 await mpc.safeUpdate(async (_tx, _updateState, saveMessages) => {
                     saveMessages(messages);
                 });
-                await this.continueNextInQueue(control, command);
+                if (null !== handOver) {
+                    logger.d("Hand-over by tools: ", JSON.stringify(handOver));
+                    await control.continueQueue(Object.assign(Object.assign({}, command), { actionData: [handOver] }));
+                }
+                else {
+                    await this.continueNextInQueue(control, command);
+                }
             }, control, this.messageMiddleware, response.value.messages);
         }
         else {
@@ -99,13 +108,18 @@ class ContinuePostWorker extends BasePostWorker {
     }
     async doPost(command, threadId, dispatcherId, instructions, soFar, updateStateData) {
         const dispatcher = this.getDispatcherFactory().getDispatcher(command.commonData.chatDocumentPath, dispatcherId);
-        const dc = await dispatcher.dispatchCommand(soFar, command, updateStateData, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
+        const dc = await dispatcher.dispatchCommand(soFar, command, updateStateData, {
+            getContinuationCommand: (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest }))
+        });
         if (dc.isResolved()) {
             const dispatch = async (data, toolCalls) => {
-                return await dispatcher.dispatch(data, toolCalls, updateStateData, (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest })));
+                return await dispatcher.dispatch(data, toolCalls, updateStateData, {
+                    getContinuationCommand: (continuationRequest) => (Object.assign(Object.assign({}, command), { continuation: continuationRequest }))
+                });
             };
             return await this.wrapper.processToolsResponse(threadId, instructions, {
-                toolsResult: dc.value.responses
+                toolsResult: dc.value.responses,
+                handOver: dc.value.handOver
             }, dc.value.data, dispatch);
         }
         return firebase_ai_chat_core_1.Continuation.suspend();

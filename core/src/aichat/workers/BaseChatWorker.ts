@@ -8,7 +8,7 @@ import {scheduleCommand, TaskScheduler} from "../TaskScheduler";
 import {Request} from "firebase-functions/lib/common/providers/tasks";
 import {ChatMeta, Meta} from "../data/Meta";
 import Query = firestore.Query;
-import {BoundChatCommand, ChatCommand, isBoundChatCommand} from "../data/ChatCommand";
+import {BoundChatCommand, ChatAction, ChatCommand, isBoundChatCommand} from "../data/ChatCommand";
 import {ChatWorker, DispatchControl} from "./ChatWorker";
 import {DispatchRunner} from "./DispatchRunner";
 import {ChatCleaner} from "./ChatCleaner";
@@ -79,7 +79,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
     protected abstract doDispatch(
         command: ChatCommand<A>,
         state: ChatState<AC, DATA, CM>,
-        control: DispatchControl<A, DATA, CM>
+        control: DispatchControl<DATA, CM>
     ): Promise<void>
 
     /**
@@ -153,7 +153,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         chatMeta?: CM | null
     ): number {
         const messageCollectionRef = this.getMessageCollection(chatDocumentPath);
-        messages.forEach((message, i) => {
+        messages.forEach((message) => {
             let text: string;
             let data: Readonly<Record<string, unknown>> | null = null;
             let meta: Meta | null = chatMeta?.aiMessageMeta || null;
@@ -202,7 +202,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         command: ChatCommand<A>,
         chatState: ChatState<AssistantConfig, DATA, CM>,
         defaultProcessor: MessageMiddleware<DATA, CM>,
-        control: DispatchControl<A, DATA, CM>,
+        control: DispatchControl<DATA, CM>,
         middleware: ReadonlyArray<MessageMiddleware<DATA, CM>>,
         messages: ReadonlyArray<NewMessage>
     ): Promise<void> {
@@ -212,7 +212,9 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
             return {
                 safeUpdate: async (update) => {
                     return await control.safeUpdate(async (tx, updateChatState) => {
-                        const dispatchDoc = this.db.doc(command.commonData.chatDocumentPath).collection(Collections.dispatches).doc(command.commonData.dispatchId) as DocumentReference<Dispatch>;
+                        const dispatchDoc = this.db.doc(command.commonData.chatDocumentPath)
+                            .collection(Collections.dispatches)
+                            .doc(command.commonData.dispatchId) as DocumentReference<Dispatch>;
                         let nextMessageIndex = (await dispatchDoc.get())?.data()?.nextMessageIndex || 0;
                         await update(
                             tx,
@@ -287,20 +289,20 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
         processAction: (
             command: ChatCommand<A>,
             state: ChatState<AC, DATA, CM>,
-            control: DispatchControl<A, DATA, CM>
+            control: DispatchControl<DATA, CM>
         ) => Promise<void>
     ): Promise<void> {
         return this.runner.dispatchWithCheck(
             req,
             async (soFar, chatCommand, safeUpdate) => {
                 const command = isBoundChatCommand(chatCommand) ? chatCommand.command : chatCommand;
-                const control: DispatchControl<A, DATA, CM> = {
+                const control: DispatchControl<DATA, CM> = {
                     safeUpdate: safeUpdate,
                     schedule: async (command) => {
                         logger.d("Scheduling command: ", JSON.stringify(command));
                         return scheduleCommand(this.scheduler, req.queueName, command);
                     },
-                    continueQueue: async (next: ChatCommand<A> | BoundChatCommand<A>) => {
+                    continueQueue: async (next: ChatCommand<ChatAction> | BoundChatCommand<ChatAction>) => {
                         logger.d("Scheduling next step: ", JSON.stringify(next));
                         let command: ChatCommand<A>;
                         let queueName = req.queueName;

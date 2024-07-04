@@ -6,7 +6,7 @@ import {
     tagLogger
 } from "@motorro/firebase-ai-chat-core";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
-import {isPostExplicitAction, OpenAiChatAction, OpenAiChatActions} from "../data/OpenAiChatAction";
+import {isPostExplicitAction, OpenAiChatAction} from "../data/OpenAiChatAction";
 import {OpenAiQueueWorker} from "./OpenAiQueueWorker";
 import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 
@@ -19,7 +19,7 @@ export class PostExplicitWorker extends OpenAiQueueWorker {
     async doDispatch(
         command: OpenAiChatCommand,
         state: ChatState<OpenAiAssistantConfig, ChatData>,
-        control: DispatchControl<OpenAiChatActions, ChatData>
+        control: DispatchControl<ChatData>
     ): Promise<void> {
         const postExplicit = command.actionData[0];
         if (isPostExplicitAction(postExplicit)) {

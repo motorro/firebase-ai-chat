@@ -11,6 +11,7 @@ const PostExplicitWorker_1 = require("./workers/PostExplicitWorker");
 const CleanupWorker_1 = require("./workers/CleanupWorker");
 const RunContinuationWorker_1 = require("./workers/RunContinuationWorker");
 const OpenAiChatCommand_1 = require("./data/OpenAiChatCommand");
+const HandOver_1 = require("./workers/HandOver");
 const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiChatWorker");
 /**
  * Chat worker that dispatches chat commands and runs AI
@@ -18,7 +19,7 @@ const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiChatWorker");
 class OpenAiChatWorker {
     constructor(firestore, scheduler, wrapper, toolsDispatchFactory, chatCleanupRegistrar, chatCleanerFactory, logData, 
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    messageMiddleware) {
+    messageMiddleware, commandSchedulers) {
         this.firestore = firestore;
         this.firestore = firestore;
         this.scheduler = scheduler;
@@ -28,6 +29,7 @@ class OpenAiChatWorker {
         this.chatCleanupRegistrar = chatCleanupRegistrar;
         this.logData = logData;
         this.messageMiddleware = messageMiddleware;
+        this.commandSchedulers = commandSchedulers;
     }
     getWorker(command, queueName) {
         logger.d("Dispatching OpenAi command...");
@@ -64,6 +66,14 @@ class OpenAiChatWorker {
         if (SwitchToUserWorker_1.SwitchToUserWorker.isSupportedAction(action)) {
             logger.d("Action to be handled with SwitchToUserWorker");
             return new SwitchToUserWorker_1.SwitchToUserWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData);
+        }
+        if (HandOver_1.HandOverWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with HandOverWorker");
+            return new HandOver_1.HandOverWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
+        }
+        if (HandOver_1.HandBackWorker.isSupportedAction(action)) {
+            logger.d("Action to be handled with HandBackWorker");
+            return new HandOver_1.HandBackWorker(this.firestore, this.scheduler, this.wrapper, cleaner, this.logData, this.commandSchedulers(queueName));
         }
         logger.w("Unsupported command:", command);
         return undefined;

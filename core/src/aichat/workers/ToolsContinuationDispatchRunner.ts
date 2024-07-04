@@ -5,7 +5,7 @@ import {
     DispatchResult,
     dispatchToContinuation, isDispatchError, isFunctionSuccess,
     isReducerSuccess,
-    ToolsDispatcher
+    ToolsDispatcher, ToolsHandOver
 } from "../ToolsDispatcher";
 import {
     ContinuationCommand,
@@ -18,7 +18,10 @@ import {Continuation} from "../data/Continuation";
 import {ChatError} from "../data/ChatError";
 import {firestore} from "firebase-admin";
 import DocumentReference = firestore.DocumentReference;
-import {ChatMeta} from "../data/Meta";
+import {ChatMeta, Meta} from "../data/Meta";
+import {HandBackAction, HandOverAction} from "../data/HandOverAction";
+import {NewMessage} from "../data/NewMessage";
+import {HandOverData} from "../chat/handOver";
 
 const logger = tagLogger("ToolsContinuationDispatchRunner");
 
@@ -38,19 +41,35 @@ export interface DispatchData<DATA extends ChatData> {
      * Tools state after dispatch
      */
     readonly tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>
+    /**
+     * Hand-over action if any
+     */
+    readonly handOver: HandOverAction | HandBackAction | null
+}
+
+/**
+ * Tools for dispatchers
+ */
+export interface ToolsContinuationDispatchRunnerTools {
+    /**
+     * Continuation command factory
+     * @param toolCall Tool call
+     * @return Created continuation command
+     */
+    readonly getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>
 }
 
 /**
  * Runs passed tools and manages continuation and call status
  */
-export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
+export interface ToolsContinuationDispatchRunner<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
     /**
      * Dispatches calls
      * @param soFar Current chat data
      * @param continuationData Current continuation data
      * @param tools Tool calls
      * @param chatData Chat data to provide to dispatcher
-     * @param getContinuationCommand Continuation command factory
+     * @param dispatchControl Tools dispatch control
      * @returns Updated continuation state
      */
     dispatch(
@@ -58,7 +77,7 @@ export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM exten
         continuationData: ToolsContinuationData,
         tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>,
         chatData: ChatDispatchData<CM>,
-        getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>
+        dispatchControl: ToolsContinuationDispatchRunnerTools
     ): Promise<DispatchData<DATA>>
 }
 
@@ -67,15 +86,15 @@ export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM exten
  * If any call fails - also fails other subsequent calls
  */
 // eslint-disable-next-line max-len
-export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, CM> {
+export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, WM, CM> {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-    private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>;
+    private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>;
     private readonly formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError;
     private readonly logData: boolean;
 
     constructor(
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        dispatchers: Readonly<Record<string, ToolsDispatcher<any>>>,
+        dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>,
         formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError = commonFormatContinuationError,
         logData = false
     ) {
@@ -89,17 +108,35 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM
         continuationData: ToolsContinuationData,
         tools: ReadonlyArray<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]>,
         chatData: ChatDispatchData<CM>,
-        getContinuationCommand: (toolCall: ContinuationRequestToolData) => ContinuationCommand<unknown>
+        dispatchControl: ToolsContinuationDispatchRunnerTools
     ): Promise<DispatchData<DATA>> {
         let suspended = false;
         let failed: [ToolCallRequest, DispatchError] | null = null;
         let currentData = soFar;
         const dispatchedTools: Array<[DocumentReference<ToolCallData<DATA>>, ToolCallData<DATA>]> = [];
+        let handOverAction: HandOverAction | HandBackAction | null = continuationData.handOver;
 
         function pushResult(id: DocumentReference<ToolCallData<DATA>>, call: ToolCallData<DATA>, response: DispatchResult<DATA> | null) {
             dispatchedTools.push([id, {...call, call: {...call.call, response: response}}]);
             if (null != response && isReducerSuccess(response)) {
                 currentData = response.data;
+            }
+        }
+
+        const handOver: ToolsHandOver = {
+            handOver(data: HandOverData): void {
+                handOverAction = {
+                    name: "handOver",
+                    config: data.config,
+                    messages: data.messages,
+                    chatMeta: data.chatMeta
+                }
+            },
+            handBack(messages: ReadonlyArray<NewMessage> | undefined): void {
+                handOverAction = {
+                    name: "handBack",
+                    messages: messages
+                }
             }
         }
 
@@ -123,7 +160,7 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM
                 tagLogger("DATA").d("Arguments:", JSON.stringify(callData.call.request.args));
             }
 
-            const continuationCommand: ContinuationCommand<unknown> = getContinuationCommand({toolId: callId.id});
+            const continuationCommand: ContinuationCommand<unknown> = dispatchControl.getContinuationCommand({toolId: callId.id});
 
             const result: Continuation<DispatchResult<DATA>> = await dispatchToContinuation(async () => {
                 return this.getDispatcher(continuationData.dispatcherId)(
@@ -131,7 +168,8 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM
                     callData.call.request.toolName,
                     callData.call.request.args,
                     continuationCommand,
-                    chatData
+                    chatData,
+                    handOver
                 );
             });
 
@@ -158,11 +196,11 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, CM
             pushResult(callId, callData, response);
         }
 
-        return {suspended: suspended, data: currentData, tools: dispatchedTools};
+        return {suspended: suspended, data: currentData, tools: dispatchedTools, handOver: handOverAction};
     }
 
-    private getDispatcher(dispatcherId: string): ToolsDispatcher<DATA> {
-        const dispatcher = this.dispatchers[dispatcherId] as ToolsDispatcher<DATA>;
+    private getDispatcher(dispatcherId: string): ToolsDispatcher<DATA, WM, CM> {
+        const dispatcher = this.dispatchers[dispatcherId] as ToolsDispatcher<DATA, WM, CM>;
         if (undefined === dispatcher) {
             logger.w("Dispatcher not found:", dispatcherId);
             throw new ChatError("unimplemented", true, "Dispatcher not found:", dispatcherId);
