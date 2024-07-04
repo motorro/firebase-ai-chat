@@ -44,7 +44,7 @@ export interface AiChat {
      * @see worker
      * @see createDefaultCommandSchedulers
      */
-    chat<DATA extends ChatData>(queueName: string, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>, chatCleaner?: ChatCleaner): AssistantChat<DATA>;
+    chat<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta>(queueName: string, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>, chatCleaner?: ChatCleaner): AssistantChat<DATA, WM, CM>;
     /**
      * Creates chat hand-over message middleware
      * Add it to the worker to custom-process messages coming from AI

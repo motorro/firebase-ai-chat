@@ -128,11 +128,11 @@ export interface AiChat {
      * @see worker
      * @see createDefaultCommandSchedulers
      */
-    chat<DATA extends ChatData>(
+    chat<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta>(
         queueName: string,
         commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>,
         chatCleaner?: ChatCleaner
-    ): AssistantChat<DATA>
+    ): AssistantChat<DATA, WM, CM>
 
     /**
      * Creates chat hand-over message middleware
@@ -169,7 +169,7 @@ export interface AiChat {
         model: GenerativeModel,
         threadsPath: string,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>,
+        instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any, any>>>,
         messageMapper?: VertexAiMessageMapper,
         chatCleaner?: ChatCleaner,
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
@@ -225,12 +225,12 @@ export function factory(
 
     return {
         createDefaultCommandSchedulers: defaultSchedulers,
-        chat: function<DATA extends ChatData>(
+        chat: function<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta>(
             queueName: string,
             commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers,
             chatCleaner?: ChatCleaner
         ): AssistantChat<DATA> {
-            return new AssistantChat<DATA>(
+            return new AssistantChat<DATA, WM, CM>(
                 firestore,
                 commandSchedulers(queueName, _taskScheduler),
                 _chatCleanerFactory(queueName, chatCleaner)
@@ -252,7 +252,7 @@ export function factory(
             model: GenerativeModel,
             threadsPath: string,
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-            instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>,
+            instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any, any>>>,
             messageMapper?: VertexAiMessageMapper,
             chatCleaner?: ChatCleaner,
             // eslint-disable-next-line  @typescript-eslint/no-explicit-any

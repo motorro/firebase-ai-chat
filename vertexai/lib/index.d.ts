@@ -41,7 +41,7 @@ export interface AiChat {
      * @see worker
      * @see createDefaultCommandSchedulers
      */
-    chat<DATA extends ChatData>(queueName: string, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>, chatCleaner?: ChatCleaner): AssistantChat<DATA>;
+    chat<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta>(queueName: string, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>, chatCleaner?: ChatCleaner): AssistantChat<DATA, WM, CM>;
     /**
      * Creates chat hand-over message middleware
      * Add it to the worker to custom-process messages coming from AI
@@ -63,7 +63,7 @@ export interface AiChat {
      * @param commandSchedulers Creates a list of command schedulers. Should return schedulers for each platform
      * @return Worker interface
      */
-    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any>>>, messageMapper?: VertexAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>): ChatWorker;
+    worker(model: GenerativeModel, threadsPath: string, instructions: Readonly<Record<string, VertexAiSystemInstructions<any, any, any>>>, messageMapper?: VertexAiMessageMapper, chatCleaner?: ChatCleaner, messageMiddleware?: ReadonlyArray<MessageMiddleware<any, any>>, commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>): ChatWorker;
     /**
      * Creates a tool continuation scheduler to continue tools dispatch
      * @param queueName The name of the queue the dispatch will be continued on

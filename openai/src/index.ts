@@ -132,11 +132,11 @@ export interface AiChat {
      * @see worker
      * @see createDefaultCommandSchedulers
      */
-    chat<DATA extends ChatData>(
+    chat<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta>(
         queueName: string,
         commandSchedulers?: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler>,
         chatCleaner?: ChatCleaner
-    ): AssistantChat<DATA>
+    ): AssistantChat<DATA, WM, CM>
 
     /**
      * Creates chat hand-over message middleware
@@ -226,11 +226,11 @@ export function factory(
 
     return {
         createDefaultCommandSchedulers: defaultSchedulers,
-        chat: function<DATA extends ChatData>(
+        chat: function<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta>(
             queueName: string,
             commandSchedulers: (queueName: string, taskScheduler: TaskScheduler) => ReadonlyArray<CommandScheduler> = defaultSchedulers,
             chatCleaner?: ChatCleaner
-        ): AssistantChat<DATA> {
+        ): AssistantChat<DATA, WM, CM> {
             return new AssistantChat<DATA>(
                 firestore,
                 commandSchedulers(queueName, _taskScheduler),
