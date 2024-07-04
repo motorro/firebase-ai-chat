@@ -134,7 +134,14 @@ export const calculator = onTaskDispatched(
       );
 
       // Dispatch request  
-      await chatFactory.worker(model, VERTEXAI_THREADS, instructions, myMessageMapper, cleaner, [handOver]).dispatch(
+      await chatFactory.worker(
+          model, 
+          VERTEXAI_THREADS, 
+          instructions, 
+          myMessageMapper, 
+          cleaner, 
+          [handOver]
+      ).dispatch(
           req,
           (chatDocumentPath: string, meta: Meta) => {
              // Optional task completion handler
