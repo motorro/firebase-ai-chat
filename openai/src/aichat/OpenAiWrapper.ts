@@ -156,11 +156,11 @@ export class OpenAiWrapper implements AiWrapper {
                         complete = true;
                         continue;
                     case "cancelled":
-                        throw new ChatError("cancelled", true, `Thread run error. Status: cancelled, Error: ${run.last_error}`);
+                        throw new ChatError("cancelled", true, "Thread run error. Status: cancelled", run.last_error);
                     case "failed":
-                        throw new ChatError("internal", true, `Thread run error. Status: failed, Error: ${run.last_error}`);
+                        throw new ChatError("internal", true, "Thread run error. Status: failed", run.last_error);
                     case "expired":
-                        throw new ChatError("deadline-exceeded", true, `Thread run error. Status: expired, Error: ${run.last_error}`);
+                        throw new ChatError("deadline-exceeded", true, "Thread run error. Status: expired", run.last_error);
                     case "requires_action":
                         logger.d("Running Assistant actions for:", threadId);
                         switch (requiredActionType) {
