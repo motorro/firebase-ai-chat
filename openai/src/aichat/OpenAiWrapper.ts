@@ -18,6 +18,7 @@ import {RunContinuationRequest} from "./data/RunResponse";
 import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
 import {DefaultOpenAiMessageMapper, OpenAiMessageMapper} from "./OpenAiMessageMapper";
 import {AiMessages} from "./data/AiMessages";
+import json5 = require("json5");
 
 const logger = tagLogger("OpenAiWrapper");
 
@@ -109,7 +110,7 @@ export class OpenAiWrapper implements AiWrapper {
                         toolCallId: call.id,
                         toolName: call.function.name,
                         soFar: data,
-                        args: JSON.parse(call.function.arguments)
+                        args: json5.parse(call.function.arguments)
                     })),
                     run.id
                 );

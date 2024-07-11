@@ -11,6 +11,7 @@ exports.OpenAiWrapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const core_1 = require("openai/core");
 const OpenAiMessageMapper_1 = require("./OpenAiMessageMapper");
+const json5 = require("json5");
 const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiWrapper");
 /**
  * Wraps Open AI assistant use
@@ -61,7 +62,7 @@ class OpenAiWrapper {
                     toolCallId: call.id,
                     toolName: call.function.name,
                     soFar: data,
-                    args: JSON.parse(call.function.arguments)
+                    args: json5.parse(call.function.arguments)
                 })), run.id);
                 if (result.isResolved()) {
                     logger.d("All tools dispatched");

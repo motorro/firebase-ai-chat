@@ -258,6 +258,75 @@ describe("OpenAI wrapper", function() {
         verify(runs.retrieve(strictEqual(threadId), strictEqual("r3"))).once();
     });
 
+    it("runs tools with relaxed JSON parse", async function() {
+        const toolCallId = "tc1";
+
+        const run1: Run = imock();
+        when(run1.id).thenReturn("r1");
+        when(run1.status).thenReturn("queued");
+
+        const run2: Run = imock();
+        when(run2.id).thenReturn("r2");
+        when(run2.required_action).thenReturn({
+            type: "submit_tool_outputs",
+            submit_tool_outputs: {
+                tool_calls: [{
+                    id: toolCallId,
+                    type: "function",
+                    function: {
+                        arguments: `{
+                            a: 2, // Some comment
+                            "b": 2
+                        }`,
+                        name: "multiply"
+                    }
+                }]
+            }
+        });
+        when(run2.status).thenReturn("requires_action");
+
+        const run3: Run = imock();
+        when(run3.id).thenReturn("r3");
+        when(run3.status).thenReturn("completed");
+        const iRun3 = instance(run3);
+
+        when(runs.create(anything(), anything())).thenResolve(instance(run1));
+        when(runs.retrieve(anything(), anything())).thenResolve(instance(run2)).thenResolve(iRun3);
+        when(runs.submitToolOutputs(anything(), anything(), anything())).thenResolve(iRun3);
+
+        const toolResponse: ToolCallsResult<Data> = {
+            data: data,
+            responses: [{
+                toolCallId: toolCallId,
+                toolName: "multiply",
+                response: getReducerSuccess({
+                    value: "4"
+                })
+            }],
+            handOver: null
+        };
+        dispatcher = (d, tc, runId) => {
+            d.should.deep.equal(data);
+            tc.should.deep.equal([{
+                toolCallId: toolCallId,
+                soFar: data,
+                toolName: "multiply",
+                args: {a: 2, b: 2}
+            }]);
+            runId.should.equal("r2");
+            return Promise.resolve(Continuation.resolve(toolResponse));
+        };
+
+        const result = await wrapper.run(threadId, assistantId, data, dispatcher);
+        if (result.isResolved()) {
+            result.value.should.deep.equal({
+                value: "4"
+            });
+        } else {
+            throw new Error("Expecting resolved continuation");
+        }
+    });
+
     it("continues tools run", async function() {
         const toolCallId = "tc1";
 
