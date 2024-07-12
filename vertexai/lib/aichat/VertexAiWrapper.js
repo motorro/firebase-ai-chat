@@ -124,7 +124,7 @@ class VertexAiWrapper {
      */
     async doPost(threadId, instructions, parts, soFar, dispatch) {
         const tools = instructions.tools;
-        const params = Object.assign(Object.assign({ systemInstruction: VertexAiWrapper.generateSystemInstructions(instructions) }, (undefined !== tools ? { tools: tools.definition } : {})), { history: (await this.getThreadMessages(threadId)).map((it) => it[1].content) });
+        const params = Object.assign(Object.assign({ systemInstruction: VertexAiWrapper.generateSystemInstructions(instructions) }, (undefined !== tools ? { tools: tools.definition } : {})), { history: (await this.getThreadMessages(threadId)).map((it) => it[1].candidate.content) });
         const chat = this.model.startChat(params);
         const result = await this.run(chat, parts, {
             data: (0, firebase_ai_chat_core_1.hasHandOver)(soFar) ? soFar.data : soFar,
@@ -137,8 +137,8 @@ class VertexAiWrapper {
         stateMessages.forEach((threadMessage) => {
             const mDoc = this.getThreadMessageCollection(threadId).doc();
             batch.set(mDoc, threadMessage);
-            if ("model" === threadMessage.content.role) {
-                const mapped = this.messageMapper.fromAi(threadMessage.content);
+            if ("model" === threadMessage.candidate.content.role) {
+                const mapped = this.messageMapper.fromAi(threadMessage.candidate);
                 if (mapped) {
                     resultMessages.push(Object.assign({ id: mDoc.id, createdAt: threadMessage.createdAt, author: "ai" }, ((0, firebase_ai_chat_core_1.isStructuredMessage)(mapped) ? mapped : { text: String(mapped) })));
                 }
@@ -171,9 +171,12 @@ class VertexAiWrapper {
         const messages = [
             ...soFar.messages,
             {
-                content: {
-                    role: "user",
-                    parts: parts
+                candidate: {
+                    content: {
+                        role: "user",
+                        parts: parts
+                    },
+                    index: -1
                 },
                 createdAt: Timestamp.now(),
                 inBatchSortIndex: ++nextBatchSortIndex
@@ -255,7 +258,7 @@ class VertexAiWrapper {
             (0, firebase_ai_chat_core_1.tagLogger)("AI").d("Response from AI. Parts:", JSON.stringify(aiResult.content.parts));
         }
         messages.push({
-            content: aiResult.content,
+            candidate: aiResult,
             createdAt: Timestamp.now(),
             inBatchSortIndex: ++nextBatchSortIndex
         });

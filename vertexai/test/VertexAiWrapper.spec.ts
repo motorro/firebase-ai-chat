@@ -99,18 +99,22 @@ describe("VertexAI wrapper", function() {
         const threadMessages = await wrapper.getThreadMessages(thread);
         threadMessages.length.should.equal(2);
         const tm1 = threadMessages[0][1];
-        tm1.content.should.deep.equal({
-            role: "user",
-            parts: [{
-                text: "M1"
-            }]
+        tm1.candidate.should.deep.include({
+            content: {
+                role: "user",
+                parts: [{
+                    text: "M1"
+                }]
+            }
         });
         const tm2 = threadMessages[1][1];
-        tm2.content.should.deep.equal({
-            role: "model",
-            parts: [{
-                text: "Message 1"
-            }]
+        tm2.candidate.should.deep.include({
+            content: {
+                role: "model",
+                parts: [{
+                    text: "Message 1"
+                }]
+            }
         });
 
         if (result.isResolved()) {
@@ -173,32 +177,40 @@ describe("VertexAI wrapper", function() {
         const threadMessages = await wrapper.getThreadMessages(thread);
         threadMessages.length.should.equal(4);
         const tm1 = threadMessages[0][1];
-        tm1.content.should.deep.equal({
-            role: "user",
-            parts: [{
-                text: "M1"
-            }]
+        tm1.candidate.should.deep.include({
+            content: {
+                role: "user",
+                parts: [{
+                    text: "M1"
+                }]
+            }
         });
         const tm2 = threadMessages[1][1];
-        tm2.content.should.deep.equal({
-            role: "model",
-            parts: [{
-                functionCall: {name: "someFun", args: {a: "b"}}
-            }]
+        tm2.candidate.should.deep.include({
+            content: {
+                role: "model",
+                parts: [{
+                    functionCall: {name: "someFun", args: {a: "b"}}
+                }]
+            }
         });
         const tm3 = threadMessages[2][1];
-        tm3.content.should.deep.equal({
-            role: "user",
-            parts: [{
-                functionResponse: {name: "someFun", response: {data: data2}}
-            }]
+        tm3.candidate.should.deep.include({
+            content: {
+                role: "user",
+                parts: [{
+                    functionResponse: {name: "someFun", response: {data: data2}}
+                }]
+            }
         });
         const tm4 = threadMessages[3][1];
-        tm4.content.should.deep.equal({
-            role: "model",
-            parts: [{
-                text: "Message 1"
-            }]
+        tm4.candidate.should.deep.include({
+            content: {
+                role: "model",
+                parts: [{
+                    text: "Message 1"
+                }]
+            }
         });
 
         if (result.isResolved()) {
@@ -242,18 +254,22 @@ describe("VertexAI wrapper", function() {
         const threadMessages = await wrapper.getThreadMessages(thread);
         threadMessages.length.should.equal(2);
         const tm1 = threadMessages[0][1];
-        tm1.content.should.deep.equal({
-            role: "user",
-            parts: [{
-                text: "M1"
-            }]
+        tm1.candidate.should.deep.include({
+            content: {
+                role: "user",
+                parts: [{
+                    text: "M1"
+                }]
+            }
         });
         const tm2 = threadMessages[1][1];
-        tm2.content.should.deep.equal({
-            role: "model",
-            parts: [{
-                functionCall: {name: "someFun", args: {a: "b"}}
-            }]
+        tm2.candidate.should.deep.include({
+            content: {
+                role: "model",
+                parts: [{
+                    functionCall: {name: "someFun", args: {a: "b"}}
+                }]
+            }
         });
 
         result.isSuspended().should.be.true;
@@ -282,37 +298,45 @@ describe("VertexAI wrapper", function() {
         const threadMessages = await wrapper.getThreadMessages(thread);
         threadMessages.length.should.equal(4);
         const tm1 = threadMessages[0][1];
-        tm1.content.should.deep.equal({
-            role: "user",
-            parts: [{
-                text: "M1"
-            }]
+        tm1.candidate.should.deep.include({
+            content: {
+                role: "user",
+                parts: [{
+                    text: "M1"
+                }]
+            }
         });
         const tm2 = threadMessages[1][1];
-        tm2.content.should.deep.equal({
-            role: "model",
-            parts: [{
-                functionCall: {args: {a: "b"}}
-            }]
+        tm2.candidate.should.deep.include({
+            content: {
+                role: "model",
+                parts: [{
+                    functionCall: {args: {a: "b"}}
+                }]
+            }
         });
         const tm3 = threadMessages[2][1];
-        tm3.content.should.deep.equal({
-            role: "user",
-            parts: [{
-                functionResponse: {
-                    name: "function name was not provided",
-                    response: {
-                        error: "You didn't supply a function name. Check tools definition and supply a function name!"
+        tm3.candidate.should.deep.include({
+            content: {
+                role: "user",
+                parts: [{
+                    functionResponse: {
+                        name: "function name was not provided",
+                        response: {
+                            error: "You didn't supply a function name. Check tools definition and supply a function name!"
+                        }
                     }
-                }
-            }]
+                }]
+            }
         });
         const tm4 = threadMessages[3][1];
-        tm4.content.should.deep.equal({
-            role: "model",
-            parts: [{
-                text: "Message 1"
-            }]
+        tm4.candidate.should.deep.include({
+            content: {
+                role: "model",
+                parts: [{
+                    text: "Message 1"
+                }]
+            }
         });
 
         if (result.isResolved()) {

@@ -1,6 +1,5 @@
 import {isStructuredMessage, NewMessage} from "@motorro/firebase-ai-chat-core";
-import {Part} from "@google-cloud/vertexai";
-import {Content} from "@google-cloud/vertexai/src/types/content";
+import {GenerateContentCandidate, Part} from "@google-cloud/vertexai";
 
 /**
  * Maps messages to/from AI
@@ -15,10 +14,10 @@ export interface VertexAiMessageMapper {
 
     /**
      * Maps VertexAI message parts to chat message
-     * @param message Message to map to chat format
+     * @param candidate Content candidate
      * @returns Chat message structure
      */
-    fromAi(message: Content): NewMessage | undefined
+    fromAi(candidate: GenerateContentCandidate): NewMessage | undefined
 }
 
 export const DefaultVertexAiMessageMapper: VertexAiMessageMapper = {
@@ -33,9 +32,9 @@ export const DefaultVertexAiMessageMapper: VertexAiMessageMapper = {
         }];
     },
 
-    fromAi(message: Content): NewMessage | undefined {
+    fromAi(candidate: GenerateContentCandidate): NewMessage | undefined {
         const text: Array<string> = [];
-        for (const part of message.parts) {
+        for (const part of candidate.content.parts) {
             if (undefined !== part.text) {
                 text.push(part.text);
             }

@@ -13,9 +13,9 @@ exports.DefaultVertexAiMessageMapper = {
                 text: String(message)
             }];
     },
-    fromAi(message) {
+    fromAi(candidate) {
         const text = [];
-        for (const part of message.parts) {
+        for (const part of candidate.content.parts) {
             if (undefined !== part.text) {
                 text.push(part.text);
             }

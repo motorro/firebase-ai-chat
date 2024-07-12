@@ -210,7 +210,7 @@ export class VertexAiWrapper implements AiWrapper {
         const params: StartChatParams = {
             systemInstruction: VertexAiWrapper.generateSystemInstructions(instructions),
             ...(undefined !== tools ? {tools: tools.definition} : {}),
-            history: (await this.getThreadMessages(threadId)).map((it) => it[1].content)
+            history: (await this.getThreadMessages(threadId)).map((it) => it[1].candidate.content)
         };
         const chat = this.model.startChat(params);
 
@@ -233,8 +233,8 @@ export class VertexAiWrapper implements AiWrapper {
             const mDoc = this.getThreadMessageCollection(threadId).doc();
             batch.set(mDoc, threadMessage);
 
-            if ("model" === threadMessage.content.role) {
-                const mapped = this.messageMapper.fromAi(threadMessage.content);
+            if ("model" === threadMessage.candidate.content.role) {
+                const mapped = this.messageMapper.fromAi(threadMessage.candidate);
                 if (mapped) {
                     resultMessages.push({
                         id: mDoc.id,
@@ -280,9 +280,12 @@ export class VertexAiWrapper implements AiWrapper {
         const messages: Array<ThreadMessage> = [
             ...soFar.messages,
             {
-                content: {
-                    role: "user",
-                    parts: parts
+                candidate: {
+                    content: {
+                        role: "user",
+                        parts: parts
+                    },
+                    index: -1
                 },
                 createdAt: Timestamp.now(),
                 inBatchSortIndex: ++nextBatchSortIndex
@@ -381,7 +384,7 @@ export class VertexAiWrapper implements AiWrapper {
             tagLogger("AI").d("Response from AI. Parts:", JSON.stringify(aiResult.content.parts));
         }
         messages.push({
-            content: aiResult.content,
+            candidate: aiResult,
             createdAt: Timestamp.now(),
             inBatchSortIndex: ++nextBatchSortIndex
         });

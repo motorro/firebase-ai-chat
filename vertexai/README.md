@@ -51,7 +51,7 @@ const myMessageMapper: VertexAiMessageMapper = {
         throw new Error("TODO: Implement mapping from Chat to OpenAI");
     },
 
-    fromAi(message: Content): NewMessage | undefined {
+    fromAi(message: GenerateContentCandidate): NewMessage | undefined {
         throw new Error("TODO: Implement OpenAI to Chat message mapping")
     }
 }

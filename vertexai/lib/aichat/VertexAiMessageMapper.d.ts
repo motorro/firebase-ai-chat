@@ -1,6 +1,5 @@
 import { NewMessage } from "@motorro/firebase-ai-chat-core";
-import { Part } from "@google-cloud/vertexai";
-import { Content } from "@google-cloud/vertexai/src/types/content";
+import { GenerateContentCandidate, Part } from "@google-cloud/vertexai";
 /**
  * Maps messages to/from AI
  */
@@ -13,9 +12,9 @@ export interface VertexAiMessageMapper {
     toAi(message: NewMessage): Array<Part>;
     /**
      * Maps VertexAI message parts to chat message
-     * @param message Message to map to chat format
+     * @param candidate Content candidate
      * @returns Chat message structure
      */
-    fromAi(message: Content): NewMessage | undefined;
+    fromAi(candidate: GenerateContentCandidate): NewMessage | undefined;
 }
 export declare const DefaultVertexAiMessageMapper: VertexAiMessageMapper;
