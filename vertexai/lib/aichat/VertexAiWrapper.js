@@ -255,7 +255,7 @@ class VertexAiWrapper {
             return Promise.reject(new firebase_ai_chat_core_1.ChatError("unavailable", false, "No candidates in AI answer"));
         }
         if (this.debugAi) {
-            (0, firebase_ai_chat_core_1.tagLogger)("AI").d("Response from AI. Parts:", JSON.stringify(aiResult.content.parts));
+            (0, firebase_ai_chat_core_1.tagLogger)("AI").d("Response from AI. Result:", JSON.stringify(aiResult));
         }
         messages.push({
             candidate: aiResult,

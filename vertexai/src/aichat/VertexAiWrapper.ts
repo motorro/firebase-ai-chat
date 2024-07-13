@@ -381,7 +381,7 @@ export class VertexAiWrapper implements AiWrapper {
         }
 
         if (this.debugAi) {
-            tagLogger("AI").d("Response from AI. Parts:", JSON.stringify(aiResult.content.parts));
+            tagLogger("AI").d("Response from AI. Result:", JSON.stringify(aiResult));
         }
         messages.push({
             candidate: aiResult,
