@@ -7,7 +7,7 @@ Engines:
 - VertexAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-vertexai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-vertexai)
 
 
-[AI assistant](https://platform.openai.com/docs/assistants/overview) chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
+AI assistant chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
 Supported AI engines:
 - [OpenAI](https://platform.openai.com/docs/assistants/overview)
 - [VertexAI](https://cloud.google.com/nodejs/docs/reference/vertexai/latest)
@@ -43,7 +43,7 @@ Supported AI engines:
 <!-- tocstop -->
 
 ## A problem statement
-Since companies like OpenAI has published its API, integrating custom ChatGPT to your client apps has become a rather easy option.
+Since companies like OpenAI has published its API, integrating custom chats to your client apps has become a rather easy option.
 Given that the API is HTTP-based and there are also many [wrapping libraries](https://github.com/aallam/openai-kotlin) 
 for any platform, the one might implement the chat directly in a mobile app or a web-site. However, it might be not 
 a good architectural decision to go this way. Among the reasons are:
