@@ -1,4 +1,4 @@
-![Logo](/readme/Github%20social.png)
+![Firebase AI Chat](/readme/Github%20social.png)
 
 [![Check](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml)
 
