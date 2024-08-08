@@ -1,6 +1,6 @@
 ![Logo](/readme/Github%20social.png)
 
-# Firebase OpenAI chat
+# Firebase AI Chat
 [![Check](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml)
 
 Engines:
