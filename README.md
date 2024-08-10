@@ -1,6 +1,6 @@
 ![Firebase AI Chat](/readme/Github%20social.png)
 
-[![Check](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/motorro/firebase-openai-chat/actions/workflows/test.yml)
+[![Check](https://github.com/motorro/firebase-ai-chat/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/motorro/firebase-ai-chat/actions/workflows/test.yml)
 
 Engines:
 - Core: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core)
@@ -38,7 +38,7 @@ Supported AI engines:
 - [Assistant switching and assistant crew](#assistant-switching-and-assistant-crew)
   * [Switching in method middleware](#switching-in-method-middleware)
   * [Switching in tools reducers](#switching-in-tools-reducers)
-- [Using multiple engines in a single project](#using-multiple-engines-in-a-single-project)
+- [Using multiple engines in a single project](#using-multiple-engines-in-a-single)
 - [Client application](#client-application)
 
 <!-- tocstop -->
@@ -64,7 +64,7 @@ The possible flow might be the following:
 - User interacts with a front-end application and posts messages.
 - The App uses YOUR backend endpoints to receive the user gestures.
 - The Back-end executes the Assistant run in a worker function and posts the results to a local database.
-- OpenAI tool calls are managed by your Back-end providing all necessary data back and forth.
+- Function tool calls are managed by your Back-end providing all necessary data back and forth.
 - Upon the run is complete, Back-end updates its storage with AI replies.
 - The App updates itself from the Back-end storage and displays changes to the User.
 
@@ -76,20 +76,21 @@ This project is an illustration of above-mentioned approach using:
 - [Firebse Authentication](https://firebase.google.com/docs/auth) to authenticate users and restrict the chat access.
 
 The project is packed as an NPM module in case you'd like to use it in your own application. It handles the complete
-AI chat workflow including running OpenAI, message management, state management, and function runs.
+AI chat workflow including running AI engine, message management, state management, and function runs.
 
 ## Sample Firebase project
 Due to strict [type-check restrictions](https://github.com/googleapis/nodejs-firestore/issues/760) for
-firebase types the test example project is in the separate [repository](https://github.com/motorro/firebase-openai-chat-project).
+firebase types the test example project is in the separate [repository](https://github.com/motorro/firebase-ai-chat-project).
 The sample includes:
 - A minimal Firebase project
 - A sample OpenAI assistant creation script
+- A sample Gemini assistant creation script
 - A sample mobile application
 
 ## Components
 Let's take a closer look at the implementation...
 
-![Component diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/motorro/firebase-openai-chat/master/readme/components.puml)
+![Component diagram](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/motorro/firebase-ai-chat/master/readme/components.puml)
 
 - Client creates a chat by calling a cloud function.
 - Client posts messages to assistant with a client function.
@@ -144,7 +145,7 @@ You may also want to set a custom logger to the library so the log output will g
 
 ```typescript
 import {logger as fLogger} from "firebase-functions/v2";
-import {Logger, setLogger} from "firebase-openai-chat";
+import {Logger, setLogger} from "firebase-ai-chat";
 
 // Chat processor name
 const NAME = "calculator";
@@ -280,7 +281,7 @@ To handle this request at Firebase you may want to create the following function
 
 ```typescript
 import {CallableOptions, CallableRequest, onCall as onCall2} from "firebase-functions/v2/https";
-import { ChatState } from "firebase-openai-chat";
+import { ChatState } from "firebase-ai-chat";
 
 export const calculate = onCall2(options, async (request: CallableRequest<CalculateChatRequest>) => {
   return ensureAuth(request, async (uid, data) => {
@@ -567,8 +568,8 @@ const whenResultIsReady = async (data: string) => {
   }
 }
 ```
-Example of suspending tool dispatch in tools reducer could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L42).
-Example of resuming AI run could be found [here](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts#L136).
+Example of suspending tool dispatch in tools reducer could be found [here](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L42).
+Example of resuming AI run could be found [here](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/index.ts#L136).
 
 ### Note on suspending the engine in tool calls with continuation
 Take a note that suspending the assistant within tool suspending the calls with continuation may fail if the new assistant
@@ -586,9 +587,9 @@ The [NewMessage](core/src/aichat/data/NewMessage.ts) which goes to/from client a
 data that gets to corresponding fields of [ChatMessage](core/src/aichat/data/ChatMessage.ts).
 To provide your custom message mapper use the corresponding parameter to the `worker` functions of chat factories.
 The example is available in a sample project:
-- [OpenAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L89)
-- [VertexAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L89)
-- [Common part](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L196)
+- [OpenAI](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L89)
+- [VertexAI](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L89)
+- [Common part](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L196)
 
 ## Message middleware
 By default, the library saves all messages received from AI to the client chat. However, you may want to custom-process
@@ -628,7 +629,7 @@ If user wants to subtract or to divide the accumulated value by some number we c
 ![Switching](/readme/Switching.png)
 
 Here is how it is being done as a sequence diagram:
-![Switching](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/motorro/firebase-openai-chat/master/readme/Switching.puml)
+![Switching](http://www.plantuml.com/plantuml/proxy?src=https://raw.githubusercontent.com/motorro/firebase-ai-chat/master/readme/Switching.puml)
 
 To be able to do it there are two methods in [AssistantChat](core/src/aichat/AssistantChat.ts):
 
@@ -641,16 +642,16 @@ available to do the switch during the message processing. The `HandOverControl` 
 methods to hand over and to hand back the chat control.
 
 The example is available in a sample project. 
-1. Instruct the assistant to use some kind of [special message for hand-over](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/instructions.ts#L12).
+1. Instruct the assistant to use some kind of [special message for hand-over](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/common/instructions.ts#L12).
 2. Optionally, make a mapper to prepare a message. See above in [AI message mapping](#ai-message-mapping) section.
-3. Set up a middleware [function](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L137).
-4. Provide mappers and middleware to workers: [OpenAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L104), [VertexAI](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/vertexai/vertexai.ts#L124).
+3. Set up a middleware [function](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L137).
+4. Provide mappers and middleware to workers: [OpenAI](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L104), [VertexAI](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/vertexai/vertexai.ts#L124).
 
 ### Switching in tools reducers
 Since core version 10 the library supports switching in tools reducers. You will get a [ToolsHandOver](core/src/aichat/ToolsDispatcher.ts#L70)
 object to your reducer. Use it to request `handOver` and reply to AI with some message. The tool run will complete and when
 you return back from the other assistant, add some summary messages to `handBack` to run the calling assistant again.
-The example is available in a [sample project](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L53).
+The example is available in a [sample project](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L53).
 
 ## Using multiple engines in a single project
 You may mix several engines in a single project. For example, you may handle different tasks with different engines.
@@ -667,10 +668,10 @@ To be able to do it:
    ```
 3. Pass the function to the [chat factory function](openai/src/index.ts#L135) and to the [worker factory function](openai/src/index.ts#L171)
 4. [ChatWorker](core/src/aichat/workers/ChatWorker.ts) returns `true` if it dispatches successfully and `false` if not.
-   Use this value to iterate workers and [get the one](https://github.com/motorro/firebase-openai-chat-project/blob/master/Firebase/functions/src/index.ts#L137) supporting the command.
+   Use this value to iterate workers and [get the one](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/index.ts#L137) supporting the command.
 
 ## Client application
-The sample project includes a sample KMP [Android application](https://github.com/motorro/firebase-openai-chat-project/tree/master/Client)
+The sample project includes a sample KMP [Android application](https://github.com/motorro/firebase-ai-chat-project/tree/master/Client)
 The app uses:
 - [firebase-kotlin-sdk](https://github.com/GitLiveApp/firebase-kotlin-sdk) - a cross-platform Firebase client library
 - [CommonStateMachine](https://github.com/motorro/CommonStateMachine) - to run application logic
@@ -687,7 +688,7 @@ Here we have:
 The app calls the functions described above to start/complete the chat and subscribes to Firestore collections to watch 
 chat updates.
 
-To listen to the chat state, [subscribe](https://github.com/motorro/firebase-openai-chat-project/blob/master/Client/composeApp/src/commonMain/kotlin/com/motorro/aichat/state/Chat.kt#L63) 
+To listen to the chat state, [subscribe](https://github.com/motorro/firebase-ai-chat-project/blob/master/Client/composeApp/src/commonMain/kotlin/com/motorro/aichat/state/Chat.kt#L63) 
 to the chat document provided by function response:
 ```kotlin
 // Chat document from the server response
@@ -726,7 +727,7 @@ private fun subscribeDocument() {
 
 Every time our Cloud function updates the chat status, the client will get the status and data update.
 
-To listen to the list of messages - [subscribe](https://github.com/motorro/firebase-openai-chat-project/blob/master/Client/composeApp/src/commonMain/kotlin/com/motorro/aichat/state/Chat.kt#L80) 
+To listen to the list of messages - [subscribe](https://github.com/motorro/firebase-ai-chat-project/blob/master/Client/composeApp/src/commonMain/kotlin/com/motorro/aichat/state/Chat.kt#L80) 
 to messages sub-collection:
 
 ```kotlin
