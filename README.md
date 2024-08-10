@@ -4,14 +4,14 @@
 
 Engines:
 - Core: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core)
-- OpenAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai)
 - VertexAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-vertexai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-vertexai)
+- OpenAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai)
 
 
 AI assistant chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
 Supported AI engines:
-- [OpenAI](https://platform.openai.com/docs/assistants/overview)
 - [VertexAI](https://cloud.google.com/nodejs/docs/reference/vertexai/latest)
+- [OpenAI](https://platform.openai.com/docs/assistants/overview)
 
 
 ## Contents
@@ -44,7 +44,7 @@ Supported AI engines:
 <!-- tocstop -->
 
 ## A problem statement
-Since companies like OpenAI has published its API, integrating custom chats to your client apps has become a rather easy option.
+Since companies has published its LLM APIs, integrating custom chats to your client apps has become a rather easy option.
 Given that the API is HTTP-based and there are also many [wrapping libraries](https://github.com/aallam/openai-kotlin) 
 for any platform, the one might implement the chat directly in a mobile app or a web-site. However, it might be not 
 a good architectural decision to go this way. Among the reasons are:
@@ -83,8 +83,8 @@ Due to strict [type-check restrictions](https://github.com/googleapis/nodejs-fir
 firebase types the test example project is in the separate [repository](https://github.com/motorro/firebase-ai-chat-project).
 The sample includes:
 - A minimal Firebase project
-- A sample OpenAI assistant creation script
 - A sample Gemini assistant creation script
+- A sample OpenAI assistant creation script
 - A sample mobile application
 
 ## Components
@@ -94,14 +94,14 @@ Let's take a closer look at the implementation...
 
 - Client creates a chat by calling a cloud function.
 - Client posts messages to assistant with a client function.
-- Firebase launches a Cloud Task to run OpenAI assistant.
+- Firebase launches a Cloud Task to run AI assistant.
 - Client messages and Assistant response are written to Firestore.
 - Client gets chat state and messages by subscribing to Firestore documents.
 
 ## Module API
 The module has three classes to use in your project:
 - [AssistantChat](core/src/aichat/AssistantChat.ts) - handles requests from the App user
-- [AiChatWorker](core/src/aichat/workers/ChatWorker.ts) - runs the OpenAI interaction "off-line" in a Cloud function
+- [AiChatWorker](core/src/aichat/workers/ChatWorker.ts) - runs the AI interaction "off-line" in a Cloud function
 - [AiChat](openai/src/index.ts) - a factory to create those above
 
 ### Scaffolds
@@ -412,12 +412,12 @@ Worth mentioning is that if you run several chats with a different state for dif
 worker function to handle all the tasks. The [ChatCommand](core/src/aichat/data/ChatCommand.ts) has all the required reference
 data to address the correct chat document and chat data state.
 
-As the AI run may involve several OpenAI calls which may fail at any intermediate call the possible retry run strategy 
+As the AI run may involve several AI calls which may fail at any intermediate call the possible retry run strategy 
 seems unclear at the moment. That is why the worker will set the `failed` state to chat on any error. If you want to 
 restore the thread somehow - create the new chat and copy your messages manually.
 
 ### Using AI function tools
-OpenAI Assistant and Chat completion API has a powerful feature called [Function calling](https://platform.openai.com/docs/assistants/tools/function-calling).
+AI model APIs often have a powerful feature called [Function calling](https://platform.openai.com/docs/assistants/tools/function-calling).
 The use of functions is a bridge between your business logic and the AI. It may be used to retrieve some information
 from your domain, to alter some state that resides on your server or to limit the AI "hallucinations" when operating
 with your domain data.
@@ -587,8 +587,8 @@ The [NewMessage](core/src/aichat/data/NewMessage.ts) which goes to/from client a
 data that gets to corresponding fields of [ChatMessage](core/src/aichat/data/ChatMessage.ts).
 To provide your custom message mapper use the corresponding parameter to the `worker` functions of chat factories.
 The example is available in a sample project:
-- [OpenAI](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L89)
 - [VertexAI](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L89)
+- [OpenAI](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/openai/openai.ts#L89)
 - [Common part](https://github.com/motorro/firebase-ai-chat-project/blob/master/Firebase/functions/src/common/calculator.ts#L196)
 
 ## Message middleware
