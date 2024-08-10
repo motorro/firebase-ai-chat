@@ -54,7 +54,7 @@ package Firebase {
     cf --> cw
 }
 
-package OpenAI {
+package AI {
     [Assistant]
 }
 
@@ -62,6 +62,6 @@ package OpenAI {
 "Front-end" --> cf
 cf -> Firestore
 cw <-> Firestore
-cw <--> OpenAI
+cw <--> AI
 
 @enduml
