@@ -1,4 +1,4 @@
-![Firebase AI Chat](/readme/Github%20social.png)
+#Firebase AI Chat
 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/vian88VIcxM/0.jpg)](https://www.youtube.com/watch?v=vian88VIcxM)
 
