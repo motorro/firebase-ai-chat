@@ -1,5 +1,7 @@
 ![Firebase AI Chat](/readme/Github%20social.png)
 
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/vian88VIcxM/0.jpg)](https://www.youtube.com/watch?v=vian88VIcxM)
+
 [![Check](https://github.com/motorro/firebase-ai-chat/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/motorro/firebase-ai-chat/actions/workflows/test.yml)
 
 Engines:
