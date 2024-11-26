@@ -1,5 +1,10 @@
 # Firebase AI Chat
 
+AI assistant chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
+Supported AI engines:
+- [VertexAI](https://cloud.google.com/nodejs/docs/reference/vertexai/latest)
+- [OpenAI](https://platform.openai.com/docs/assistants/overview)
+
 Here's the video for 2024 Google AI application contest to start:
 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/vian88VIcxM/0.jpg)](https://www.youtube.com/watch?v=vian88VIcxM)
@@ -10,12 +15,6 @@ Engines:
 - Core: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-core)
 - VertexAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-vertexai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-vertexai)
 - OpenAI: [![npm version](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai.svg)](https://badge.fury.io/js/@motorro%2Ffirebase-ai-chat-openai)
-
-
-AI assistant chat for front-end applications residing on server with [Firebase technology](https://firebase.google.com/).
-Supported AI engines:
-- [VertexAI](https://cloud.google.com/nodejs/docs/reference/vertexai/latest)
-- [OpenAI](https://platform.openai.com/docs/assistants/overview)
 
 
 ## Contents
