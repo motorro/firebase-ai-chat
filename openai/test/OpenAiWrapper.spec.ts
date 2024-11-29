@@ -17,17 +17,14 @@ import {
 } from "@motorro/firebase-ai-chat-core";
 import {Threads} from "openai/resources/beta";
 import {assistantId, Data, data, runId, threadId} from "./mock";
-import {AbstractPage} from "openai/core";
 import {AiWrapper} from "../src";
 import {MessagesPage} from "openai/resources/beta/threads";
 import {OpenAiWrapper} from "../src/aichat/OpenAiWrapper";
 import Beta = OpenAI.Beta;
 import Messages = Threads.Messages;
 import Runs = Threads.Runs;
-import Run = Threads.Run;
-import Message = Threads.Message;
 
-const message1: Message = {
+const message1: Threads.Message = {
     assistant_id: assistantId,
     content: [{
         type: "text",
@@ -49,7 +46,7 @@ const message1: Message = {
     run_id: runId,
     thread_id: threadId
 };
-const message2: Message = {
+const message2: Threads.Message = {
     assistant_id: assistantId,
     content: [{
         type: "text",
@@ -161,10 +158,10 @@ describe("OpenAI wrapper", function() {
     });
 
     it("runs AI", async function() {
-        const run1: Run = imock();
+        const run1: Threads.Run = imock();
         when(run1.id).thenReturn("r1");
         when(run1.status).thenReturn("queued");
-        const run2: Run = imock();
+        const run2: Threads.Run = imock();
         when(run2.id).thenReturn("r2");
         when(run2.status).thenReturn("completed");
 
@@ -179,11 +176,11 @@ describe("OpenAI wrapper", function() {
     it("runs tools", async function() {
         const toolCallId = "tc1";
 
-        const run1: Run = imock();
+        const run1: Threads.Run = imock();
         when(run1.id).thenReturn("r1");
         when(run1.status).thenReturn("queued");
 
-        const run2: Run = imock();
+        const run2: Threads.Run = imock();
         when(run2.id).thenReturn("r2");
         when(run2.required_action).thenReturn({
             type: "submit_tool_outputs",
@@ -200,7 +197,7 @@ describe("OpenAI wrapper", function() {
         });
         when(run2.status).thenReturn("requires_action");
 
-        const run3: Run = imock();
+        const run3: Threads.Run = imock();
         when(run3.id).thenReturn("r3");
         when(run3.status).thenReturn("completed");
         const iRun3 = instance(run3);
@@ -261,11 +258,11 @@ describe("OpenAI wrapper", function() {
     it("runs tools with relaxed JSON parse", async function() {
         const toolCallId = "tc1";
 
-        const run1: Run = imock();
+        const run1: Threads.Run = imock();
         when(run1.id).thenReturn("r1");
         when(run1.status).thenReturn("queued");
 
-        const run2: Run = imock();
+        const run2: Threads.Run = imock();
         when(run2.id).thenReturn("r2");
         when(run2.required_action).thenReturn({
             type: "submit_tool_outputs",
@@ -285,7 +282,7 @@ describe("OpenAI wrapper", function() {
         });
         when(run2.status).thenReturn("requires_action");
 
-        const run3: Run = imock();
+        const run3: Threads.Run = imock();
         when(run3.id).thenReturn("r3");
         when(run3.status).thenReturn("completed");
         const iRun3 = instance(run3);
@@ -330,11 +327,11 @@ describe("OpenAI wrapper", function() {
     it("continues tools run", async function() {
         const toolCallId = "tc1";
 
-        const run1: Run = imock();
+        const run1: Threads.Run = imock();
         when(run1.id).thenReturn("r1");
         when(run1.status).thenReturn("queued");
 
-        const run2: Run = imock();
+        const run2: Threads.Run = imock();
         when(run2.id).thenReturn("r2");
         when(run2.status).thenReturn("completed");
 
@@ -382,10 +379,10 @@ describe("OpenAI wrapper", function() {
     });
 
     it("fails if AI fails", async function() {
-        const run1: Run = imock();
+        const run1: Threads.Run = imock();
         when(run1.id).thenReturn("r1");
         when(run1.status).thenReturn("queued");
-        const run2: Run = imock();
+        const run2: Threads.Run = imock();
         when(run2.id).thenReturn("r2");
         when(run2.status).thenReturn("failed");
         when(run2.last_error).thenReturn({code: "server_error", message: "Some error"});
@@ -401,7 +398,7 @@ describe("OpenAI wrapper", function() {
     });
 
     it("gets messages", async function() {
-        const page: AbstractPage<Message> = imock();
+        const page: MessagesPage = imock();
         when(page.getPaginatedItems()).thenReturn([
             message1,
             message2

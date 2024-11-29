@@ -12,10 +12,13 @@ import {
 import OpenAI from "openai";
 import {ThreadCreateParams} from "openai/src/resources/beta/threads/threads";
 import {sleep} from "openai/core";
-import {MessagesPage, RequiredActionFunctionToolCall, RunSubmitToolOutputsParams} from "openai/resources/beta/threads";
+import {
+    MessagesPage,
+    RequiredActionFunctionToolCall,
+    RunSubmitToolOutputsParams
+} from "openai/resources/beta/threads";
 import {AiWrapper} from "./AiWrapper";
 import {RunContinuationRequest} from "./data/RunResponse";
-import ToolOutput = RunSubmitToolOutputsParams.ToolOutput;
 import {DefaultOpenAiMessageMapper, OpenAiMessageMapper} from "./OpenAiMessageMapper";
 import {AiMessages} from "./data/AiMessages";
 import json5 = require("json5");
@@ -187,7 +190,7 @@ export class OpenAiWrapper implements AiWrapper {
         request: RunContinuationRequest<DATA>
     ): Promise<Continuation<DATA>> {
         logger.d(`Submitting tools result: ${threadId} / ${assistantId}`);
-        const dispatches: Array<ToolOutput> = request.toolsResult.map((it) => ({
+        const dispatches: Array<RunSubmitToolOutputsParams.ToolOutput> = request.toolsResult.map((it) => ({
             output: JSON.stringify(it.response),
             tool_call_id: it.toolCallId
         }));
