@@ -141,6 +141,7 @@ export abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA extends
      * @param messages A list of messages to save
      * @param chatMeta Chat metadata
      * @protected
+     * @returns Next batch index
      */
     private saveMessages(
         tx: FirebaseFirestore.Transaction,

@@ -103,6 +103,7 @@ describe("Hand-over workers", function() {
 
         const result = await worker.dispatch(request);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.should.be.true;
         const chatStateUpdate = await chatDoc.get();
         const updatedChatState = chatStateUpdate.data() as ChatState<AiConfig, Data>;
@@ -166,6 +167,7 @@ describe("Hand-over workers", function() {
 
         const result = await worker.dispatch(request);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.should.be.true;
         const chatStateUpdate = await chatDoc.get();
         const updatedChatState = chatStateUpdate.data() as ChatState<AiConfig, Data>;

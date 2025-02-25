@@ -204,6 +204,7 @@ describe("Dispatch runner", function() {
         );
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         run.exists.should.be.true;
         const runData = run.data();
         if (undefined === data) {
@@ -229,6 +230,7 @@ describe("Dispatch runner", function() {
         );
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         run.exists.should.be.true;
         const runData = run.data();
         if (undefined === data) {
@@ -254,6 +256,7 @@ describe("Dispatch runner", function() {
         ).catch(() => { }); // eslint-disable-line @typescript-eslint/no-empty-function
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         run.exists.should.be.true;
         const runData = run.data();
         if (undefined === data) {
@@ -277,7 +280,7 @@ describe("Dispatch runner", function() {
         await runner.dispatchWithCheck(
             request,
             async (_soFar, _command, safeUpdate) => {
-                await safeUpdate(async (tx, updateState) => updateState({
+                await safeUpdate(async (_tx, updateState) => updateState({
                     status: "userInput"
                 }));
             }
@@ -307,8 +310,8 @@ describe("Dispatch runner", function() {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         await runner.dispatchWithCheck(
             request,
-            async (soFar, command, safeUpdate) => {
-                await safeUpdate(async (tx, updateState) => {
+            async (_soFar, _command, safeUpdate) => {
+                await safeUpdate(async (_tx, updateState) => {
                     updateState({
                         status: "userInput"
                     });

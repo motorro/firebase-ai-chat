@@ -11,7 +11,7 @@ const config: RC = JSON.parse(fs.readFileSync("../.firebaserc", "utf8"));
 
 setLogger(ConsoleLogger);
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-var-requires,@typescript-eslint/no-require-imports
 export const test = require("firebase-functions-test")(
     {
         projectId: config.projects["test"]

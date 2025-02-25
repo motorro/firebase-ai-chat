@@ -6,7 +6,7 @@ exports.DefaultOpenAiMessageMapper = {
     toAi(message) {
         if ((0, firebase_ai_chat_core_1.isStructuredMessage)(message)) {
             const meta = message.meta;
-            let openAiMeta = {};
+            const openAiMeta = {};
             if (meta) {
                 Object.keys(meta).forEach((key) => {
                     const value = meta[key];

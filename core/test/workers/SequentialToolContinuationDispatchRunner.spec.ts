@@ -290,7 +290,7 @@ describe("Tool continuation dispatch runner", function() {
             [[toolCall1Id, toolCall1], [toolCall2Id, toolCall2]],
             chatData,
             {
-                getContinuationCommand: (toolCall) => {
+                getContinuationCommand: () => {
                     return commands[commandIndex++];
                 }
             }
@@ -308,7 +308,7 @@ describe("Tool continuation dispatch runner", function() {
                     {...toolCall2, call: {...toolCall2.call, response: {result: data3}}}
                 ]
             ],
-            handOver: {name: "handBack", messages: ["Message 2"]},
+            handOver: {name: "handBack", messages: ["Message 2"]}
         });
     });
 

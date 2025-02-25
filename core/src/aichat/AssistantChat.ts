@@ -113,7 +113,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
             }
             return async (common) => {
                 await scheduler.create(common);
-            }
+            };
         });
 
         const command: ChatCommandData = {
@@ -326,7 +326,7 @@ export class AssistantChat<DATA extends ChatData, WM extends Meta = Meta, CM ext
         const messageList = document.collection(Collections.messages) as CollectionReference<ChatMessage>;
         const dispatchDoc = document.collection(Collections.dispatches).doc(dispatchId) as DocumentReference<Dispatch>;
         let nextIndex = 0;
-        messages.forEach((message, index) => {
+        messages.forEach((message) => {
             let text: string;
             let meta: Meta | null = chatMeta || null;
             let data: Readonly<Record<string, unknown>> | null = null;

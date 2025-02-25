@@ -29,14 +29,14 @@ export const DefaultOpenAiMessageMapper: OpenAiMessageMapper = {
     toAi(message: NewMessage): UserMessageParts {
         if (isStructuredMessage(message)) {
             const meta = message.meta;
-            let openAiMeta: Record<string, string> = {};
+            const openAiMeta: Record<string, string> = {};
             if (meta) {
                 Object.keys(meta).forEach((key) => {
                     const value = meta[key];
                     if ("string" === typeof value) {
                         openAiMeta[key] = value;
                     } else {
-                        throw new ChatError("invalid-argument", true, "OpenAI accepts only string values as Metadata. Stringify your values explicitly!")
+                        throw new ChatError("invalid-argument", true, "OpenAI accepts only string values as Metadata. Stringify your values explicitly!");
                     }
                 });
             }

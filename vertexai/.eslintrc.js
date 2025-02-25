@@ -18,6 +18,8 @@ module.exports = {
         sourceType: "module"
     },
     ignorePatterns: [
+        ".eslintrc.js",
+        "test/mocha-globals.js",
         "/lib/**/*", // Ignore built files.
         "/modules/**/*" // Ignore external modules
     ],

@@ -40,7 +40,7 @@ export interface ToolsContinuationDispatchRunnerTools {
 /**
  * Runs passed tools and manages continuation and call status
  */
-export interface ToolsContinuationDispatchRunner<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
+export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
     /**
      * Dispatches calls
      * @param soFar Current chat data
@@ -56,7 +56,7 @@ export interface ToolsContinuationDispatchRunner<DATA extends ChatData, WM exten
  * Runs passed tools sequentially suspending continuation if suspended.
  * If any call fails - also fails other subsequent calls
  */
-export declare class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, WM, CM> {
+export declare class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, CM> {
     private readonly dispatchers;
     private readonly formatContinuationError;
     private readonly logData;

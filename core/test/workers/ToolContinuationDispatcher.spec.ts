@@ -124,6 +124,7 @@ describe("Tool continuation dispatcher", function() {
                 ],
                 handOver: null
             });
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             dataUpdated.should.be.true;
 
             const continuation = (await continuations.doc(passedRequests[0].continuationId).get()).data();
@@ -168,6 +169,7 @@ describe("Tool continuation dispatcher", function() {
                 }
             );
 
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             result.isSuspended().should.be.true;
 
             const continuationDoc = continuations.doc(passedRequests[0].continuationId);
@@ -178,6 +180,7 @@ describe("Tool continuation dispatcher", function() {
 
             continuation.dispatcherId.should.be.deep.equal(dispatcherId);
             continuation.state.should.be.equal("suspended");
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             dataUpdated.should.be.true;
 
             const savedTools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
@@ -326,6 +329,7 @@ describe("Tool continuation dispatcher", function() {
 
             continuation.dispatcherId.should.be.deep.equal(dispatcherId);
             continuation.state.should.be.equal("resolved");
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             dataUpdated.should.be.true;
 
             const savedTools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
@@ -402,6 +406,7 @@ describe("Tool continuation dispatcher", function() {
                 }
             );
 
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             result.isSuspended().should.be.true;
 
             const continuation = (await continuationDoc.get()).data();
@@ -411,6 +416,7 @@ describe("Tool continuation dispatcher", function() {
 
             continuation.dispatcherId.should.be.deep.equal(dispatcherId);
             continuation.state.should.be.equal("suspended");
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             dataUpdated.should.be.true;
 
             const savedTools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
@@ -520,6 +526,7 @@ describe("Tool continuation dispatcher", function() {
 
             continuation.dispatcherId.should.be.deep.equal(dispatcherId);
             continuation.state.should.be.equal("resolved");
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             dataUpdated.should.be.true;
 
             const savedTools = continuationDoc.collection(Collections.toolCalls) as CollectionReference<ToolCallData<Data>>;
@@ -602,6 +609,7 @@ describe("Tool continuation dispatcher", function() {
                 ],
                 handOver: null
             });
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             dataUpdated.should.be.true;
         });
 
@@ -665,6 +673,7 @@ describe("Tool continuation dispatcher", function() {
                 ],
                 handOver: null
             });
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             dataUpdated.should.be.true;
         });
     });

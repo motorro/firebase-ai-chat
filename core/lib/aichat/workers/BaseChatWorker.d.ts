@@ -81,6 +81,7 @@ export declare abstract class BaseChatWorker<A, AC extends AssistantConfig, DATA
      * @param messages A list of messages to save
      * @param chatMeta Chat metadata
      * @protected
+     * @returns Next batch index
      */
     private saveMessages;
     /**

@@ -26,6 +26,7 @@ export function isCleanupAction(data: unknown): data is Cleanup {
 /**
  * OpenAI Assistant chat actions
  */
+// eslint-disable-next-line max-len
 export type OpenAiChatAction = "create" | "post" | PostExplicit | "run" | "continueRun" | "retrieve" | "switchToUserInput" | "close" | Cleanup | HandOverAction | HandBackAction;
 
 /**

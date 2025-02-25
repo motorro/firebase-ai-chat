@@ -155,7 +155,7 @@ describe("Chat worker", function() {
     before(async function() {
         wrapper = imock<AiWrapper>();
         scheduler = imock<TaskScheduler>();
-        commandScheduler = imock<CommandScheduler>()
+        commandScheduler = imock<CommandScheduler>();
         cleaner = imock();
         cleanupRegistrar = imock();
         when(commandScheduler.isSupported(anything())).thenReturn(true);
@@ -327,7 +327,7 @@ describe("Chat worker", function() {
             }
         });
 
-        // eslint-disable-next-line max-len
+        // eslint-disable-next-line max-len, func-call-spacing
         const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: ToolContinuationSoFar<Data>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
         thread.should.be.equal(threadId);
         instructions.should.deep.include({instructions: instructions1});
@@ -412,7 +412,7 @@ describe("Chat worker", function() {
             }
         });
 
-        // eslint-disable-next-line max-len
+        // eslint-disable-next-line max-len, func-call-spacing
         const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: ToolContinuationSoFar<Data>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
         thread.should.be.equal(threadId);
         instructions.should.deep.include({instructions: instructions1});
@@ -451,6 +451,7 @@ describe("Chat worker", function() {
             }
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         middlewareCalled.should.be.true;
     });
 
@@ -496,7 +497,7 @@ describe("Chat worker", function() {
             }
         });
 
-        // eslint-disable-next-line max-len
+        // eslint-disable-next-line max-len, func-call-spacing
         const [thread, instructions, messages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: ToolContinuationSoFar<Data>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
         thread.should.be.equal(threadId);
         instructions.should.deep.include({instructions: instructions1});
@@ -683,7 +684,7 @@ describe("Chat worker", function() {
             actionData: [
                 {
                     name: "handBack",
-                    messages: ["Message 1"],
+                    messages: ["Message 1"]
                 }
             ]
         });
@@ -719,7 +720,7 @@ describe("Chat worker", function() {
             }
         });
 
-        // eslint-disable-next-line max-len
+        // eslint-disable-next-line max-len, func-call-spacing
         const [thread, instructions, passedMessages, data] = capture<string, VertexAiSystemInstructions<Data>, ReadonlyArray<string>, Data, (data: ToolContinuationSoFar<Data>, toolCalls: ReadonlyArray<ToolCallRequest>) => Promise<Continuation<ToolCallsResult<Data>>>>(wrapper.postMessage).last();
         thread.should.be.equal(threadId);
         instructions.should.deep.include({instructions: instructions1});
@@ -916,7 +917,7 @@ describe("Chat worker", function() {
             actionData: [
                 {
                     name: "handBack",
-                    messages: ["Message 1"],
+                    messages: ["Message 1"]
                 }
             ]
         });
@@ -956,6 +957,7 @@ describe("Chat worker", function() {
         });
 
         verify(wrapper.deleteThread(threadId)).once();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         handlerCalled.should.be.false;
     });
 
@@ -1006,6 +1008,7 @@ describe("Chat worker", function() {
         });
 
         verify(wrapper.createThread(anything())).once();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         handlerCalled.should.be.true;
     });
 
@@ -1023,6 +1026,7 @@ describe("Chat worker", function() {
 
         const result = await worker.dispatch(request);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.should.be.true;
 
         const chatStateUpdate = await chatDoc.get();
@@ -1067,6 +1071,7 @@ describe("Chat worker", function() {
 
         const result = await worker.dispatch(request);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.should.be.true;
 
         const chatStateUpdate = await chatDoc.get();

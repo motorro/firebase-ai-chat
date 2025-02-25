@@ -11,6 +11,7 @@ exports.OpenAiWrapper = void 0;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const core_1 = require("openai/core");
 const OpenAiMessageMapper_1 = require("./OpenAiMessageMapper");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const json5 = require("json5");
 const logger = (0, firebase_ai_chat_core_1.tagLogger)("OpenAiWrapper");
 /**

@@ -12,7 +12,7 @@ import {VertexAiChatCommand} from "../data/VertexAiChatCommand";
 import {VertexAiAssistantConfig} from "../data/VertexAiAssistantConfig";
 
 export class HandOverWorker extends VertexAiQueueWorker {
-    private readonly handOver: HandOverDelegate
+    private readonly handOver: HandOverDelegate;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -48,7 +48,7 @@ export class HandOverWorker extends VertexAiQueueWorker {
 }
 
 export class HandBackWorker extends VertexAiQueueWorker {
-    private readonly handOver: HandOverDelegate
+    private readonly handOver: HandOverDelegate;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,

@@ -224,7 +224,7 @@ class AssistantChat {
         const messageList = document.collection(Collections_1.Collections.messages);
         const dispatchDoc = document.collection(Collections_1.Collections.dispatches).doc(dispatchId);
         let nextIndex = 0;
-        messages.forEach((message, index) => {
+        messages.forEach((message) => {
             let text;
             let meta = chatMeta || null;
             let data = null;

@@ -62,7 +62,7 @@ export interface ToolsContinuationDispatchRunnerTools {
 /**
  * Runs passed tools and manages continuation and call status
  */
-export interface ToolsContinuationDispatchRunner<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
+export interface ToolsContinuationDispatchRunner<DATA extends ChatData, CM extends ChatMeta = ChatMeta> {
     /**
      * Dispatches calls
      * @param soFar Current chat data
@@ -86,7 +86,7 @@ export interface ToolsContinuationDispatchRunner<DATA extends ChatData, WM exten
  * If any call fails - also fails other subsequent calls
  */
 // eslint-disable-next-line max-len
-export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, WM, CM> {
+export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatchRunner<DATA, CM> {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     private readonly dispatchers: Readonly<Record<string, ToolsDispatcher<any, any, any>>>;
     private readonly formatContinuationError: (failed: ToolCallRequest, error: DispatchError) => DispatchError;
@@ -130,15 +130,15 @@ export class SequentialToolsContinuationDispatchRunner<DATA extends ChatData, WM
                     config: data.config,
                     messages: data.messages,
                     chatMeta: data.chatMeta
-                }
+                };
             },
             handBack(messages: ReadonlyArray<NewMessage> | undefined): void {
                 handOverAction = {
                     name: "handBack",
                     messages: messages
-                }
+                };
             }
-        }
+        };
 
         for (const [callId, callData] of tools) {
             if (suspended || null !== callData.call.response) {

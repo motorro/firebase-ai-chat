@@ -2,7 +2,7 @@ import { ChatData } from "../data/ChatState";
 import { ToolsContinuationDispatchRunner } from "./ToolsContinuationDispatchRunner";
 import { ContinuationCommand, ContinuationRequest, ToolCallRequest, ToolCallsResult } from "../data/ContinuationCommand";
 import { Continuation } from "../data/Continuation";
-import { ChatMeta, Meta } from "../data/Meta";
+import { ChatMeta } from "../data/Meta";
 import { HandBackAction, HandOverAction } from "../data/HandOverAction";
 /**
  * Tools for dispatchers
@@ -49,7 +49,7 @@ export interface ToolsContinuationDispatcher<DATA extends ChatData> {
 /**
  * Continuation dispatcher implementation
  */
-export declare class ToolsContinuationDispatcherImpl<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatcher<DATA> {
+export declare class ToolsContinuationDispatcherImpl<DATA extends ChatData, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatcher<DATA> {
     private readonly dispatcherId;
     private readonly chatDocument;
     private readonly db;
@@ -64,7 +64,7 @@ export declare class ToolsContinuationDispatcherImpl<DATA extends ChatData, WM e
      * @param logData If true - logs data state
      * and thus fails continuation
      */
-    constructor(chatDocumentPath: string, dispatcherId: string, db: FirebaseFirestore.Firestore, dispatchRunner: ToolsContinuationDispatchRunner<DATA, WM, CM>, logData?: boolean);
+    constructor(chatDocumentPath: string, dispatcherId: string, db: FirebaseFirestore.Firestore, dispatchRunner: ToolsContinuationDispatchRunner<DATA, CM>, logData?: boolean);
     dispatch(soFar: ToolContinuationSoFar<DATA>, toolCalls: ReadonlyArray<ToolCallRequest>, updateChatData: (data: DATA) => Promise<DATA>, dispatchControl: ToolsContinuationDispatcherTools): Promise<Continuation<ToolCallsResult<DATA>>>;
     dispatchCommand(soFar: DATA, command: ContinuationCommand<unknown>, updateChatData: (data: DATA) => Promise<DATA>, dispatchControl: ToolsContinuationDispatcherTools): Promise<Continuation<ToolCallsResult<DATA>>>;
     private doDispatch;

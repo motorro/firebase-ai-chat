@@ -14,7 +14,7 @@ export interface VertexAiSystemInstructions<DATA extends ChatData, WM extends Me
 /**
  * VertexAI tools definition
  */
-export interface VertexAiTools<DATA extends ChatData, WM extends  Meta = Meta, CM extends ChatMeta = ChatMeta> {
+export interface VertexAiTools<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> {
     /**
      * Bound dispatcher
      */

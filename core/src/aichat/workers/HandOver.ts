@@ -11,7 +11,7 @@ import {HandOverDelegate} from "../chat/handOver";
 import {HandOverAction, isHandBackAction, isHandOverAction} from "../data/HandOverAction";
 
 export class HandOverWorker<DATA extends ChatData, CM extends ChatMeta = ChatMeta> extends BaseChatWorker<ChatAction, AssistantConfig, DATA, CM> {
-    private readonly handOver: HandOverDelegate
+    private readonly handOver: HandOverDelegate;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -28,7 +28,11 @@ export class HandOverWorker<DATA extends ChatData, CM extends ChatMeta = ChatMet
         return isHandOverAction(req.data.actionData);
     }
 
-    protected async doDispatch(command: ChatCommand<ChatAction>, state: ChatState<AssistantConfig, DATA, CM>, control: DispatchControl<DATA, CM>): Promise<void> {
+    protected async doDispatch(
+        command: ChatCommand<ChatAction>,
+        state: ChatState<AssistantConfig, DATA, CM>,
+        control: DispatchControl<DATA, CM>
+    ): Promise<void> {
         const hoAction = <HandOverAction>(command.actionData);
         await control.safeUpdate(async (tx) => {
             await this.handOver.handOver(tx, command.commonData.chatDocumentPath, state, {
@@ -42,7 +46,7 @@ export class HandOverWorker<DATA extends ChatData, CM extends ChatMeta = ChatMet
 }
 
 export class HandBackWorker<DATA extends ChatData, CM extends ChatMeta = ChatMeta> extends BaseChatWorker<ChatAction, AssistantConfig, DATA, CM> {
-    private readonly handOver: HandOverDelegate
+    private readonly handOver: HandOverDelegate;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,

@@ -21,6 +21,7 @@ import {AiWrapper} from "./AiWrapper";
 import {RunContinuationRequest} from "./data/RunResponse";
 import {DefaultOpenAiMessageMapper, OpenAiMessageMapper} from "./OpenAiMessageMapper";
 import {AiMessages} from "./data/AiMessages";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 import json5 = require("json5");
 
 const logger = tagLogger("OpenAiWrapper");

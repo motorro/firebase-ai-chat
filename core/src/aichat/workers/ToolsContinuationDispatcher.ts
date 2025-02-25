@@ -15,7 +15,7 @@ import {Collections} from "../data/Collections";
 import {firestore} from "firebase-admin";
 import {ChatError} from "../data/ChatError";
 import {ChatDispatchData} from "../ToolsDispatcher";
-import {ChatMeta, Meta} from "../data/Meta";
+import {ChatMeta} from "../data/Meta";
 import DocumentReference = firestore.DocumentReference;
 import Timestamp = firestore.Timestamp;
 import CollectionReference = firestore.CollectionReference;
@@ -86,7 +86,7 @@ export interface ToolsContinuationDispatcher<DATA extends ChatData> {
 /**
  * Continuation dispatcher implementation
  */
-export class ToolsContinuationDispatcherImpl<DATA extends ChatData, WM extends Meta = Meta, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatcher<DATA> {
+export class ToolsContinuationDispatcherImpl<DATA extends ChatData, CM extends ChatMeta = ChatMeta> implements ToolsContinuationDispatcher<DATA> {
     private readonly dispatcherId: string;
     private readonly chatDocument: DocumentReference<ChatState<AssistantConfig, DATA, CM>>;
     private readonly db: FirebaseFirestore.Firestore;
@@ -106,7 +106,7 @@ export class ToolsContinuationDispatcherImpl<DATA extends ChatData, WM extends M
         chatDocumentPath: string,
         dispatcherId: string,
         db: FirebaseFirestore.Firestore,
-        dispatchRunner: ToolsContinuationDispatchRunner<DATA, WM, CM>,
+        dispatchRunner: ToolsContinuationDispatchRunner<DATA, CM>,
         logData = false
     ) {
         this.dispatcherId = dispatcherId;

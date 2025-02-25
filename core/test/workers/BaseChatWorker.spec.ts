@@ -150,6 +150,7 @@ describe("Base chat worker", function() {
 
         const result = await worker.dispatch(request);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.should.be.true;
         const chatStateUpdate = await chatDoc.get();
         const updatedChatState = chatStateUpdate.data() as ChatState<AiConfig, Data>;
@@ -180,12 +181,13 @@ describe("Base chat worker", function() {
                 return true;
             },
             // eslint-disable-next-line max-len
-            async function (
+            async function(
                 this: TestWorker,
                 command: ChatCommand<DispatchAction>,
                 state: ChatState<AiConfig, Data>,
                 control: DispatchControl<Data>
             ): Promise<void> {
+                // eslint-disable-next-line no-invalid-this
                 await this.process(command, state, control, {value: "Test2"}, ["Message to add"]);
             }
         );
@@ -197,6 +199,7 @@ describe("Base chat worker", function() {
 
         const result = await worker.dispatch(request);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.should.be.true;
         const chatStateUpdate = await chatDoc.get();
         const updatedChatState = chatStateUpdate.data() as ChatState<AiConfig, Data>;
@@ -211,7 +214,7 @@ describe("Base chat worker", function() {
         messages.size.should.be.equal(3);
         const m3Data = messages.docs[2].data();
         if (undefined === m3Data) {
-            throw new Error("Expected message 3 to be there")
+            throw new Error("Expected message 3 to be there");
         }
         m3Data.should.deep.include({text: "Message to add"});
 
@@ -309,6 +312,7 @@ describe("Base chat worker", function() {
         await worker.dispatch(request);
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         run.exists.should.be.true;
         const runData = run.data();
         if (undefined === data) {
@@ -342,6 +346,7 @@ describe("Base chat worker", function() {
         await worker.dispatch(request);
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         run.exists.should.be.true;
         const runData = run.data();
         if (undefined === data) {
@@ -375,6 +380,7 @@ describe("Base chat worker", function() {
         await worker.dispatch(request).catch(() => {});
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         run.exists.should.be.true;
         const runData = run.data();
         if (undefined === data) {
@@ -474,6 +480,7 @@ describe("Base chat worker", function() {
 
         const result = await worker.dispatch(request);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.should.be.false;
     });
 
@@ -541,6 +548,7 @@ describe("Base chat worker", function() {
             handlerCalled = true;
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         handlerCalled.should.be.true;
     });
 });
@@ -600,7 +608,7 @@ class TestWorker extends BaseChatWorker<DispatchAction, AiConfig, Data> {
                 updateState({data: newData});
                 saveMessages(messages);
             });
-        }
+        };
 
         await this.processMessages(
             command,

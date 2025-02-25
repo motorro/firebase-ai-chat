@@ -73,6 +73,7 @@ describe("Assistant Chat", function() {
             status: "processing"
         });
         const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(createdState.latestDispatchId);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         (await dispatchDoc.get()).exists.should.be.true;
 
         const [command] = capture(scheduler.create).last();
@@ -367,6 +368,7 @@ describe("Assistant Chat", function() {
             throw new Error("Chat should exist");
         }
         const dispatchDoc = chatDoc.collection(Collections.dispatches).doc(updatedState.latestDispatchId);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         (await dispatchDoc.get()).exists.should.be.true;
         updatedState.should.deep.include({
             status: "complete"

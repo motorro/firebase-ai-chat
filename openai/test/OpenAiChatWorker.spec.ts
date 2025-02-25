@@ -156,7 +156,7 @@ describe("Chat worker", function() {
     before(async function() {
         wrapper = imock<AiWrapper>();
         scheduler = imock<TaskScheduler>();
-        commandScheduler = imock<CommandScheduler>()
+        commandScheduler = imock<CommandScheduler>();
         toolContinuationDispatcherFactory = imock<ToolContinuationDispatcherFactory>();
         cleaner = imock();
         cleanupRegistrar = imock();
@@ -184,7 +184,7 @@ describe("Chat worker", function() {
 
     beforeEach(function() {
         when(commandScheduler.isSupported(anything())).thenReturn(true);
-    })
+    });
 
     afterEach(async function() {
         await db.recursiveDelete(chats);
@@ -484,7 +484,7 @@ describe("Chat worker", function() {
                 "retrieve",
                 {
                     name: "handBack",
-                    messages: ["Message 1"],
+                    messages: ["Message 1"]
                 }
             ]
         });
@@ -616,7 +616,7 @@ describe("Chat worker", function() {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
         // eslint-disable-next-line max-len
-        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async (data, calls, _updateState, getCommand) => {
+        when(toolDispatcher.dispatch(anything(), anything(), anything(), anything())).thenCall(async () => {
             return Promise.resolve(Continuation.resolve(toolResponse));
         });
 
@@ -640,7 +640,7 @@ describe("Chat worker", function() {
                 "retrieve",
                 {
                     name: "handBack",
-                    messages: ["Message 1"],
+                    messages: ["Message 1"]
                 }
             ]
         });
@@ -766,6 +766,7 @@ describe("Chat worker", function() {
             });
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         middlewareCalled.should.be.true;
     });
 
@@ -862,6 +863,7 @@ describe("Chat worker", function() {
         });
 
         verify(wrapper.deleteThread(threadId)).once();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         handlerCalled.should.be.false;
     });
 
@@ -947,6 +949,7 @@ describe("Chat worker", function() {
         await worker.dispatch(request);
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         run.exists.should.be.true;
         const runData = run.data();
         if (undefined === data) {
@@ -970,6 +973,7 @@ describe("Chat worker", function() {
         await worker.dispatch(request);
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         run.exists.should.be.true;
         const runData = run.data();
         if (undefined === data) {
@@ -993,6 +997,7 @@ describe("Chat worker", function() {
         await worker.dispatch(request).catch(() => {});
 
         const run = await chatDispatches.doc(dispatchId).collection(Collections.runs).doc(runId).get();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         run.exists.should.be.true;
         const runData = run.data();
         if (undefined === data) {
@@ -1100,6 +1105,7 @@ describe("Chat worker", function() {
         });
 
         verify(wrapper.createThread(anything())).once();
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         handlerCalled.should.be.true;
     });
 
@@ -1117,6 +1123,7 @@ describe("Chat worker", function() {
 
         const result = await worker.dispatch(request);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.should.be.true;
 
         const chatStateUpdate = await chatDoc.get();
@@ -1161,6 +1168,7 @@ describe("Chat worker", function() {
 
         const result = await worker.dispatch(request);
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.should.be.true;
 
         const chatStateUpdate = await chatDoc.get();

@@ -97,6 +97,7 @@ class BaseChatWorker {
      * @param messages A list of messages to save
      * @param chatMeta Chat metadata
      * @protected
+     * @returns Next batch index
      */
     saveMessages(tx, nextInBatchIndex, ownerId, chatDocumentPath, dispatchId, sessionId, messages, chatMeta) {
         const messageCollectionRef = this.getMessageCollection(chatDocumentPath);

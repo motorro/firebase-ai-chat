@@ -12,7 +12,7 @@ import {OpenAiChatCommand} from "../data/OpenAiChatCommand";
 import {OpenAiAssistantConfig} from "../data/OpenAiAssistantConfig";
 
 export class HandOverWorker extends OpenAiQueueWorker {
-    private readonly handOver: HandOverDelegate
+    private readonly handOver: HandOverDelegate;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,
@@ -48,7 +48,7 @@ export class HandOverWorker extends OpenAiQueueWorker {
 }
 
 export class HandBackWorker extends OpenAiQueueWorker {
-    private readonly handOver: HandOverDelegate
+    private readonly handOver: HandOverDelegate;
 
     constructor(
         firestore: FirebaseFirestore.Firestore,

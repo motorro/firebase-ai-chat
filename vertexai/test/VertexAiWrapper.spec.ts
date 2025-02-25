@@ -272,6 +272,7 @@ describe("VertexAI wrapper", function() {
             }
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         result.isSuspended().should.be.true;
     });
 
@@ -376,6 +377,7 @@ describe("VertexAI wrapper", function() {
         const threadDoc = threads.doc();
         await threadDoc.set({meta: {a: "b"}});
         await wrapper.deleteThread(threadDoc.id);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         (await threadDoc.get()).exists.should.be.false;
     });
 });
