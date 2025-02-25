@@ -23,6 +23,7 @@ Engines:
 
 - [A problem statement](#a-problem-statement)
 - [Sample Firebase project](#sample-firebase-project)
+- [Thomas And Friends project](#thomas-and-friends-project)
 - [Components](#components)
 - [Module API](#module-api)
   * [Scaffolds](#scaffolds)
@@ -89,6 +90,10 @@ The sample includes:
 - A sample Gemini assistant creation script
 - A sample OpenAI assistant creation script
 - A sample mobile application
+
+## Thomas And Friends project
+As a part of the 2024 Google AI application contest we built a project that is an experimental travel agency concierge using Agentic Flow.
+Check the sources [here](https://github.com/motorro/ThomasAndFriends). The project uses almost all the features of this engine in a real world application.
 
 ## Components
 Let's take a closer look at the implementation...
