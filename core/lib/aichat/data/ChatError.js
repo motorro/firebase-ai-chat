@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isPermanentError = exports.ChatError = void 0;
+exports.ChatError = void 0;
+exports.isPermanentError = isPermanentError;
 const https_1 = require("firebase-functions/v2/https");
 /**
  * Chat error
@@ -21,5 +22,4 @@ function isPermanentError(error) {
     return "object" === typeof error && null !== error
         && "isPermanent" in error && "boolean" === typeof error.isPermanent && error.isPermanent;
 }
-exports.isPermanentError = isPermanentError;
 //# sourceMappingURL=ChatError.js.map

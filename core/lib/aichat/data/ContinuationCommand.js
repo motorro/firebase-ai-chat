@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = void 0;
+exports.isContinuationRequest = isContinuationRequest;
+exports.isContinuationCommand = isContinuationCommand;
+exports.isContinuationCommandRequest = isContinuationCommandRequest;
 const ChatCommand_1 = require("./ChatCommand");
 /**
  * Checks if data is a ContinuationRequest
@@ -13,7 +15,6 @@ function isContinuationRequest(data) {
         && "tool" in data && "object" === typeof data.tool && null !== data.tool
         && "toolId" in data.tool && "string" === typeof data.tool.toolId;
 }
-exports.isContinuationRequest = isContinuationRequest;
 /**
  * Checks if data is a ContinuationCommand
  * @param data Data to check
@@ -22,7 +23,6 @@ exports.isContinuationRequest = isContinuationRequest;
 function isContinuationCommand(data) {
     return (0, ChatCommand_1.isChatCommand)(data) && "continuation" in data && isContinuationRequest(data.continuation);
 }
-exports.isContinuationCommand = isContinuationCommand;
 /**
  * Checks if data is a ContinuationCommand
  * @param req Queue request to check
@@ -31,5 +31,4 @@ exports.isContinuationCommand = isContinuationCommand;
 function isContinuationCommandRequest(req) {
     return isContinuationCommand(req.data);
 }
-exports.isContinuationCommandRequest = isContinuationCommandRequest;
 //# sourceMappingURL=ContinuationCommand.js.map

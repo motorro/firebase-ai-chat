@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.tagLogger = exports.setLogger = exports.logger = exports.ConsoleLogger = void 0;
+exports.logger = exports.ConsoleLogger = void 0;
+exports.setLogger = setLogger;
+exports.tagLogger = tagLogger;
 exports.ConsoleLogger = {
     d(...args) {
         console.debug(...args);
@@ -23,7 +25,6 @@ exports.logger = exports.ConsoleLogger;
 function setLogger(instance) {
     exports.logger = instance;
 }
-exports.setLogger = setLogger;
 /**
  * Adds a tag to the logger
  * @param tag Logging tag
@@ -46,5 +47,4 @@ function tagLogger(tag) {
         }
     };
 }
-exports.tagLogger = tagLogger;
 //# sourceMappingURL=logging.js.map

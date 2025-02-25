@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getScheduler = void 0;
+exports.getScheduler = getScheduler;
 const ChatError_1 = require("./data/ChatError");
 /**
  * Returns a scheduler to schedule a command
@@ -15,5 +15,4 @@ function getScheduler(schedulers, config) {
     }
     return scheduler;
 }
-exports.getScheduler = getScheduler;
 //# sourceMappingURL=CommandScheduler.js.map

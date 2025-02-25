@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.commonFormatContinuationError = exports.SequentialToolsContinuationDispatchRunner = void 0;
+exports.SequentialToolsContinuationDispatchRunner = void 0;
+exports.commonFormatContinuationError = commonFormatContinuationError;
 const ToolsDispatcher_1 = require("../ToolsDispatcher");
 const logging_1 = require("../../logging");
 const ChatError_1 = require("../data/ChatError");
@@ -105,5 +106,4 @@ exports.SequentialToolsContinuationDispatchRunner = SequentialToolsContinuationD
 function commonFormatContinuationError(toolCall) {
     return { error: `Error had occurred while calling function: ${toolCall.toolName} before. Thus this function was not processed` };
 }
-exports.commonFormatContinuationError = commonFormatContinuationError;
 //# sourceMappingURL=ToolsContinuationDispatchRunner.js.map

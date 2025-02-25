@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scheduleCommand = void 0;
+exports.scheduleCommand = scheduleCommand;
 const ChatCommand_1 = require("./data/ChatCommand");
 /**
  * Schedules chat command to default queue or to the bound one
@@ -20,5 +20,4 @@ async function scheduleCommand(scheduler, queueName, chatCommand) {
     }
     await scheduler.schedule(queue, command);
 }
-exports.scheduleCommand = scheduleCommand;
 //# sourceMappingURL=TaskScheduler.js.map

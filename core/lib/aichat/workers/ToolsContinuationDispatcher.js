@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToolsContinuationDispatcherImpl = exports.hasHandOver = void 0;
+exports.ToolsContinuationDispatcherImpl = void 0;
+exports.hasHandOver = hasHandOver;
 const Continuation_1 = require("../data/Continuation");
 const logging_1 = require("../../logging");
 const Collections_1 = require("../data/Collections");
@@ -12,7 +13,6 @@ const logger = (0, logging_1.tagLogger)("ToolsContinuationDispatcher");
 function hasHandOver(data) {
     return "data" in data && "handOver" in data;
 }
-exports.hasHandOver = hasHandOver;
 /**
  * Continuation dispatcher implementation
  */

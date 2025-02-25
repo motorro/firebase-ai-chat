@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.printAiExample = exports.isPermanentError = void 0;
+exports.isPermanentError = isPermanentError;
+exports.printAiExample = printAiExample;
 /**
  * Checks for permanent error
  * @param error Error to check
@@ -10,7 +11,6 @@ function isPermanentError(error) {
     return "object" === typeof error && null !== error
         && "isPermanent" in error && "boolean" === typeof error.isPermanent && error.isPermanent;
 }
-exports.isPermanentError = isPermanentError;
 /**
  * Prints example for AI
  * @param example Example to print
@@ -32,5 +32,4 @@ function printAiExample(example, exampleNumber) {
         return `EXAMPLE${exampleNumber ? ` ${exampleNumber}` : ""}\nInput from user: ${example.input}\nFunction to call: ${example.name}\nFunction arguments: ${JSON.stringify(example.arguments)}`;
     }
 }
-exports.printAiExample = printAiExample;
 //# sourceMappingURL=AiData.js.map

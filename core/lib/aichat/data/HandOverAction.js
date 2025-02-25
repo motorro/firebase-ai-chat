@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isHandBackAction = exports.isHandOverAction = void 0;
+exports.isHandOverAction = isHandOverAction;
+exports.isHandBackAction = isHandBackAction;
 /**
  * Checks if data is a HandOverAction
  * @param data Data to check
@@ -9,7 +10,6 @@ exports.isHandBackAction = exports.isHandOverAction = void 0;
 function isHandOverAction(data) {
     return "object" === typeof data && null !== data && "name" in data && "handOver" === data.name;
 }
-exports.isHandOverAction = isHandOverAction;
 /**
  * Checks if data is a HandBackAction
  * @param data Data to check
@@ -18,5 +18,4 @@ exports.isHandOverAction = isHandOverAction;
 function isHandBackAction(data) {
     return "object" === typeof data && null !== data && "name" in data && "handBack" === data.name;
 }
-exports.isHandBackAction = isHandBackAction;
 //# sourceMappingURL=HandOverAction.js.map
