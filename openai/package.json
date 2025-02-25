@@ -1,6 +1,5 @@
 {
   "name": "@motorro/firebase-ai-chat-openai",
-  "type": "module",
   "version": "8.6.7",
   "description": "A library to run OpenAI chats on Firebase",
   "publishConfig": {
