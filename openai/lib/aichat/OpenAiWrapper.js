@@ -148,22 +148,17 @@ class OpenAiWrapper {
             const messages = [];
             const list = await ai.beta.threads.messages.list(threadId, { after: cursor, order: "asc" });
             try {
-                for (var _d = true, _e = __asyncValues(list.iterPages()), _f; _f = await _e.next(), _a = _f.done, !_a;) {
+                for (var _d = true, _e = __asyncValues(list.iterPages()), _f; _f = await _e.next(), _a = _f.done, !_a; _d = true) {
                     _c = _f.value;
                     _d = false;
-                    try {
-                        const page = _c;
-                        page.getPaginatedItems().forEach((message) => {
-                            cursor = message.id;
-                            const mappedMessage = this.messageMapper.fromAi(message);
-                            if (mappedMessage) {
-                                messages.push([message.id, mappedMessage]);
-                            }
-                        });
-                    }
-                    finally {
-                        _d = true;
-                    }
+                    const page = _c;
+                    page.getPaginatedItems().forEach((message) => {
+                        cursor = message.id;
+                        const mappedMessage = this.messageMapper.fromAi(message);
+                        if (mappedMessage) {
+                            messages.push([message.id, mappedMessage]);
+                        }
+                    });
                 }
             }
             catch (e_1_1) { e_1 = { error: e_1_1 }; }

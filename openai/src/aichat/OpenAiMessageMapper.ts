@@ -1,4 +1,4 @@
-import {isStructuredMessage, NewMessage} from "@motorro/firebase-ai-chat-core";
+import {ChatError, isStructuredMessage, NewMessage} from "@motorro/firebase-ai-chat-core";
 import {Message, MessageCreateParams} from "openai/src/resources/beta/threads/messages";
 
 /**
@@ -28,9 +28,22 @@ export interface OpenAiMessageMapper {
 export const DefaultOpenAiMessageMapper: OpenAiMessageMapper = {
     toAi(message: NewMessage): UserMessageParts {
         if (isStructuredMessage(message)) {
+            const meta = message.meta;
+            let openAiMeta: Record<string, string> = {};
+            if (meta) {
+                Object.keys(meta).forEach((key) => {
+                    const value = meta[key];
+                    if ("string" === typeof value) {
+                        openAiMeta[key] = value;
+                    } else {
+                        throw new ChatError("invalid-argument", true, "OpenAI accepts only string values as Metadata. Stringify your values explicitly!")
+                    }
+                });
+            }
+
             return {
                 content: message.text,
-                metadata: message.meta
+                metadata: openAiMeta
             };
         }
         return {
