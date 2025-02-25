@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.factory = exports.DefaultVertexAiMessageMapper = exports.isVertexAiChatCommand = exports.isVertexAiChatReq = exports.handOverMiddleware = exports.HandOverDelegate = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isStructuredMessage = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
+exports.DefaultVertexAiMessageMapper = exports.isVertexAiChatCommand = exports.isVertexAiChatReq = exports.handOverMiddleware = exports.HandOverDelegate = exports.isContinuationCommandRequest = exports.isContinuationCommand = exports.isContinuationRequest = exports.ResolvedContinuation = exports.SuspendedContinuation = exports.Continuation = exports.FirebaseQueueTaskScheduler = exports.isBoundChatCommand = exports.isChatCommand = exports.isStructuredMessage = exports.isReducerSuccess = exports.isFunctionSuccess = exports.getReducerSuccess = exports.getFunctionSuccess = exports.isDispatchError = exports.getDispatchError = exports.isDispatchResult = exports.printAiExample = exports.Collections = exports.tagLogger = exports.setLogger = exports.AssistantChat = void 0;
+exports.factory = factory;
 const firebase_ai_chat_core_1 = require("@motorro/firebase-ai-chat-core");
 const VertexAICommandScheduler_1 = require("./aichat/VertexAICommandScheduler");
 const VertexAiWrapper_1 = require("./aichat/VertexAiWrapper");
@@ -91,5 +92,4 @@ taskScheduler, formatContinuationError = firebase_ai_chat_core_1.commonFormatCon
         }
     };
 }
-exports.factory = factory;
 //# sourceMappingURL=index.js.map
