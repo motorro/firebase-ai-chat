@@ -94,6 +94,7 @@ The sample includes:
 ## Thomas And Friends project
 As a part of the 2024 Google AI application contest we built a project that is an experimental travel agency concierge using Agentic Flow.
 Check the sources [here](https://github.com/motorro/ThomasAndFriends). The project uses almost all the features of this engine in a real world application.
+Here's the [article](https://app.readytensor.ai/publications/ZB89eznfyXtK) on Ready Tensor with a short description of the project.
 
 ## Components
 Let's take a closer look at the implementation...
